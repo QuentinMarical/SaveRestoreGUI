@@ -1,0 +1,86 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Publication autonome - pas besoin d'installer .NET -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+    <!-- Fichier unique + compression pour réduire la taille -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <ApplicationIcon>diskette.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Seul MainForm.cs est le Form racine — les autres sont des partial classes -->
+    <Compile Update="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="MainForm.Designer.cs">
+      <SubType>Form</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Backup.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Layout.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Migration.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Restore.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <!--
+    Seul MainForm.resx est légitime.
+    Tous les autres .resx (noms avec point OU underscore) sont exclus
+    de tous les ItemGroups pour éviter le conflit MSB3577
+    "deux items résolus vers SaveRestoreGUI.MainForm.resources".
+  -->
+  <ItemGroup>
+    <EmbeddedResource Remove="MainForm_Backup.resx" />
+    <EmbeddedResource Remove="MainForm_Layout.resx" />
+    <EmbeddedResource Remove="MainForm_Migration.resx" />
+    <EmbeddedResource Remove="MainForm_Restore.resx" />
+
+    <None Remove="MainForm.Backup.resx" />
+    <None Remove="MainForm.Layout.resx" />
+    <None Remove="MainForm.Migration.resx" />
+    <None Remove="MainForm.Restore.resx" />
+    <None Remove="MainForm_Backup.resx" />
+    <None Remove="MainForm_Layout.resx" />
+    <None Remove="MainForm_Migration.resx" />
+    <None Remove="MainForm_Restore.resx" />
+
+    <Content Remove="MainForm.Backup.resx" />
+    <Content Remove="MainForm.Layout.resx" />
+    <Content Remove="MainForm.Migration.resx" />
+    <Content Remove="MainForm.Restore.resx" />
+    <Content Remove="MainForm_Backup.resx" />
+    <Content Remove="MainForm_Layout.resx" />
+    <Content Remove="MainForm_Migration.resx" />
+    <Content Remove="MainForm_Restore.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="diskette.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="10.0.9" />
+  </ItemGroup>
+
+</Project>
