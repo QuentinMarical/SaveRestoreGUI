@@ -7,8 +7,8 @@ namespace SaveRestoreGUI
     /// Logique de restauration — parité fonctionnelle complète avec Restauration.ps1 :
     /// dossiers utilisateurs, import clés registre (OneNote/OpenNotebook/signatures),
     /// AppData (Signatures/Templates/SAP), Outlook (PST + autocomplete + règles + boîtes partagées
-    /// avec copie presse-papiers), Edge, Sticky Notes, lecteurs réseau, fond d'écran,
-    /// lancement des applications.
+    /// avec copie presse-papiers), Edge (profil complet), Sticky Notes, lecteurs réseau,
+    /// fond d'écran, dossier Public, IP Desktop Softphone, lancement des applications.
     /// </summary>
     public partial class MainForm
     {
@@ -100,11 +100,19 @@ namespace SaveRestoreGUI
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
                     "SAP GUI", rtbRestoreLog, progress, ct, errorList)));
 
+                if (chkRestorePublic.Checked) steps.Add(("Dossier Public", () => RestoreStep(
+                    Path.Combine(restoreRoot, "Public"),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
+                    "Dossier Public", rtbRestoreLog, progress, ct, errorList)));
+
                 if (chkRestoreOutlook.Checked) steps.Add(("Données Outlook", () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
                 if (chkRestoreStickyNotes.Checked) steps.Add(("Sticky Notes", () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreEdgeFavorites.Checked) steps.Add(("Favoris Edge", () => RestoreEdgeFavoritesAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, ct, errorList)));
                 if (chkRestoreNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
                 if (chkRestoreWallpaper.Checked) steps.Add(("Fond d'écran", () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
+
+                // IP Desktop Softphone — réservé, non fonctionnel pour l'instant
+                // if (chkRestoreIpDesktopSoftphone.Checked) steps.Add(("IP Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, ct, errorList)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -117,7 +125,7 @@ namespace SaveRestoreGUI
                     await action();
                 }
 
-                // Lancement des applications (équivalent "LANCEMENT DES APPLICATIONS" du script)
+                // Lancement des applications
                 if (chkLaunchApps.Checked)
                 {
                     LogTitle(rtbRestoreLog, "Lancement des applications");
@@ -257,12 +265,10 @@ namespace SaveRestoreGUI
                     LogSuccess(rtb, $"Cache d'autocomplétion restauré ({files.Length} fichiers)");
             }
 
-            // 3. Profils Outlook (.reg) — import manuel recommandé (risque d'écraser le profil actif)
+            // 3. Profils Outlook (.reg) — import manuel recommandé
             var regFiles = Directory.GetFiles(outlookDataDir, "Outlook_Profile_*.reg");
             foreach (var reg in regFiles)
-            {
                 LogInfo(rtb, $"Profil Outlook trouvé : {Path.GetFileName(reg)} (import manuel recommandé)");
-            }
 
             // 4. Règles Outlook (.rwz)
             var rulesFiles = Directory.GetFiles(outlookDataDir, "*.rwz");
@@ -287,7 +293,7 @@ namespace SaveRestoreGUI
                 }
             }
 
-            // 5. Boîtes aux lettres partagées : affichage + copie presse-papiers
+            // 5. Boîtes aux lettres partagées : affichage + presse-papiers
             var sharedMailboxFile = Path.Combine(outlookDataDir, "SharedMailboxes.txt");
             if (File.Exists(sharedMailboxFile))
             {
@@ -303,7 +309,7 @@ namespace SaveRestoreGUI
                         Log(rtb, $"   → {mailbox}", Color.FromArgb(139, 233, 253));
 
                     LogInfo(rtb, "");
-                    LogInfo(rtb, "COMMENT AJOUTER UNE BOÎTE PARTAGÉE DANS OUTLOOK :");
+                    LogInfo(rtb, "COMMENT AJOUTER UNE BOÎTTE PARTAGÉE DANS OUTLOOK :");
                     LogInfo(rtb, "  1. Fichier > Paramètres du compte > Paramètres du compte...");
                     LogInfo(rtb, "  2. Sélectionner votre compte > Modifier > Paramètres supplémentaires");
                     LogInfo(rtb, "  3. Onglet Avancé > Ajouter... > Entrer le nom de la boîte");
@@ -334,24 +340,29 @@ namespace SaveRestoreGUI
             }
         }
 
-        private async Task RestoreEdgeFavoritesAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
+        /// <summary>
+        /// Profil Edge complet : restaure le dossier «EdgeProfile» vers User Data\Default.
+        /// ⚠️ Edge doit être fermé pendant la restauration.
+        /// </summary>
+        private async Task RestoreEdgeProfileAsync(string restoreRoot, RichTextBox rtb,
+            IProgress<int> progress, CancellationToken ct, List<string> errorList)
         {
-            var bookmarksBackup = Path.Combine(restoreRoot, "Bookmarks");
-            if (File.Exists(bookmarksBackup))
-            {
-                var edgeDest = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", "Edge", "User Data", "Default");
-                Directory.CreateDirectory(edgeDest);
+            var edgeDest = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Edge", "User Data", "Default");
 
-                await Task.Run(() => File.Copy(bookmarksBackup, Path.Combine(edgeDest, "Bookmarks"), true), ct);
-                var size = new FileInfo(bookmarksBackup).Length;
-                LogSuccess(rtb, $"Favoris Edge restaurés ({FileService.FormatSize(size)})");
-            }
-            else
+            // Vérifier qu'Edge n'est pas en cours d'exécution
+            if (System.Diagnostics.Process.GetProcessesByName("msedge").Length > 0)
             {
-                LogInfo(rtb, "Pas de favoris Edge à restaurer.");
+                LogWarning(rtb, "Microsoft Edge est ouvert. Fermez-le avant de restaurer le profil.");
+                return;
             }
+
+            await RestoreStep(
+                Path.Combine(restoreRoot, "EdgeProfile"),
+                edgeDest,
+                "Profil Edge",
+                rtb, progress, ct, errorList);
         }
 
         /// <summary>Affiche la liste des lecteurs réseau sauvegardés (recréation manuelle).</summary>
