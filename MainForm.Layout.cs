@@ -155,12 +155,14 @@ namespace SaveRestoreGUI
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
             // ── Carte options migration ──
+            // 4 colonnes × 4 lignes = 16 checkboxes
             int optY = Margin + MigTopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkMigrateDocuments, chkMigrateDesktop, chkMigrateDownloads },
-                new[] { chkMigratePictures,  chkMigrateMusic,   chkMigrateVideos },
-                new[] { chkMigrateOutlook,   chkMigrateSignatures, chkMigrateExcelMacros }
+                new[] { chkMigrateDocuments,     chkMigrateDesktop,       chkMigrateDownloads,     chkMigratePictures   },
+                new[] { chkMigrateMusic,          chkMigrateVideos,        chkMigrateOutlook,       chkMigrateSignatures },
+                new[] { chkMigrateExcelMacros,    chkMigrateTemplates,     chkMigrateSap,           chkMigrateOneNote    },
+                new[] { chkMigrateStickyNotes,    chkMigrateEdgeFavorites, chkMigrateWallpaper,     chkMigrateNetworkDrives }
             };
             int optH = LayoutOptionsCard(cw, cols, btnMigrateSelectAll, btnMigrateDeselectAll);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
