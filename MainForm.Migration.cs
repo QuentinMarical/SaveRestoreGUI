@@ -46,7 +46,6 @@ namespace SaveRestoreGUI
                     .Where(d => (d.DriveType == DriveType.Removable || d.DriveType == DriveType.Fixed) && d.IsReady)
                     .ToList();
 
-                // Disque du Windows courant — à exclure
                 var currentWindows = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
                     .TrimEnd(Path.DirectorySeparatorChar);
                 var currentRoot = Path.GetPathRoot(currentWindows)?.TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
@@ -259,12 +258,20 @@ namespace SaveRestoreGUI
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
                     "SAP GUI", progress, ct, errorList)));
 
+                if (chkMigratePublic.Checked) steps.Add(("Dossier Public", () => MigrateStep(
+                    Path.Combine(Path.GetPathRoot(profile.Path) ?? "", "Users", "Public"),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
+                    "Dossier Public", progress, ct, errorList)));
+
                 if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook", () => MigrateOutlookDataAsync(profile.Path, rtbMigrationLog, ct)));
                 if (chkMigrateStickyNotes.Checked) steps.Add(("Sticky Notes", () => MigrateStickyNotesAsync(profile.Path, rtbMigrationLog, ct)));
-                if (chkMigrateEdgeFavorites.Checked) steps.Add(("Favoris Edge", () => MigrateEdgeFavoritesAsync(profile.Path, rtbMigrationLog, ct)));
+                if (chkMigrateEdgeProfile.Checked) steps.Add(("Profil Edge", () => MigrateEdgeProfileAsync(profile.Path, rtbMigrationLog, progress, ct, errorList)));
                 if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran", () => MigrateWallpaperAsync(profile.Path, rtbMigrationLog)));
                 if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => MigrateNetworkDrivesInfoAsync(profile.Path, rtbMigrationLog)));
                 if (chkMigrateOneNote.Checked) steps.Add(("OneNote (registre)", () => MigrateOneNoteAsync(profile.Path, rtbMigrationLog)));
+
+                // IP Desktop Softphone — réservé, non fonctionnel pour l'instant
+                // if (chkMigrateIpDesktopSoftphone.Checked) steps.Add(("IP Softphone", () => MigrateIpDesktopSoftphoneAsync(profile.Path, rtbMigrationLog, progress, ct, errorList)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -428,27 +435,26 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>Migration des favoris Edge.</summary>
-        private async Task MigrateEdgeFavoritesAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
+        /// <summary>
+        /// Profil Edge complet : copie le dossier «Default» du profil source
+        /// vers User Data\Default du profil courant, en mode fusion.
+        /// ⚠️ Edge doit être fermé pendant la migration.
+        /// </summary>
+        private async Task MigrateEdgeProfileAsync(string sourceProfilePath, RichTextBox rtb,
+            IProgress<int> progress, CancellationToken ct, List<string> errorList)
         {
-            var bookmarksSource = Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Edge",
-                "User Data", "Default", "Bookmarks");
-
-            if (File.Exists(bookmarksSource))
+            if (System.Diagnostics.Process.GetProcessesByName("msedge").Length > 0)
             {
-                var edgeDest = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", "Edge", "User Data", "Default");
-                Directory.CreateDirectory(edgeDest);
+                LogWarning(rtb, "Microsoft Edge est ouvert. Fermez-le avant de migrer le profil.");
+                return;
+            }
 
-                await Task.Run(() => File.Copy(bookmarksSource, Path.Combine(edgeDest, "Bookmarks"), true), ct);
-                var size = new FileInfo(bookmarksSource).Length;
-                LogSuccess(rtb, $"Favoris Edge migrés ({FileService.FormatSize(size)})");
-            }
-            else
-            {
-                LogInfo(rtb, "Pas de favoris Edge à migrer.");
-            }
+            var edgeSource = Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Edge", "User Data", "Default");
+            var edgeDest   = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Edge", "User Data", "Default");
+
+            await MigrateStep(edgeSource, edgeDest, "Profil Edge", progress, ct, errorList);
         }
 
         /// <summary>Migration du fond d'écran.</summary>
