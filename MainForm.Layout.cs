@@ -70,12 +70,14 @@ namespace SaveRestoreGUI
             LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
 
             // ── Carte options ──
+            // 4 colonnes × 5 lignes max = 17 checkboxes
             int optY = Margin + TopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkDocuments, chkDesktop, chkDownloads, chkPictures, chkMusic, chkVideos },
-                new[] { chkOutlook, chkSignatures, chkStickyNotes, chkEdgeFavorites, chkWallpaper, chkNetworkDrives },
-                new[] { chkOldProfile, chkTemplates, chkOneNote, chkExcelMacros, chkSap }
+                new[] { chkDocuments,    chkDesktop,       chkDownloads,     chkPictures,  chkMusic         },
+                new[] { chkVideos,       chkOutlook,       chkSignatures,    chkStickyNotes, chkEdgeFavorites },
+                new[] { chkWallpaper,    chkNetworkDrives, chkTemplates,     chkOneNote,   chkExcelMacros   },
+                new[] { chkSap,          chkOldProfile }
             };
             int optH = LayoutOptionsCard(cw, cols, btnSelectAll, btnDeselectAll);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
@@ -104,15 +106,14 @@ namespace SaveRestoreGUI
             LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
 
             // ── Carte options ──
+            // 4 colonnes × 5 lignes max = 17 checkboxes
             int optY = Margin + TopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkRestoreDocuments, chkRestoreDesktop, chkRestoreDownloads,
-                        chkRestorePictures, chkRestoreMusic, chkRestoreVideos },
-                new[] { chkRestoreOutlook, chkRestoreSignatures, chkRestoreStickyNotes,
-                        chkRestoreEdgeFavorites, chkRestoreWallpaper, chkRestoreNetworkDrives },
-                new[] { chkRestoreOneNote, chkRestoreExcelMacros, chkRestoreTemplates,
-                        chkRestoreSap, chkLaunchApps }
+                new[] { chkRestoreDocuments, chkRestoreDesktop,    chkRestoreDownloads,  chkRestorePictures, chkRestoreMusic    },
+                new[] { chkRestoreVideos,    chkRestoreOutlook,    chkRestoreSignatures, chkRestoreStickyNotes, chkRestoreEdgeFavorites },
+                new[] { chkRestoreWallpaper, chkRestoreNetworkDrives, chkRestoreTemplates, chkRestoreOneNote, chkRestoreExcelMacros },
+                new[] { chkRestoreSap,       chkLaunchApps }
             };
             int optH = LayoutOptionsCard(cw, cols, btnRestoreSelectAll, btnRestoreDeselectAll);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
@@ -159,9 +160,9 @@ namespace SaveRestoreGUI
             int optY = Margin + MigTopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkMigrateDocuments,     chkMigrateDesktop,       chkMigrateDownloads,     chkMigratePictures   },
-                new[] { chkMigrateMusic,          chkMigrateVideos,        chkMigrateOutlook,       chkMigrateSignatures },
-                new[] { chkMigrateExcelMacros,    chkMigrateTemplates,     chkMigrateSap,           chkMigrateOneNote    },
+                new[] { chkMigrateDocuments,     chkMigrateDesktop,       chkMigrateDownloads,     chkMigratePictures      },
+                new[] { chkMigrateMusic,          chkMigrateVideos,        chkMigrateOutlook,       chkMigrateSignatures    },
+                new[] { chkMigrateExcelMacros,    chkMigrateTemplates,     chkMigrateSap,           chkMigrateOneNote       },
                 new[] { chkMigrateStickyNotes,    chkMigrateEdgeFavorites, chkMigrateWallpaper,     chkMigrateNetworkDrives }
             };
             int optH = LayoutOptionsCard(cw, cols, btnMigrateSelectAll, btnMigrateDeselectAll);
