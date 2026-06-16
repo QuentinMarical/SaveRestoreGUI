@@ -9,16 +9,16 @@ namespace SaveRestoreGUI
     /// </summary>
     public partial class MainForm
     {
-        // ── Marges et espacements ──────────────────────────────────────────────
+        // ── Marges et espacements ──────────────────────────────────────────────────────
         private new const int Margin = 28;   // marge gauche/droite des pages
         private const int CardGap      = 14;   // espace vertical entre les cartes
         private const int InnerPad     = 16;   // padding interne des cartes
 
-        // ── Carte du haut (destination / source) ──────────────────────────────
+        // ── Carte du haut (destination / source) ──────────────────────────────────
         private const int TopCardH     = 90;   // hauteur carte Backup/Restore
         private const int MigTopCardH  = 290;  // hauteur carte source Migration
 
-        // ── Carte des options (checkboxes) ────────────────────────────────────
+        // ── Carte des options (checkboxes) ──────────────────────────────────
         private const int ChkLabelY    = 12;   // titre de la carte
         private const int ChkStartY    = 44;   // première ligne de checkbox
         private const int ChkStepY     = 32;   // pas vertical entre lignes
@@ -27,17 +27,17 @@ namespace SaveRestoreGUI
         private const int BtnGapY      = 14;   // espace entre dernière checkbox et boutons
         private const int CardPadBot   = 16;   // padding bas carte options
 
-        // ── Barre d'actions ───────────────────────────────────────────────────
+        // ── Barre d'actions ─────────────────────────────────────────────────────
         private const int ActionH      = 44;
         private const int BtnStartW    = 230;
         private const int BtnCancelW   = 120;
         private const int BtnExportW   = 150;
 
-        // ── Console log ───────────────────────────────────────────────────────
+        // ── Console log ──────────────────────────────────────────────────────────
         private const int LogMinH      = 120;
         private const int LogMarginBot = 12;
 
-        // ── Migration : zones internes de la carte source ─────────────────────
+        // ── Migration : zones internes de la carte source ──────────────────────
         private const int MigCmbY      = 40;
         private const int MigCmbH      = 30;
         private const int MigLblProfY  = 84;
@@ -46,7 +46,7 @@ namespace SaveRestoreGUI
         private const int MigInfoY     = 242;
         private const int MigInfoH     = 40;
 
-        // ──────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────
 
         public void ApplyResponsiveLayout()
         {
@@ -55,9 +55,14 @@ namespace SaveRestoreGUI
             LayoutMigrationPage();
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         //  PAGE SAUVEGARDE
-        // ══════════════════════════════════════════════════════════════════════
+        //  4 colonnes × 5 lignes = 20 cases max
+        //  Col 1 : Documents, Bureau, Téléchargements, Images, Musique
+        //  Col 2 : Vidéos, Outlook, Signatures, Sticky Notes, Profil Edge
+        //  Col 3 : Fond d'écran, Lecteurs réseau, Modèles, OneNote, Macros Excel
+        //  Col 4 : SAP, Ancien profil, Public, IP Softphone
+        // ════════════════════════════════════════════════════════════════════
         private void LayoutBackupPage()
         {
             if (pageBackup.ClientSize.Width <= 0) return;
@@ -70,14 +75,13 @@ namespace SaveRestoreGUI
             LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
 
             // ── Carte options ──
-            // 4 colonnes × 5 lignes max = 17 checkboxes
             int optY = Margin + TopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkDocuments,    chkDesktop,       chkDownloads,     chkPictures,  chkMusic         },
-                new[] { chkVideos,       chkOutlook,       chkSignatures,    chkStickyNotes, chkEdgeFavorites },
-                new[] { chkWallpaper,    chkNetworkDrives, chkTemplates,     chkOneNote,   chkExcelMacros   },
-                new[] { chkSap,          chkOldProfile }
+                new[] { chkDocuments,     chkDesktop,        chkDownloads,      chkPictures,         chkMusic          },
+                new[] { chkVideos,        chkOutlook,        chkSignatures,     chkStickyNotes,      chkEdgeProfile    },
+                new[] { chkWallpaper,     chkNetworkDrives,  chkTemplates,      chkOneNote,          chkExcelMacros    },
+                new[] { chkSap,           chkOldProfile,     chkPublic,         chkIpDesktopSoftphone }
             };
             int optH = LayoutOptionsCard(cw, cols, btnSelectAll, btnDeselectAll);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
@@ -91,9 +95,14 @@ namespace SaveRestoreGUI
             rtbBackupLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         //  PAGE RESTAURATION
-        // ══════════════════════════════════════════════════════════════════════
+        //  4 colonnes × 5 lignes = 20 cases max
+        //  Col 1 : Documents, Bureau, Téléchargements, Images, Musique
+        //  Col 2 : Vidéos, Outlook, Signatures, Sticky Notes, Profil Edge
+        //  Col 3 : Fond d'écran, Lecteurs réseau, Modèles, OneNote, Macros Excel
+        //  Col 4 : SAP, Public, Lancer apps, IP Softphone
+        // ════════════════════════════════════════════════════════════════════
         private void LayoutRestorePage()
         {
             if (pageRestore.ClientSize.Width <= 0) return;
@@ -106,14 +115,13 @@ namespace SaveRestoreGUI
             LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
 
             // ── Carte options ──
-            // 4 colonnes × 5 lignes max = 17 checkboxes
             int optY = Margin + TopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkRestoreDocuments, chkRestoreDesktop,    chkRestoreDownloads,  chkRestorePictures, chkRestoreMusic    },
-                new[] { chkRestoreVideos,    chkRestoreOutlook,    chkRestoreSignatures, chkRestoreStickyNotes, chkRestoreEdgeFavorites },
-                new[] { chkRestoreWallpaper, chkRestoreNetworkDrives, chkRestoreTemplates, chkRestoreOneNote, chkRestoreExcelMacros },
-                new[] { chkRestoreSap,       chkLaunchApps }
+                new[] { chkRestoreDocuments,  chkRestoreDesktop,      chkRestoreDownloads,    chkRestorePictures,      chkRestoreMusic          },
+                new[] { chkRestoreVideos,     chkRestoreOutlook,      chkRestoreSignatures,   chkRestoreStickyNotes,   chkRestoreEdgeProfile    },
+                new[] { chkRestoreWallpaper,  chkRestoreNetworkDrives,chkRestoreTemplates,    chkRestoreOneNote,       chkRestoreExcelMacros    },
+                new[] { chkRestoreSap,        chkRestorePublic,       chkLaunchApps,          chkRestoreIpDesktopSoftphone }
             };
             int optH = LayoutOptionsCard(cw, cols, btnRestoreSelectAll, btnRestoreDeselectAll);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
@@ -127,9 +135,14 @@ namespace SaveRestoreGUI
             rtbRestoreLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         //  PAGE MIGRATION
-        // ══════════════════════════════════════════════════════════════════════
+        //  4 colonnes × 5 lignes = 20 cases max
+        //  Col 1 : Documents, Bureau, Téléchargements, Images, Musique
+        //  Col 2 : Vidéos, Outlook, Signatures, Macros Excel, Sticky Notes
+        //  Col 3 : Profil Edge, Fond d'écran, Lecteurs réseau, OneNote, Modèles
+        //  Col 4 : SAP, Public, IP Softphone
+        // ════════════════════════════════════════════════════════════════════
         private void LayoutMigrationPage()
         {
             if (pageMigration.ClientSize.Width <= 0) return;
@@ -156,14 +169,13 @@ namespace SaveRestoreGUI
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
             // ── Carte options migration ──
-            // 4 colonnes × 4 lignes = 16 checkboxes
             int optY = Margin + MigTopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkMigrateDocuments,     chkMigrateDesktop,       chkMigrateDownloads,     chkMigratePictures      },
-                new[] { chkMigrateMusic,          chkMigrateVideos,        chkMigrateOutlook,       chkMigrateSignatures    },
-                new[] { chkMigrateExcelMacros,    chkMigrateTemplates,     chkMigrateSap,           chkMigrateOneNote       },
-                new[] { chkMigrateStickyNotes,    chkMigrateEdgeFavorites, chkMigrateWallpaper,     chkMigrateNetworkDrives }
+                new[] { chkMigrateDocuments,      chkMigrateDesktop,       chkMigrateDownloads,      chkMigratePictures,      chkMigrateMusic          },
+                new[] { chkMigrateVideos,         chkMigrateOutlook,       chkMigrateSignatures,     chkMigrateExcelMacros,   chkMigrateStickyNotes    },
+                new[] { chkMigrateEdgeProfile,    chkMigrateWallpaper,     chkMigrateNetworkDrives,  chkMigrateOneNote,       chkMigrateTemplates      },
+                new[] { chkMigrateSap,            chkMigratePublic,        chkMigrateIpDesktopSoftphone }
             };
             int optH = LayoutOptionsCard(cw, cols, btnMigrateSelectAll, btnMigrateDeselectAll);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
@@ -177,9 +189,9 @@ namespace SaveRestoreGUI
             rtbMigrationLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         //  HELPERS COMMUNS
-        // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Positionne le TextBox et le bouton Parcourir dans la carte destination/source.
