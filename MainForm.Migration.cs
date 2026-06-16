@@ -1,6 +1,5 @@
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
-
 namespace SaveRestoreGUI
 {
     /// <summary>
@@ -27,8 +26,8 @@ namespace SaveRestoreGUI
 
         private sealed class UserProfileItem
         {
-            public string Name { get; init; } = "";
-            public string Path { get; init; } = "";
+            public string Name { get; init; } = " ";
+            public string Path { get; init; } = " ";
             public bool IsMatch { get; init; }
 
             public override string ToString()
@@ -250,7 +249,22 @@ namespace SaveRestoreGUI
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
                     "Macros Excel (XLSTART)", progress, ct, errorList)));
 
+                if (chkMigrateTemplates.Checked) steps.Add(("Modèles Office", () => MigrateStep(
+                    Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Templates"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
+                    "Modèles Office", progress, ct, errorList)));
+
+                if (chkMigrateSap.Checked) steps.Add(("SAP GUI", () => MigrateStep(
+                    Path.Combine(profile.Path, "AppData", "Roaming", "SAP"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
+                    "SAP GUI", progress, ct, errorList)));
+
                 if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook", () => MigrateOutlookDataAsync(profile.Path, rtbMigrationLog, ct)));
+                if (chkMigrateStickyNotes.Checked) steps.Add(("Sticky Notes", () => MigrateStickyNotesAsync(profile.Path, rtbMigrationLog, ct)));
+                if (chkMigrateEdgeFavorites.Checked) steps.Add(("Favoris Edge", () => MigrateEdgeFavoritesAsync(profile.Path, rtbMigrationLog, ct)));
+                if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran", () => MigrateWallpaperAsync(profile.Path, rtbMigrationLog)));
+                if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => MigrateNetworkDrivesInfoAsync(profile.Path, rtbMigrationLog)));
+                if (chkMigrateOneNote.Checked) steps.Add(("OneNote (registre)", () => MigrateOneNoteAsync(profile.Path, rtbMigrationLog)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -390,6 +404,127 @@ namespace SaveRestoreGUI
                 if (autocompleteFiles.Length > 0)
                     LogSuccess(rtb, $"Cache d'autocomplétion migré ({autocompleteFiles.Length} fichiers)");
             }
+        }
+
+        /// <summary>Migration des Sticky Notes (plum.sqlite).</summary>
+        private async Task MigrateStickyNotesAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
+        {
+            var stickySource = Path.Combine(sourceProfilePath, "AppData", "Local", "Packages",
+                "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState", "plum.sqlite");
+
+            if (File.Exists(stickySource))
+            {
+                var stickyDest = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
+                Directory.CreateDirectory(stickyDest);
+
+                await Task.Run(() => File.Copy(stickySource, Path.Combine(stickyDest, "plum.sqlite"), true), ct);
+                LogSuccess(rtb, "Sticky Notes migrés");
+            }
+            else
+            {
+                LogInfo(rtb, "Pas de Sticky Notes à migrer.");
+            }
+        }
+
+        /// <summary>Migration des favoris Edge.</summary>
+        private async Task MigrateEdgeFavoritesAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
+        {
+            var bookmarksSource = Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Edge",
+                "User Data", "Default", "Bookmarks");
+
+            if (File.Exists(bookmarksSource))
+            {
+                var edgeDest = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "Edge", "User Data", "Default");
+                Directory.CreateDirectory(edgeDest);
+
+                await Task.Run(() => File.Copy(bookmarksSource, Path.Combine(edgeDest, "Bookmarks"), true), ct);
+                var size = new FileInfo(bookmarksSource).Length;
+                LogSuccess(rtb, $"Favoris Edge migrés ({FileService.FormatSize(size)})");
+            }
+            else
+            {
+                LogInfo(rtb, "Pas de favoris Edge à migrer.");
+            }
+        }
+
+        /// <summary>Migration du fond d'écran.</summary>
+        private async Task MigrateWallpaperAsync(string sourceProfilePath, RichTextBox rtb)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    var wallpaperPath = Path.Combine(sourceProfilePath, "AppData", "Roaming", "Microsoft", "Windows", "Themes", "TranscodedWallpaper");
+
+                    if (File.Exists(wallpaperPath))
+                    {
+                        var wallpaperDest = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                            "Microsoft", "Windows", "Themes");
+                        Directory.CreateDirectory(wallpaperDest);
+
+                        File.Copy(wallpaperPath, Path.Combine(wallpaperDest, "TranscodedWallpaper"), true);
+                        LogSuccess(rtb, "Fond d'écran migré (visible après reconnexion)");
+                    }
+                    else
+                    {
+                        LogInfo(rtb, "Pas de fond d'écran à migrer.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(rtb, $"Erreur fond d'écran : {ex.Message}");
+                }
+            });
+        }
+
+        /// <summary>Affiche la liste des lecteurs réseau sauvegardés (recréation manuelle).</summary>
+        private async Task MigrateNetworkDrivesInfoAsync(string sourceProfilePath, RichTextBox rtb)
+        {
+            await Task.Run(() =>
+            {
+                var networkDrivesFile = Path.Combine(sourceProfilePath, "NetworkDrives.txt");
+                if (File.Exists(networkDrivesFile))
+                {
+                    try
+                    {
+                        var lines = File.ReadAllLines(networkDrivesFile);
+                        LogInfo(rtb, "Lecteurs réseau de l'ancien poste :");
+                        foreach (var line in lines.Where(l => !string.IsNullOrWhiteSpace(l)))
+                            Log(rtb, $"   {line}");
+                        LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}");
+                    }
+                }
+                else
+                {
+                    LogInfo(rtb, "Pas de fichier de lecteurs réseau trouvé sur le profil source.");
+                }
+            });
+        }
+
+        /// <summary>Migration des clés de registre OneNote.</summary>
+        private async Task MigrateOneNoteAsync(string sourceProfilePath, RichTextBox rtb)
+        {
+            Log(rtb, "Migration des clés de registre OneNote...");
+            await Task.Run(() =>
+            {
+                try
+                {
+                    RegistryService.RestoreOneNoteKeys(sourceProfilePath, msg => LogInfo(rtb, msg));
+                }
+                catch (Exception ex)
+                {
+                    LogError(rtb, $"Erreur OneNote : {ex.Message}");
+                }
+            });
         }
     }
 }
