@@ -7,7 +7,8 @@ namespace SaveRestoreGUI
     /// Logique de sauvegarde — parité fonctionnelle complète avec Sauvegarde.ps1 :
     /// dossiers utilisateurs, Outlook (PST + autocomplete + profils + règles + boîtes partagées),
     /// signatures + clés MailSettings, OneNote (RecentNotebooks/User MRU/OpenNotebook),
-    /// Templates, SAP, Sticky Notes, Edge, fond d'écran, lecteurs réseau, récapitulatif final.
+    /// Templates, SAP, Sticky Notes, Edge (profil complet), fond d'écran, lecteurs réseau,
+    /// dossier Public, IP Desktop Softphone, récapitulatif final.
     /// </summary>
     public partial class MainForm
     {
@@ -97,12 +98,19 @@ namespace SaveRestoreGUI
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
                     Path.Combine(backupRoot, "SAP"), "SAP GUI", rtbBackupLog, progress, ct, errorList)));
 
+                if (chkPublic.Checked) steps.Add(("Dossier Public", () => CopyStep(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
+                    Path.Combine(backupRoot, "Public"), "Dossier Public", rtbBackupLog, progress, ct, errorList)));
+
                 if (chkOutlook.Checked) steps.Add(("Données Outlook", () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
                 if (chkOneNote.Checked) steps.Add(("OneNote (registre)", () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
                 if (chkStickyNotes.Checked) steps.Add(("Sticky Notes", () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
-                if (chkEdgeFavorites.Checked) steps.Add(("Favoris Edge", () => BackupEdgeFavoritesAsync(backupRoot, rtbBackupLog, ct)));
+                if (chkEdgeProfile.Checked) steps.Add(("Profil Edge", () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, ct, errorList)));
                 if (chkWallpaper.Checked) steps.Add(("Fond d'écran", () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
                 if (chkNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
+
+                // IP Desktop Softphone — réservé, non fonctionnel pour l'instant
+                // if (chkIpDesktopSoftphone.Checked) steps.Add(("IP Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, ct, errorList)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -115,7 +123,7 @@ namespace SaveRestoreGUI
                     await action();
                 }
 
-                // Récapitulatif final (équivalent "RÉCAPITULATIF FINAL" du script)
+                // Récapitulatif final
                 LogTitle(rtbBackupLog, "Récapitulatif final");
                 UpdateStatus("Calcul de la taille finale...");
                 var totalSize = await Task.Run(() => FileService.GetDirectorySize(backupRoot), CancellationToken.None);
@@ -193,7 +201,6 @@ namespace SaveRestoreGUI
             await CopyStep(signaturesPath, Path.Combine(backupRoot, "Signatures"), "Signatures Outlook",
                 rtb, progress, ct, errorList);
 
-            // Export des clés MailSettings (position signature par défaut, etc.)
             await Task.Run(() => RegistryService.BackupOutlookSignatureSettings(backupRoot,
                 msg => LogInfo(rtb, msg)), ct);
         }
@@ -207,7 +214,6 @@ namespace SaveRestoreGUI
             var outlookDir = Path.Combine(backupRoot, "OutlookData");
             Directory.CreateDirectory(outlookDir);
 
-            // 1. Fichiers PST (emplacements standards + registre Outlook)
             Log(rtb, "Recherche des archives Outlook (PST)...");
             var pstFiles = await Task.Run(OutlookService.FindPstFiles, ct);
 
@@ -235,7 +241,6 @@ namespace SaveRestoreGUI
                     }
                 }
 
-                // Liste des chemins originaux pour restauration
                 await File.WriteAllLinesAsync(Path.Combine(outlookDir, "PST_Paths.txt"), pstPaths, ct);
                 LogInfo(rtb, "Liste des chemins PST sauvegardée dans PST_Paths.txt");
             }
@@ -244,7 +249,7 @@ namespace SaveRestoreGUI
                 LogInfo(rtb, "Aucun fichier PST détecté.");
             }
 
-            // 2. Cache d'autocomplétion
+            // Cache d'autocomplétion
             var roamCachePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Outlook", "RoamCache");
@@ -264,10 +269,8 @@ namespace SaveRestoreGUI
                 }
             }
 
-            // 3. Profils Outlook (registre)
             await Task.Run(() => RegistryService.BackupOutlookProfiles(outlookDir, msg => LogInfo(rtb, msg)), ct);
 
-            // 4. Règles Outlook (.rwz)
             var rulesFiles = OutlookService.FindRulesFiles();
             foreach (var rule in rulesFiles)
             {
@@ -284,7 +287,6 @@ namespace SaveRestoreGUI
                 }
             }
 
-            // 5. Boîtes aux lettres partagées (détection registre)
             Log(rtb, "Recherche des boîtes aux lettres partagées...");
             var sharedMailboxes = await Task.Run(OutlookService.FindSharedMailboxes, ct);
             if (sharedMailboxes.Count > 0)
@@ -330,23 +332,21 @@ namespace SaveRestoreGUI
             }
         }
 
-        private async Task BackupEdgeFavoritesAsync(string backupRoot, RichTextBox rtb, CancellationToken ct)
+        /// <summary>
+        /// Profil Edge complet : copie le dossier «Default» depuis User Data.
+        /// Inclut favoris, extensions, paramètres, cookies, mots de passe enregistrés…
+        /// </summary>
+        private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
+            IProgress<int> progress, CancellationToken ct, List<string> errorList)
         {
-            var bookmarksPath = Path.Combine(
+            var edgeDefault = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Edge", "User Data", "Default", "Bookmarks");
+                "Microsoft", "Edge", "User Data", "Default");
 
-            if (File.Exists(bookmarksPath))
-            {
-                var destPath = Path.Combine(backupRoot, "Bookmarks");
-                await Task.Run(() => File.Copy(bookmarksPath, destPath, true), ct);
-                var size = new FileInfo(destPath).Length;
-                LogSuccess(rtb, $"Favoris Edge sauvegardés ({FileService.FormatSize(size)})");
-            }
-            else
-            {
-                LogInfo(rtb, "Aucun favori Edge trouvé.");
-            }
+            await CopyStep(edgeDefault,
+                Path.Combine(backupRoot, "EdgeProfile"),
+                "Profil Edge",
+                rtb, progress, ct, errorList);
         }
 
         /// <summary>
