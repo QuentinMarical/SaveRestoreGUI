@@ -50,13 +50,15 @@ namespace SaveRestoreGUI
         private ModernCheckBox chkOutlook;
         private ModernCheckBox chkSignatures;
         private ModernCheckBox chkStickyNotes;
-        private ModernCheckBox chkEdgeFavorites;
+        private ModernCheckBox chkEdgeProfile;       // renommé : était chkEdgeFavorites
         private ModernCheckBox chkWallpaper;
         private ModernCheckBox chkNetworkDrives;
         private ModernCheckBox chkOneNote;
         private ModernCheckBox chkTemplates;
         private ModernCheckBox chkExcelMacros;
         private ModernCheckBox chkSap;
+        private ModernCheckBox chkPublic;            // nouveau
+        private ModernCheckBox chkIpDesktopSoftphone; // nouveau — désactivé (en cours de dev)
         private ModernCheckBox chkOldProfile;
         private ModernButton btnSelectAll;
         private ModernButton btnDeselectAll;
@@ -82,12 +84,14 @@ namespace SaveRestoreGUI
         private ModernCheckBox chkRestoreOutlook;
         private ModernCheckBox chkRestoreSignatures;
         private ModernCheckBox chkRestoreStickyNotes;
-        private ModernCheckBox chkRestoreEdgeFavorites;
+        private ModernCheckBox chkRestoreEdgeProfile;       // renommé : était chkRestoreEdgeFavorites
         private ModernCheckBox chkRestoreWallpaper;
         private ModernCheckBox chkRestoreOneNote;
         private ModernCheckBox chkRestoreTemplates;
         private ModernCheckBox chkRestoreExcelMacros;
         private ModernCheckBox chkRestoreSap;
+        private ModernCheckBox chkRestorePublic;             // nouveau
+        private ModernCheckBox chkRestoreIpDesktopSoftphone; // nouveau — désactivé
         private ModernCheckBox chkRestoreNetworkDrives;
         private ModernCheckBox chkLaunchApps;
         private ModernButton btnRestoreSelectAll;
@@ -118,12 +122,14 @@ namespace SaveRestoreGUI
         private ModernCheckBox chkMigrateSignatures;
         private ModernCheckBox chkMigrateExcelMacros;
         private ModernCheckBox chkMigrateStickyNotes;
-        private ModernCheckBox chkMigrateEdgeFavorites;
+        private ModernCheckBox chkMigrateEdgeProfile;       // renommé : était chkMigrateEdgeFavorites
         private ModernCheckBox chkMigrateWallpaper;
         private ModernCheckBox chkMigrateNetworkDrives;
         private ModernCheckBox chkMigrateOneNote;
         private ModernCheckBox chkMigrateTemplates;
         private ModernCheckBox chkMigrateSap;
+        private ModernCheckBox chkMigratePublic;             // nouveau
+        private ModernCheckBox chkMigrateIpDesktopSoftphone; // nouveau — désactivé
         private ModernButton btnMigrateSelectAll;
         private ModernButton btnMigrateDeselectAll;
         private ModernButton btnStartMigration;
@@ -361,25 +367,30 @@ namespace SaveRestoreGUI
                 BackColor = Color.Transparent
             };
 
-            this.chkDocuments = MakeCheck("📄 Documents", true);
-            this.chkDesktop = MakeCheck("🖥️ Bureau", true);
-            this.chkDownloads = MakeCheck("⬇️ Téléchargements", true);
-            this.chkPictures = MakeCheck("🖼️ Images", true);
-            this.chkMusic = MakeCheck("🎵 Musique", true);
-            this.chkVideos = MakeCheck("🎬 Vidéos", true);
+            this.chkDocuments    = MakeCheck("📄 Documents", true);
+            this.chkDesktop      = MakeCheck("🖥️ Bureau", true);
+            this.chkDownloads    = MakeCheck("⬇️ Téléchargements", true);
+            this.chkPictures     = MakeCheck("🖼️ Images", true);
+            this.chkMusic        = MakeCheck("🎵 Musique", true);
+            this.chkVideos       = MakeCheck("🎬 Vidéos", true);
 
-            this.chkOutlook = MakeCheck("📧 Outlook (PST, profils)", true);
-            this.chkSignatures = MakeCheck("✍️ Signatures Outlook", true);
-            this.chkStickyNotes = MakeCheck("📌 Sticky Notes", true);
-            this.chkEdgeFavorites = MakeCheck("⭐ Favoris Edge", true);
-            this.chkWallpaper = MakeCheck("🖼️ Fond d'écran", true);
-            this.chkNetworkDrives = MakeCheck("🌐 Lecteurs réseau", true);
+            this.chkOutlook      = MakeCheck("📧 Outlook (PST, profils)", true);
+            this.chkSignatures   = MakeCheck("✍️ Signatures Outlook", true);
+            this.chkStickyNotes  = MakeCheck("📌 Sticky Notes", true);
+            this.chkEdgeProfile  = MakeCheck("🌐 Profil Edge", true);   // renommé
+            this.chkWallpaper    = MakeCheck("🖼️ Fond d'écran", true);
+            this.chkNetworkDrives = MakeCheck("🔗 Lecteurs réseau", true);
 
-            this.chkOldProfile = MakeCheck("👤 Détecter ancien profil", false);
-            this.chkTemplates = MakeCheck("📋 Modèles Office", true);
-            this.chkOneNote = MakeCheck("📓 OneNote (registre)", true);
-            this.chkExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
-            this.chkSap = MakeCheck("💼 SAP GUI", true);
+            this.chkOldProfile   = MakeCheck("👤 Détecter ancien profil", false);
+            this.chkTemplates    = MakeCheck("📋 Modèles Office", true);
+            this.chkOneNote      = MakeCheck("📓 OneNote (registre)", true);
+            this.chkExcelMacros  = MakeCheck("📊 Macros Excel (XLSTART)", true);
+            this.chkSap          = MakeCheck("💼 SAP GUI", true);
+            this.chkPublic       = MakeCheck("📁 Dossier Public (%public%)", true);  // nouveau
+
+            // IP Desktop Softphone — désactivé, en cours de développement
+            this.chkIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
+            this.chkIpDesktopSoftphone.Enabled = false;
 
             this.btnSelectAll = new ModernButton
             {
@@ -400,8 +411,9 @@ namespace SaveRestoreGUI
             this.cardBackupOptions.Controls.AddRange(new Control[]
             {
                 chkDocuments, chkDesktop, chkDownloads, chkPictures, chkMusic, chkVideos,
-                chkOutlook, chkSignatures, chkStickyNotes, chkEdgeFavorites, chkWallpaper, chkNetworkDrives,
+                chkOutlook, chkSignatures, chkStickyNotes, chkEdgeProfile, chkWallpaper, chkNetworkDrives,
                 chkOldProfile, chkTemplates, chkOneNote, chkExcelMacros, chkSap,
+                chkPublic, chkIpDesktopSoftphone,
                 btnSelectAll, btnDeselectAll
             });
 
@@ -479,25 +491,30 @@ namespace SaveRestoreGUI
                 BackColor = Color.Transparent
             };
 
-            this.chkRestoreDocuments = MakeCheck("📄 Documents", true);
-            this.chkRestoreDesktop = MakeCheck("🖥️ Bureau", true);
-            this.chkRestoreDownloads = MakeCheck("⬇️ Téléchargements", true);
-            this.chkRestorePictures = MakeCheck("🖼️ Images", true);
-            this.chkRestoreMusic = MakeCheck("🎵 Musique", true);
-            this.chkRestoreVideos = MakeCheck("🎬 Vidéos", true);
+            this.chkRestoreDocuments   = MakeCheck("📄 Documents", true);
+            this.chkRestoreDesktop     = MakeCheck("🖥️ Bureau", true);
+            this.chkRestoreDownloads   = MakeCheck("⬇️ Téléchargements", true);
+            this.chkRestorePictures    = MakeCheck("🖼️ Images", true);
+            this.chkRestoreMusic       = MakeCheck("🎵 Musique", true);
+            this.chkRestoreVideos      = MakeCheck("🎬 Vidéos", true);
 
-            this.chkRestoreOutlook = MakeCheck("📧 Outlook (PST, règles)", true);
-            this.chkRestoreSignatures = MakeCheck("✍️ Signatures Outlook", true);
+            this.chkRestoreOutlook     = MakeCheck("📧 Outlook (PST, règles)", true);
+            this.chkRestoreSignatures  = MakeCheck("✍️ Signatures Outlook", true);
             this.chkRestoreStickyNotes = MakeCheck("📌 Sticky Notes", true);
-            this.chkRestoreEdgeFavorites = MakeCheck("⭐ Favoris Edge", true);
-            this.chkRestoreWallpaper = MakeCheck("🖼️ Fond d'écran", true);
-            this.chkRestoreNetworkDrives = MakeCheck("🌐 Lecteurs réseau (info)", true);
+            this.chkRestoreEdgeProfile = MakeCheck("🌐 Profil Edge", true);  // renommé
+            this.chkRestoreWallpaper   = MakeCheck("🖼️ Fond d'écran", true);
+            this.chkRestoreNetworkDrives = MakeCheck("🔗 Lecteurs réseau (info)", true);
 
-            this.chkRestoreOneNote = MakeCheck("📓 OneNote (registre)", true);
+            this.chkRestoreOneNote     = MakeCheck("📓 OneNote (registre)", true);
             this.chkRestoreExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
-            this.chkRestoreTemplates = MakeCheck("📋 Modèles Office", true);
-            this.chkRestoreSap = MakeCheck("💼 SAP GUI", true);
-            this.chkLaunchApps = MakeCheck("🚀 Lancer les applications", true);
+            this.chkRestoreTemplates   = MakeCheck("📋 Modèles Office", true);
+            this.chkRestoreSap         = MakeCheck("💼 SAP GUI", true);
+            this.chkRestorePublic      = MakeCheck("📁 Dossier Public (%public%)", true); // nouveau
+            this.chkLaunchApps         = MakeCheck("🚀 Lancer les applications", true);
+
+            // IP Desktop Softphone — désactivé, en cours de développement
+            this.chkRestoreIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
+            this.chkRestoreIpDesktopSoftphone.Enabled = false;
 
             this.btnRestoreSelectAll = new ModernButton
             {
@@ -519,9 +536,10 @@ namespace SaveRestoreGUI
             {
                 chkRestoreDocuments, chkRestoreDesktop, chkRestoreDownloads, chkRestorePictures,
                 chkRestoreMusic, chkRestoreVideos,
-                chkRestoreOutlook, chkRestoreSignatures, chkRestoreStickyNotes, chkRestoreEdgeFavorites,
+                chkRestoreOutlook, chkRestoreSignatures, chkRestoreStickyNotes, chkRestoreEdgeProfile,
                 chkRestoreWallpaper, chkRestoreNetworkDrives,
-                chkRestoreOneNote, chkRestoreExcelMacros, chkRestoreTemplates, chkRestoreSap, chkLaunchApps,
+                chkRestoreOneNote, chkRestoreExcelMacros, chkRestoreTemplates, chkRestoreSap,
+                chkRestorePublic, chkLaunchApps, chkRestoreIpDesktopSoftphone,
                 btnRestoreSelectAll, btnRestoreDeselectAll
             });
 
@@ -625,22 +643,27 @@ namespace SaveRestoreGUI
                 BackColor = Color.Transparent
             };
 
-            this.chkMigrateDocuments = MakeCheck("📄 Documents", true);
-            this.chkMigrateDesktop = MakeCheck("🖥️ Bureau", true);
-            this.chkMigrateDownloads = MakeCheck("⬇️ Téléchargements", true);
-            this.chkMigratePictures = MakeCheck("🖼️ Images", true);
-            this.chkMigrateMusic = MakeCheck("🎵 Musique", true);
-            this.chkMigrateVideos = MakeCheck("🎬 Vidéos", true);
-            this.chkMigrateOutlook = MakeCheck("📧 Outlook (PST)", true);
-            this.chkMigrateSignatures = MakeCheck("✍️ Signatures Outlook", true);
+            this.chkMigrateDocuments   = MakeCheck("📄 Documents", true);
+            this.chkMigrateDesktop     = MakeCheck("🖥️ Bureau", true);
+            this.chkMigrateDownloads   = MakeCheck("⬇️ Téléchargements", true);
+            this.chkMigratePictures    = MakeCheck("🖼️ Images", true);
+            this.chkMigrateMusic       = MakeCheck("🎵 Musique", true);
+            this.chkMigrateVideos      = MakeCheck("🎬 Vidéos", true);
+            this.chkMigrateOutlook     = MakeCheck("📧 Outlook (PST)", true);
+            this.chkMigrateSignatures  = MakeCheck("✍️ Signatures Outlook", true);
             this.chkMigrateExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
             this.chkMigrateStickyNotes = MakeCheck("📌 Sticky Notes", true);
-            this.chkMigrateEdgeFavorites = MakeCheck("⭐ Favoris Edge", true);
-            this.chkMigrateWallpaper = MakeCheck("🖼️ Fond d'écran", true);
-            this.chkMigrateNetworkDrives = MakeCheck("🌐 Lecteurs réseau", true);
-            this.chkMigrateOneNote = MakeCheck("📓 OneNote (registre)", true);
-            this.chkMigrateTemplates = MakeCheck("📋 Modèles Office", true);
-            this.chkMigrateSap = MakeCheck("💼 SAP GUI", true);
+            this.chkMigrateEdgeProfile = MakeCheck("🌐 Profil Edge", true);  // renommé
+            this.chkMigrateWallpaper   = MakeCheck("🖼️ Fond d'écran", true);
+            this.chkMigrateNetworkDrives = MakeCheck("🔗 Lecteurs réseau", true);
+            this.chkMigrateOneNote     = MakeCheck("📓 OneNote (registre)", true);
+            this.chkMigrateTemplates   = MakeCheck("📋 Modèles Office", true);
+            this.chkMigrateSap         = MakeCheck("💼 SAP GUI", true);
+            this.chkMigratePublic      = MakeCheck("📁 Dossier Public (%public%)", true); // nouveau
+
+            // IP Desktop Softphone — désactivé, en cours de développement
+            this.chkMigrateIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
+            this.chkMigrateIpDesktopSoftphone.Enabled = false;
 
             this.btnMigrateSelectAll = new ModernButton
             {
@@ -663,8 +686,9 @@ namespace SaveRestoreGUI
                 chkMigrateDocuments, chkMigrateDesktop, chkMigrateDownloads,
                 chkMigratePictures, chkMigrateMusic, chkMigrateVideos,
                 chkMigrateOutlook, chkMigrateSignatures, chkMigrateExcelMacros,
-                chkMigrateStickyNotes, chkMigrateEdgeFavorites, chkMigrateWallpaper,
+                chkMigrateStickyNotes, chkMigrateEdgeProfile, chkMigrateWallpaper,
                 chkMigrateNetworkDrives, chkMigrateOneNote, chkMigrateTemplates, chkMigrateSap,
+                chkMigratePublic, chkMigrateIpDesktopSoftphone,
                 btnMigrateSelectAll, btnMigrateDeselectAll
             });
 
