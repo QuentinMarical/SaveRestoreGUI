@@ -50,7 +50,7 @@ namespace SaveRestoreGUI
         private ModernCheckBox chkOutlook;
         private ModernCheckBox chkSignatures;
         private ModernCheckBox chkStickyNotes;
-        private ModernCheckBox chkEdgeProfile;       // renommé : était chkEdgeFav
+        private ModernCheckBox chkEdgeProfile;
         private ModernCheckBox chkWallpaper;
         private ModernCheckBox chkNetworkDrives;
         private ModernCheckBox chkTemplates;
@@ -107,7 +107,7 @@ namespace SaveRestoreGUI
         private Label lblMigrationSourceTitle;
         private ComboBox cmbUSBDrives;
         private ModernButton btnRefreshUSB;
-        private ModernButton btnUnlockBitLocker;   // ← NOUVEAU — déverrouillage BitLocker
+        private ModernButton btnUnlockBitLocker;
         private Label lblProfiles;
         private ListBox lstProfiles;
         private Label lblMigrationInfo;
@@ -139,7 +139,353 @@ namespace SaveRestoreGUI
         private RichTextBox rtbMigrationLog;
 
         // ─── Timer clignotement BitLocker ───
-        private System.Windows.Forms.Timer _bitlockerBlinkTimer;  // ← NOUVEAU
+        private System.Windows.Forms.Timer _bitlockerBlinkTimer;
+
+        private void InitializeComponent()
+        {
+            this.components = new System.ComponentModel.Container();
+            this.SuspendLayout();
+
+            // ── Fenêtre principale ──────────────────────────────────────────
+            this.Text            = "SaveRestore GUI";
+            this.Size            = new Size(1100, 780);
+            this.MinimumSize     = new Size(900, 620);
+            this.StartPosition   = FormStartPosition.CenterScreen;
+            this.Font            = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
+
+            // ── Sidebar ────────────────────────────────────────────────────
+            sidebarPanel = new Panel { Dock = DockStyle.Left, Width = 220 };
+
+            lblAppTitle    = new Label { Text = "SaveRestore", AutoSize = true, Font = new Font("Segoe UI", 14f, FontStyle.Bold) };
+            lblAppSubtitle = new Label { Text = "Gestionnaire de profil", AutoSize = true };
+            lblAppTitle.SetBounds(20, 20, 180, 30);
+            lblAppSubtitle.SetBounds(20, 52, 180, 20);
+            lblAppSubtitle.Tag = "secondary";
+
+            navBackup    = new NavButton { Text = "💾  Sauvegarde",   SetBounds_Params = (20, 100, 180, 44) };
+            navRestore   = new NavButton { Text = "📂  Restauration", SetBounds_Params = (20, 152, 180, 44) };
+            navMigration = new NavButton { Text = "🔄  Migration USB",SetBounds_Params = (20, 204, 180, 44) };
+            navBackup.SetBounds(20, 100, 180, 44);
+            navRestore.SetBounds(20, 152, 180, 44);
+            navMigration.SetBounds(20, 204, 180, 44);
+
+            navBackup.Click    += (s, e) => ShowPage(0);
+            navRestore.Click   += (s, e) => ShowPage(1);
+            navMigration.Click += (s, e) => ShowPage(2);
+
+            btnToggleTheme = new ModernButton { Text = "🌙  Thème sombre", AutoSize = true };
+            btnToggleTheme.SetBounds(16, -44, 188, 34); // positionné dynamiquement dans ApplyTheme
+            btnToggleTheme.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnToggleTheme.SetBounds(16, 680, 188, 34);
+            btnToggleTheme.Click += (s, e) => { ThemeManager.Toggle(); ApplyTheme(); };
+
+            sidebarPanel.Controls.AddRange(new Control[] {
+                lblAppTitle, lblAppSubtitle,
+                navBackup, navRestore, navMigration,
+                btnToggleTheme
+            });
+
+            // ── Header ─────────────────────────────────────────────────────
+            headerPanel = new Panel { Dock = DockStyle.Top, Height = 72 };
+            lblPageTitle    = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
+            lblPageSubtitle = new Label { Text = "", AutoSize = true };
+            lblPageTitle.SetBounds(28, 14, 600, 28);
+            lblPageSubtitle.SetBounds(28, 44, 700, 20);
+            lblPageSubtitle.Tag = "secondary";
+            headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle });
+
+            // ── Status bar ─────────────────────────────────────────────────
+            statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 32 };
+            statusLabel  = new Label { Text = "Prêt", AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            statusLabel.Padding = new Padding(12, 0, 0, 0);
+            progressBar = new ModernProgressBar { Dock = DockStyle.Right, Width = 200, Visible = false };
+            statusPanel.Controls.AddRange(new Control[] { statusLabel, progressBar });
+
+            // ── Content panel ──────────────────────────────────────────────
+            contentPanel = new Panel { Dock = DockStyle.Fill };
+
+            // ── Pages ──────────────────────────────────────────────────────
+            pageBackup    = new Panel { Dock = DockStyle.Fill, Visible = true  };
+            pageRestore   = new Panel { Dock = DockStyle.Fill, Visible = false };
+            pageMigration = new Panel { Dock = DockStyle.Fill, Visible = false };
+
+            BuildPageBackup();
+            BuildPageRestore();
+            BuildPageMigration();
+
+            contentPanel.Controls.AddRange(new Control[] { pageBackup, pageRestore, pageMigration });
+
+            // ── Assemblage final ───────────────────────────────────────────
+            this.Controls.AddRange(new Control[] { contentPanel, headerPanel, sidebarPanel, statusPanel });
+
+            // ── Timer BitLocker ────────────────────────────────────────────
+            _bitlockerBlinkTimer = new System.Windows.Forms.Timer(this.components)
+            {
+                Interval = 500,
+                Enabled  = false
+            };
+            _bitlockerBlinkTimer.Tick += BitLockerBlinkTimer_Tick;
+
+            this.ResumeLayout(false);
+            this.PerformLayout();
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Construction de la page Sauvegarde
+        // ══════════════════════════════════════════════════════════════════════
+        private void BuildPageBackup()
+        {
+            // Carte destination
+            cardBackupDest  = new CardPanel();
+            lblBackupPath   = new Label { Text = "Dossier de destination :", AutoSize = true };
+            lblBackupPath.SetBounds(16, 14, 300, 18);
+            txtBackupPath   = new TextBox { PlaceholderText = @"Ex : D:\Sauvegardes" };
+            btnBrowseBackup = new ModernButton { Text = "Parcourir…", Width = 120, Height = 32 };
+            btnBrowseBackup.Click += BtnBrowseBackup_Click;
+            cardBackupDest.Controls.AddRange(new Control[] { lblBackupPath, txtBackupPath, btnBrowseBackup });
+
+            // Carte options
+            cardBackupOptions    = new CardPanel();
+            lblBackupOptionsTitle = new Label { Text = "Éléments à sauvegarder :", AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+            lblBackupOptionsTitle.SetBounds(16, 12, 300, 18);
+
+            chkDocuments          = new ModernCheckBox { Text = "Documents",          Checked = true };
+            chkDesktop            = new ModernCheckBox { Text = "Bureau",             Checked = true };
+            chkDownloads          = new ModernCheckBox { Text = "Téléchargements",    Checked = true };
+            chkPictures           = new ModernCheckBox { Text = "Images",             Checked = true };
+            chkMusic              = new ModernCheckBox { Text = "Musique",            Checked = false };
+            chkVideos             = new ModernCheckBox { Text = "Vidéos",             Checked = false };
+            chkOutlook            = new ModernCheckBox { Text = "Données Outlook",   Checked = true };
+            chkSignatures         = new ModernCheckBox { Text = "Signatures Outlook",Checked = true };
+            chkStickyNotes        = new ModernCheckBox { Text = "Sticky Notes",      Checked = true };
+            chkEdgeProfile        = new ModernCheckBox { Text = "Profil Edge",        Checked = true };
+            chkWallpaper          = new ModernCheckBox { Text = "Fond d'écran",       Checked = true };
+            chkNetworkDrives      = new ModernCheckBox { Text = "Lecteurs réseau",    Checked = true };
+            chkTemplates          = new ModernCheckBox { Text = "Modèles Office",     Checked = true };
+            chkOneNote            = new ModernCheckBox { Text = "OneNote",            Checked = true };
+            chkExcelMacros        = new ModernCheckBox { Text = "Macros Excel",       Checked = true };
+            chkSap                = new ModernCheckBox { Text = "SAP GUI",            Checked = true };
+            chkOldProfile         = new ModernCheckBox { Text = "Ancien profil",      Checked = false };
+            chkPublic             = new ModernCheckBox { Text = "Dossier Public",     Checked = false };
+            chkIpDesktopSoftphone = new ModernCheckBox { Text = "IP Softphone",       Checked = false };
+
+            btnSelectAll   = new ModernButton { Text = "✓ Tout sélectionner",  Width = 160, Height = 34 };
+            btnDeselectAll = new ModernButton { Text = "✗ Tout désélectionner",Width = 170, Height = 34 };
+            btnSelectAll.Click   += (s, e) => SetBackupAll(true);
+            btnDeselectAll.Click += (s, e) => SetBackupAll(false);
+
+            cardBackupOptions.Controls.AddRange(new Control[] {
+                lblBackupOptionsTitle,
+                chkDocuments, chkDesktop, chkDownloads, chkPictures, chkMusic,
+                chkVideos, chkOutlook, chkSignatures, chkStickyNotes, chkEdgeProfile,
+                chkWallpaper, chkNetworkDrives, chkTemplates, chkOneNote, chkExcelMacros,
+                chkSap, chkOldProfile, chkPublic, chkIpDesktopSoftphone,
+                btnSelectAll, btnDeselectAll
+            });
+
+            btnStartBackup    = new ModernButton { Text = "▶  Démarrer la sauvegarde", Height = 44, IsPrimary = true };
+            btnCancelBackup   = new ModernButton { Text = "⬛  Annuler", Height = 44, Enabled = false };
+            btnExportBackupLog= new ModernButton { Text = "📄 Exporter le log", Height = 34 };
+            btnStartBackup.Click    += BtnStartBackup_Click;
+            btnCancelBackup.Click   += (s, e) => CancelCurrentOperation(rtbBackupLog);
+            btnExportBackupLog.Click+= (s, e) => ExportLog(rtbBackupLog, $"Sauvegarde_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+
+            rtbBackupLog = new RichTextBox { ReadOnly = true, Font = new Font("Consolas", 9f), ScrollBars = RichTextBoxScrollBars.Vertical };
+
+            pageBackup.Controls.AddRange(new Control[] {
+                cardBackupDest, cardBackupOptions,
+                btnStartBackup, btnCancelBackup, btnExportBackupLog,
+                rtbBackupLog
+            });
+        }
+
+        private void SetBackupAll(bool value)
+        {
+            foreach (Control c in cardBackupOptions.Controls)
+                if (c is ModernCheckBox chk && chk != chkOldProfile) chk.Checked = value;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Construction de la page Restauration
+        // ══════════════════════════════════════════════════════════════════════
+        private void BuildPageRestore()
+        {
+            cardRestoreSource  = new CardPanel();
+            lblRestorePath     = new Label { Text = "Dossier source (sauvegarde) :", AutoSize = true };
+            lblRestorePath.SetBounds(16, 14, 300, 18);
+            txtRestorePath     = new TextBox { PlaceholderText = @"Ex : D:\Sauvegardes\utilisateur" };
+            btnBrowseRestore   = new ModernButton { Text = "Parcourir…", Width = 120, Height = 32 };
+            btnBrowseRestore.Click += BtnBrowseRestore_Click;
+            cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
+
+            cardRestoreOptions    = new CardPanel();
+            lblRestoreOptionsTitle = new Label { Text = "Éléments à restaurer :", AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+            lblRestoreOptionsTitle.SetBounds(16, 12, 300, 18);
+
+            chkRestoreDocuments      = new ModernCheckBox { Text = "Documents",         Checked = true  };
+            chkRestoreDesktop        = new ModernCheckBox { Text = "Bureau",            Checked = true  };
+            chkRestoreDownloads      = new ModernCheckBox { Text = "Téléchargements",   Checked = true  };
+            chkRestorePictures       = new ModernCheckBox { Text = "Images",            Checked = true  };
+            chkRestoreMusic          = new ModernCheckBox { Text = "Musique",           Checked = false };
+            chkRestoreVideos         = new ModernCheckBox { Text = "Vidéos",            Checked = false };
+            chkRestoreOutlook        = new ModernCheckBox { Text = "Données Outlook",  Checked = true  };
+            chkRestoreSignatures     = new ModernCheckBox { Text = "Signatures",        Checked = true  };
+            chkRestoreStickyNotes    = new ModernCheckBox { Text = "Sticky Notes",      Checked = true  };
+            chkRestoreEdgeProfile    = new ModernCheckBox { Text = "Profil Edge",       Checked = true  };
+            chkRestoreWallpaper      = new ModernCheckBox { Text = "Fond d'écran",      Checked = true  };
+            chkRestoreNetworkDrives  = new ModernCheckBox { Text = "Lecteurs réseau",   Checked = true  };
+            chkRestoreTemplates      = new ModernCheckBox { Text = "Modèles Office",    Checked = true  };
+            chkRestoreOneNote        = new ModernCheckBox { Text = "OneNote",           Checked = true  };
+            chkRestoreExcelMacros    = new ModernCheckBox { Text = "Macros Excel",      Checked = true  };
+            chkRestoreSap            = new ModernCheckBox { Text = "SAP GUI",           Checked = true  };
+            chkRestorePublic         = new ModernCheckBox { Text = "Dossier Public",    Checked = false };
+            chkLaunchApps            = new ModernCheckBox { Text = "Lancer apps",       Checked = false };
+            chkRestoreIpDesktopSoftphone = new ModernCheckBox { Text = "IP Softphone",  Checked = false };
+
+            btnRestoreSelectAll   = new ModernButton { Text = "✓ Tout sélectionner",   Width = 160, Height = 34 };
+            btnRestoreDeselectAll = new ModernButton { Text = "✗ Tout désélectionner", Width = 170, Height = 34 };
+            btnRestoreSelectAll.Click   += (s, e) => SetRestoreAll(true);
+            btnRestoreDeselectAll.Click += (s, e) => SetRestoreAll(false);
+
+            cardRestoreOptions.Controls.AddRange(new Control[] {
+                lblRestoreOptionsTitle,
+                chkRestoreDocuments, chkRestoreDesktop, chkRestoreDownloads, chkRestorePictures, chkRestoreMusic,
+                chkRestoreVideos, chkRestoreOutlook, chkRestoreSignatures, chkRestoreStickyNotes, chkRestoreEdgeProfile,
+                chkRestoreWallpaper, chkRestoreNetworkDrives, chkRestoreTemplates, chkRestoreOneNote, chkRestoreExcelMacros,
+                chkRestoreSap, chkRestorePublic, chkLaunchApps, chkRestoreIpDesktopSoftphone,
+                btnRestoreSelectAll, btnRestoreDeselectAll
+            });
+
+            btnStartRestore    = new ModernButton { Text = "▶  Démarrer la restauration", Height = 44, IsPrimary = true };
+            btnCancelRestore   = new ModernButton { Text = "⬛  Annuler", Height = 44, Enabled = false };
+            btnExportRestoreLog= new ModernButton { Text = "📄 Exporter le log", Height = 34 };
+            btnStartRestore.Click    += BtnStartRestore_Click;
+            btnCancelRestore.Click   += (s, e) => CancelCurrentOperation(rtbRestoreLog);
+            btnExportRestoreLog.Click+= (s, e) => ExportLog(rtbRestoreLog, $"Restauration_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+
+            rtbRestoreLog = new RichTextBox { ReadOnly = true, Font = new Font("Consolas", 9f), ScrollBars = RichTextBoxScrollBars.Vertical };
+
+            pageRestore.Controls.AddRange(new Control[] {
+                cardRestoreSource, cardRestoreOptions,
+                btnStartRestore, btnCancelRestore, btnExportRestoreLog,
+                rtbRestoreLog
+            });
+        }
+
+        private void SetRestoreAll(bool value)
+        {
+            foreach (Control c in cardRestoreOptions.Controls)
+                if (c is ModernCheckBox chk) chk.Checked = value;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        //  Construction de la page Migration
+        // ══════════════════════════════════════════════════════════════════════
+        private void BuildPageMigration()
+        {
+            // ── Carte source ──────────────────────────────────────────────
+            cardMigrationSource   = new CardPanel();
+            lblMigrationSourceTitle = new Label { Text = "Source — disque externe", AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+            lblMigrationSourceTitle.SetBounds(16, 12, 300, 18);
+
+            cmbUSBDrives = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            cmbUSBDrives.SelectedIndexChanged += CmbUSBDrives_SelectedIndexChanged;
+
+            btnRefreshUSB = new ModernButton { Text = "🔄", Width = 40, Height = 32, ToolTipText = "Actualiser la liste" };
+            btnRefreshUSB.Click += BtnRefreshUSB_Click;
+
+            // ── Bouton BitLocker — caché par défaut, affiché uniquement si disque verrouillé ──
+            btnUnlockBitLocker = new ModernButton
+            {
+                Text    = "🔒  Déverrouiller ce disque (BitLocker)",
+                Height  = 34,
+                Visible = false,   // ← caché par défaut
+                Enabled = true,
+                IsPrimary = false
+            };
+            btnUnlockBitLocker.BackColor = Color.Empty;
+            btnUnlockBitLocker.Click += BtnUnlockBitLocker_Click;
+
+            lblProfiles  = new Label { Text = "Profil utilisateur à migrer :", AutoSize = true };
+            lstProfiles  = new ListBox { IntegralHeight = false };
+            lblMigrationInfo = new Label { Text = "Branchez un disque externe contenant Windows.", AutoSize = false };
+            lblMigrationInfo.SetBounds(16, 298, 600, 50);
+
+            cardMigrationSource.Controls.AddRange(new Control[] {
+                lblMigrationSourceTitle,
+                cmbUSBDrives, btnRefreshUSB,
+                btnUnlockBitLocker,
+                lblProfiles, lstProfiles,
+                lblMigrationInfo
+            });
+
+            // ── Carte options ─────────────────────────────────────────────
+            cardMigrationOptions    = new CardPanel();
+            lblMigrationOptionsTitle = new Label { Text = "Éléments à migrer :", AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+            lblMigrationOptionsTitle.SetBounds(16, 12, 300, 18);
+
+            chkMigrateDocuments      = new ModernCheckBox { Text = "Documents",        Checked = true  };
+            chkMigrateDesktop        = new ModernCheckBox { Text = "Bureau",           Checked = true  };
+            chkMigrateDownloads      = new ModernCheckBox { Text = "Téléchargements",  Checked = true  };
+            chkMigratePictures       = new ModernCheckBox { Text = "Images",           Checked = true  };
+            chkMigrateMusic          = new ModernCheckBox { Text = "Musique",          Checked = false };
+            chkMigrateVideos         = new ModernCheckBox { Text = "Vidéos",           Checked = false };
+            chkMigrateOutlook        = new ModernCheckBox { Text = "Données Outlook", Checked = true  };
+            chkMigrateSignatures     = new ModernCheckBox { Text = "Signatures",       Checked = true  };
+            chkMigrateExcelMacros    = new ModernCheckBox { Text = "Macros Excel",     Checked = true  };
+            chkMigrateStickyNotes    = new ModernCheckBox { Text = "Sticky Notes",     Checked = true  };
+            chkMigrateEdgeProfile    = new ModernCheckBox { Text = "Profil Edge",      Checked = true  };
+            chkMigrateWallpaper      = new ModernCheckBox { Text = "Fond d'écran",     Checked = true  };
+            chkMigrateNetworkDrives  = new ModernCheckBox { Text = "Lecteurs réseau",  Checked = true  };
+            chkMigrateOneNote        = new ModernCheckBox { Text = "OneNote",          Checked = true  };
+            chkMigrateTemplates      = new ModernCheckBox { Text = "Modèles Office",   Checked = true  };
+            chkMigrateSap            = new ModernCheckBox { Text = "SAP GUI",          Checked = true  };
+            chkMigratePublic         = new ModernCheckBox { Text = "Dossier Public",   Checked = false };
+            chkMigrateIpDesktopSoftphone = new ModernCheckBox { Text = "IP Softphone", Checked = false };
+
+            btnMigrateSelectAll   = new ModernButton { Text = "✓ Tout sélectionner",   Width = 160, Height = 34 };
+            btnMigrateDeselectAll = new ModernButton { Text = "✗ Tout désélectionner", Width = 170, Height = 34 };
+            btnMigrateSelectAll.Click   += (s, e) => SetMigrateAll(true);
+            btnMigrateDeselectAll.Click += (s, e) => SetMigrateAll(false);
+
+            cardMigrationOptions.Controls.AddRange(new Control[] {
+                lblMigrationOptionsTitle,
+                chkMigrateDocuments, chkMigrateDesktop, chkMigrateDownloads, chkMigratePictures, chkMigrateMusic,
+                chkMigrateVideos, chkMigrateOutlook, chkMigrateSignatures, chkMigrateExcelMacros, chkMigrateStickyNotes,
+                chkMigrateEdgeProfile, chkMigrateWallpaper, chkMigrateNetworkDrives, chkMigrateOneNote, chkMigrateTemplates,
+                chkMigrateSap, chkMigratePublic, chkMigrateIpDesktopSoftphone,
+                btnMigrateSelectAll, btnMigrateDeselectAll
+            });
+
+            btnStartMigration    = new ModernButton { Text = "▶  Démarrer la migration", Height = 44, IsPrimary = true };
+            btnCancelMigration   = new ModernButton { Text = "⬛  Annuler", Height = 44, Enabled = false };
+            btnExportMigrationLog= new ModernButton { Text = "📄 Exporter le log", Height = 34 };
+            btnStartMigration.Click    += BtnStartMigration_Click;
+            btnCancelMigration.Click   += (s, e) => CancelCurrentOperation(rtbMigrationLog);
+            btnExportMigrationLog.Click+= (s, e) => ExportLog(rtbMigrationLog, $"Migration_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+
+            rtbMigrationLog = new RichTextBox { ReadOnly = true, Font = new Font("Consolas", 9f), ScrollBars = RichTextBoxScrollBars.Vertical };
+
+            pageMigration.Controls.AddRange(new Control[] {
+                cardMigrationSource, cardMigrationOptions,
+                btnStartMigration, btnCancelMigration, btnExportMigrationLog,
+                rtbMigrationLog
+            });
+        }
+
+        private void SetMigrateAll(bool value)
+        {
+            foreach (Control c in cardMigrationOptions.Controls)
+                if (c is ModernCheckBox chk) chk.Checked = value;
+        }
+
+        private void SyncPageSizes()
+        {
+            pageBackup.Size    = contentPanel.ClientSize;
+            pageRestore.Size   = contentPanel.ClientSize;
+            pageMigration.Size = contentPanel.ClientSize;
+            ApplyResponsiveLayout();
+        }
 
         #endregion
     }
