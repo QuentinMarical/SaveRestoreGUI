@@ -13,7 +13,7 @@ namespace SaveRestoreGUI
     /// </summary>
     public partial class MainForm
     {
-        // ── État BitLocker du disque sélectionné ──────────────────────────────
+        // ── État BitLocker du disque sélectionné ────────────────────────────────────
         private bool _isDriveBitLockerLocked = false;
 
         private sealed class USBDriveInfo
@@ -42,9 +42,9 @@ namespace SaveRestoreGUI
                 => IsMatch ? $"★ {Name} (correspond à l'utilisateur actuel)" : Name;
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
         //  DÉTECTION DISQUES
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
 
         private void LoadUSBDrives()
         {
@@ -96,7 +96,6 @@ namespace SaveRestoreGUI
                     var root = letter.TrimEnd('\\') + "\\";
                     if (usbDrives.Any(d => d.Letter.Equals(letter.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
                         continue;
-                    // Vérifier que ce n'est pas le disque courant
                     var driveRoot = letter.TrimEnd('\\', Path.DirectorySeparatorChar).ToUpperInvariant();
                     if (driveRoot == currentRoot)
                         continue;
@@ -106,7 +105,7 @@ namespace SaveRestoreGUI
                         Letter     = letter.TrimEnd('\\'),
                         Label      = $"🔒 BitLocker verrouillé",
                         Size       = 0,
-                        HasWindows = false,   // inconnu tant que verrouillé
+                        HasWindows = false,
                         UsersPath  = ""
                     });
                 }
@@ -149,7 +148,7 @@ namespace SaveRestoreGUI
 
             if (_isDriveBitLockerLocked)
             {
-                SetBitLockerButtonState(true);  // fait clignoter le bouton
+                SetBitLockerButtonState(true);
                 lblMigrationInfo.Text = "🔒 Ce disque est verrouillé par BitLocker.\nCliquez sur le bouton 🔒 pour le déverrouiller.";
                 return;
             }
@@ -222,27 +221,24 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
         //  BITLOCKER — Détection, déverrouillage, bouton clignotant
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
 
         private enum BitLockerStatus { NotEncrypted, Unlocked, Locked, Unknown }
 
-        /// <summary>Retourne la liste des lettres de lecteurs verrouillés par BitLocker.</summary>
         private static List<string> GetBitLockerLockedDrives()
         {
             var locked = new List<string>();
             try
             {
                 var result = RunManageBde("-status", "");
-                // Chercher les volumes verrouillés dans la sortie globale
                 var lines = result.Split('\n');
                 string? currentVolume = null;
                 bool isLocked = false;
                 foreach (var line in lines)
                 {
                     var trimmed = line.Trim();
-                    // Ligne de volume : "Volume C:" ou "BitLocker Drive Encryption: Volume C:"
                     var volMatch = Regex.Match(trimmed, @"Volume\s+([A-Z]:)", RegexOptions.IgnoreCase);
                     if (volMatch.Success)
                     {
@@ -254,18 +250,16 @@ namespace SaveRestoreGUI
                     if (trimmed.Contains("Locked", StringComparison.OrdinalIgnoreCase) &&
                         trimmed.Contains("Protection", StringComparison.OrdinalIgnoreCase) == false)
                         isLocked = true;
-                    // Ligne status : "    Lock Status:  Locked"
                     if (Regex.IsMatch(trimmed, @"Lock Status.*Locked", RegexOptions.IgnoreCase))
                         isLocked = true;
                 }
                 if (currentVolume != null && isLocked)
                     locked.Add(currentVolume);
             }
-            catch { /* manage-bde peut ne pas être disponible */ }
+            catch { }
             return locked;
         }
 
-        /// <summary>Retourne le statut BitLocker d'un lecteur spécifique.</summary>
         private static BitLockerStatus GetDriveBitLockerStatus(string driveLetter)
         {
             try
@@ -278,16 +272,13 @@ namespace SaveRestoreGUI
                 if (string.IsNullOrWhiteSpace(output))
                     return BitLockerStatus.NotEncrypted;
 
-                // Si le disque n'est pas chiffré
                 if (output.Contains("not recognized", StringComparison.OrdinalIgnoreCase) ||
                     output.Contains("No BitLocker", StringComparison.OrdinalIgnoreCase))
                     return BitLockerStatus.NotEncrypted;
 
-                // Verrouillé
                 if (Regex.IsMatch(output, @"Lock Status[^\n]*Locked", RegexOptions.IgnoreCase))
                     return BitLockerStatus.Locked;
 
-                // Déverrouillé/actif
                 if (Regex.IsMatch(output, @"Lock Status[^\n]*Unlocked", RegexOptions.IgnoreCase) ||
                     output.Contains("Percentage Encrypted", StringComparison.OrdinalIgnoreCase))
                     return BitLockerStatus.Unlocked;
@@ -300,7 +291,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>Récupère l'ID BitLocker (Key ID) du disque pour l'afficher à l'utilisateur.</summary>
         private static string GetBitLockerKeyId(string driveLetter)
         {
             try
@@ -308,11 +298,9 @@ namespace SaveRestoreGUI
                 var letter = driveLetter.TrimEnd('\\');
                 if (!letter.EndsWith(':')) letter += ':';
                 var output = RunManageBde($"-status {letter}", "");
-                // "Key Identifier: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
                 var match = Regex.Match(output, @"Key Identifier[:\s]+([0-9A-Fa-f\-]{36})");
                 if (match.Success)
                     return match.Groups[1].Value;
-                // Format FR : "Identificateur de clé :"
                 match = Regex.Match(output, @"Identificateur de cl[eé][^:]*:[\s]+([0-9A-Fa-f\-]{36})", RegexOptions.IgnoreCase);
                 if (match.Success)
                     return match.Groups[1].Value;
@@ -321,7 +309,6 @@ namespace SaveRestoreGUI
             return "(ID non disponible)";
         }
 
-        /// <summary>Exécute manage-bde et retourne la sortie standard.</summary>
         private static string RunManageBde(string args, string input)
         {
             try
@@ -336,7 +323,7 @@ namespace SaveRestoreGUI
                         RedirectStandardOutput = true,
                         RedirectStandardError  = true,
                         CreateNoWindow         = true,
-                        Verb                   = "runas"   // nécessite élevation
+                        Verb                   = "runas"
                     }
                 };
                 proc.Start();
@@ -350,7 +337,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ── Bouton clignotant ──────────────────────────────────────────────────
+        // ── Bouton clignotant ────────────────────────────────────────────────────
 
         private void SetBitLockerButtonState(bool blinking)
         {
@@ -363,20 +350,27 @@ namespace SaveRestoreGUI
             else
             {
                 _bitlockerBlinkTimer.Stop();
-                btnUnlockBitLocker.Visible = false;
+                btnUnlockBitLocker.Visible   = false;
                 btnUnlockBitLocker.BackColor = Color.Empty;
             }
+
+            // Force le repaint de la carte parente : un contrôle rendu visible
+            // dynamiquement dans un panel qui n'a pas encore été affiché ne se
+            // redessine pas sans invalidation explicite sous WinForms.
+            btnUnlockBitLocker.Parent?.Invalidate(true);
+            btnUnlockBitLocker.Parent?.Update();
         }
 
         private void BitLockerBlinkTimer_Tick(object? sender, EventArgs e)
         {
-            // Alterne entre orange vif et transparent pour attirer l'attention
             btnUnlockBitLocker.BackColor = btnUnlockBitLocker.BackColor == Color.OrangeRed
                 ? Color.Transparent
                 : Color.OrangeRed;
+            // Invalidation à chaque tick pour garantir le rafraîchissement visuel
+            btnUnlockBitLocker.Invalidate();
         }
 
-        // ── Clic déverrouillage ────────────────────────────────────────────────
+        // ── Clic déverrouillage ──────────────────────────────────────────────────
 
         private async void BtnUnlockBitLocker_Click(object? sender, EventArgs e)
         {
@@ -386,10 +380,8 @@ namespace SaveRestoreGUI
             var driveLetter = drive.Letter.TrimEnd('\\');
             if (!driveLetter.EndsWith(':')) driveLetter += ':';
 
-            // Récupérer l'ID BitLocker pour l'afficher à l'utilisateur
             var keyId = await Task.Run(() => GetBitLockerKeyId(driveLetter));
 
-            // Afficher le prompt avec l'ID BitLocker
             using var dlg = new BitLockerUnlockDialog(driveLetter, keyId);
             if (dlg.ShowDialog(this) != DialogResult.OK)
                 return;
@@ -415,10 +407,8 @@ namespace SaveRestoreGUI
                     _isDriveBitLockerLocked = false;
                     LogSuccess(rtbMigrationLog, $"BitLocker : disque {driveLetter} déverrouillé avec succès.");
 
-                    // Recharger la liste des disques pour mettre à jour l'état
                     LoadUSBDrives();
 
-                    // Essayer de re-sélectionner le disque déverrouillé
                     for (int i = 0; i < cmbUSBDrives.Items.Count; i++)
                     {
                         if (cmbUSBDrives.Items[i] is USBDriveInfo d &&
@@ -443,7 +433,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>Tente de déverrouiller le disque avec la clé de récupération.</summary>
         private static bool UnlockBitLockerDrive(string driveLetter, string recoveryKey)
         {
             try
@@ -473,9 +462,9 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
         //  MIGRATION PRINCIPALE
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
 
         private async void BtnStartMigration_Click(object? sender, EventArgs e)
         {
@@ -530,9 +519,6 @@ namespace SaveRestoreGUI
                 LogInfo(rtbMigrationLog, $"Source : {profile.Path}");
                 LogInfo(rtbMigrationLog, $"Destination : {userProfile}");
 
-                // ── Construire la liste ordonnée des profils à migrer ──────────
-                // Règle : d'abord le profil .ZEPRODBUR (ou tout profil avec un suffixe de domaine),
-                // puis le profil sélectionné.
                 var profilesToMigrate = BuildOrderedProfileList(drive.UsersPath, profile, Environment.UserName);
 
                 foreach (var sourceProfile in profilesToMigrate)
@@ -587,15 +573,10 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
         //  ORDRE DES PROFILS : .ZEPRODBUR d'abord, puis profil courant
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
 
-        /// <summary>
-        /// Construit la liste ordonnée des profils à migrer :
-        ///   1. Profil .ZEPRODBUR (ou *.DOMAINE) correspondant à l'utilisateur courant — migration en premier
-        ///   2. Profil principal sélectionné
-        /// </summary>
         private static List<UserProfileItem> BuildOrderedProfileList(
             string usersPath, UserProfileItem selectedProfile, string currentUsername)
         {
@@ -608,16 +589,13 @@ namespace SaveRestoreGUI
 
                 var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
 
-                // Chercher un profil domaine (ex: dupont.ZEPRODBUR) qui correspond à l'utilisateur courant
-                // et qui est DIFFÉRENT du profil sélectionné
                 var domainProfiles = Directory.GetDirectories(usersPath)
                     .Select(p => new DirectoryInfo(p))
                     .Where(d => !excluded.Contains(d.Name, StringComparer.OrdinalIgnoreCase)
                                 && !d.Name.StartsWith('.')
-                                && d.Name.Contains('.'))   // contient un suffixe domaine
+                                && d.Name.Contains('.'))
                     .Where(d =>
                     {
-                        // Le préfixe (avant le point) correspond-il au nom courant ?
                         var baseName = d.Name[..d.Name.IndexOf('.')];
                         return baseName.Equals(currentUsername, StringComparison.OrdinalIgnoreCase);
                     })
@@ -632,22 +610,19 @@ namespace SaveRestoreGUI
                     })
                     .ToList();
 
-                // Ajouter d'abord les profils domaine (ex: .ZEPRODBUR)
                 ordered.AddRange(domainProfiles);
             }
-            catch { /* Ignorer les erreurs d'accès */ }
+            catch { }
 
-            // Toujours ajouter le profil sélectionné en dernier
-            // (ses données écrasent/complètent le profil domaine)
             if (!ordered.Any(p => p.Path.Equals(selectedProfile.Path, StringComparison.OrdinalIgnoreCase)))
                 ordered.Add(selectedProfile);
 
             return ordered;
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
         //  CONSTRUCTION DES ÉTAPES DE MIGRATION
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
 
         private List<(string Name, Func<Task> Action)> BuildMigrationSteps(
             string sourceProfilePath,
@@ -666,7 +641,7 @@ namespace SaveRestoreGUI
                 Path.Combine(sourceProfilePath, "Desktop"), Path.Combine(userProfile, "Desktop"),
                 "Bureau", progress, ct, errorList)));
 
-            if (chkMigrateDownloads.Checked) steps.Add(("Téléchargements", () => MigrateStep(
+            if (chkMigrateDownloads.Checked) steps.Add(("Éléments téléchargés", () => MigrateStep(
                 Path.Combine(sourceProfilePath, "Downloads"), Path.Combine(userProfile, "Downloads"),
                 "Téléchargements", progress, ct, errorList)));
 
@@ -707,24 +682,20 @@ namespace SaveRestoreGUI
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
                 "Dossier Public", progress, ct, errorList)));
 
-            if (chkMigrateOutlook.Checked)      steps.Add(("Données Outlook",  () => MigrateOutlookDataAsync(sourceProfilePath, rtbMigrationLog, ct)));
-            if (chkMigrateStickyNotes.Checked)  steps.Add(("Sticky Notes",      () => MigrateStickyNotesAsync(sourceProfilePath, rtbMigrationLog, ct)));
-            if (chkMigrateEdgeProfile.Checked)  steps.Add(("Profil Edge",       () => MigrateEdgeProfileAsync(sourceProfilePath, rtbMigrationLog, progress, ct, errorList)));
-            if (chkMigrateWallpaper.Checked)    steps.Add(("Fond d'écran",      () => MigrateWallpaperAsync(sourceProfilePath, rtbMigrationLog)));
-            if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau",  () => MigrateNetworkDrivesInfoAsync(sourceProfilePath, rtbMigrationLog)));
-            if (chkMigrateOneNote.Checked)      steps.Add(("OneNote (registre)",() => MigrateOneNoteAsync(sourceProfilePath, rtbMigrationLog)));
-
-            // IP Desktop Softphone — réservé, non fonctionnel pour l'instant
-            // if (chkMigrateIpDesktopSoftphone.Checked) steps.Add(("IP Softphone", () => MigrateIpDesktopSoftphoneAsync(sourceProfilePath, rtbMigrationLog, progress, ct, errorList)));
+            if (chkMigrateOutlook.Checked)       steps.Add(("Données Outlook",   () => MigrateOutlookDataAsync(sourceProfilePath, rtbMigrationLog, ct)));
+            if (chkMigrateStickyNotes.Checked)   steps.Add(("Sticky Notes",       () => MigrateStickyNotesAsync(sourceProfilePath, rtbMigrationLog, ct)));
+            if (chkMigrateEdgeProfile.Checked)   steps.Add(("Profil Edge",        () => MigrateEdgeProfileAsync(sourceProfilePath, rtbMigrationLog, progress, ct, errorList)));
+            if (chkMigrateWallpaper.Checked)     steps.Add(("Fond d'écran",       () => MigrateWallpaperAsync(sourceProfilePath, rtbMigrationLog)));
+            if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau",    () => MigrateNetworkDrivesInfoAsync(sourceProfilePath, rtbMigrationLog)));
+            if (chkMigrateOneNote.Checked)       steps.Add(("OneNote (registre)", () => MigrateOneNoteAsync(sourceProfilePath, rtbMigrationLog)));
 
             return steps;
         }
 
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
         //  ÉTAPES ATOMIQUES
-        // ══════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════
 
-        /// <summary>Étape de migration en mode fusion (les fichiers destination plus récents sont conservés).</summary>
         private async Task MigrateStep(string source, string destination, string name,
             IProgress<int> progress, CancellationToken ct, List<string> errorList)
         {
@@ -746,7 +717,6 @@ namespace SaveRestoreGUI
             LogSuccess(rtbMigrationLog, $"{name} : {result.Copied} fichiers migrés, {result.Skipped} ignorés — {FileService.FormatSize(result.TotalBytes)}");
         }
 
-        /// <summary>Migration des données Outlook depuis le profil source (PST + autocomplete).</summary>
         private async Task MigrateOutlookDataAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
         {
             var pstLocations = new List<string>
@@ -811,11 +781,10 @@ namespace SaveRestoreGUI
                     await Task.Run(() => File.Copy(file, Path.Combine(roamCacheDest, Path.GetFileName(file)), true), ct);
                 }
                 if (autocompleteFiles.Length > 0)
-                    LogSuccess(rtb, $"Cache d'autocomplétion migré ({autocompleteFiles.Length} fichiers)");
+                    LogSuccess(rtb, $"Cache d'autosaisie migré ({autocompleteFiles.Length} fichiers)");
             }
         }
 
-        /// <summary>Migration des Sticky Notes (plum.sqlite).</summary>
         private async Task MigrateStickyNotesAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
         {
             var stickySource = Path.Combine(sourceProfilePath, "AppData", "Local", "Packages",
@@ -837,11 +806,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Profil Edge complet : copie le dossier «Default» du profil source
-        /// vers User Data\Default du profil courant, en mode fusion.
-        /// ⚠️ Edge doit être fermé pendant la migration.
-        /// </summary>
         private async Task MigrateEdgeProfileAsync(string sourceProfilePath, RichTextBox rtb,
             IProgress<int> progress, CancellationToken ct, List<string> errorList)
         {
@@ -859,7 +823,6 @@ namespace SaveRestoreGUI
             await MigrateStep(edgeSource, edgeDest, "Profil Edge", progress, ct, errorList);
         }
 
-        /// <summary>Migration du fond d'écran.</summary>
         private async Task MigrateWallpaperAsync(string sourceProfilePath, RichTextBox rtb)
         {
             await Task.Run(() =>
@@ -890,7 +853,6 @@ namespace SaveRestoreGUI
             });
         }
 
-        /// <summary>Affiche la liste des lecteurs réseau sauvegardés (recréation manuelle).</summary>
         private async Task MigrateNetworkDrivesInfoAsync(string sourceProfilePath, RichTextBox rtb)
         {
             await Task.Run(() =>
@@ -918,7 +880,6 @@ namespace SaveRestoreGUI
             });
         }
 
-        /// <summary>Migration des clés de registre OneNote.</summary>
         private async Task MigrateOneNoteAsync(string sourceProfilePath, RichTextBox rtb)
         {
             Log(rtb, "Migration des clés de registre OneNote...");
