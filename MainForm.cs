@@ -35,12 +35,12 @@ namespace SaveRestoreGUI
 
         private void ShowPage(int index)
         {
-            pageBackup.Visible = index == 0;
-            pageRestore.Visible = index == 1;
+            pageBackup.Visible    = index == 0;
+            pageRestore.Visible   = index == 1;
             pageMigration.Visible = index == 2;
 
-            navBackup.Selected = index == 0;
-            navRestore.Selected = index == 1;
+            navBackup.Selected    = index == 0;
+            navRestore.Selected   = index == 1;
             navMigration.Selected = index == 2;
             navBackup.Invalidate();
             navRestore.Invalidate();
@@ -60,6 +60,11 @@ namespace SaveRestoreGUI
                 2 => "Migrez les données d'un profil depuis un disque externe",
                 _ => ""
             };
+
+            // Force le recalcul des bounds APRÈS que la page soit visible.
+            // Sans cela, ClientSize = {0,0} sur les pages cachées lors du Load initial,
+            // ce qui laisse tous les contrôles (dont btnUnlockBitLocker) à Size(0,0).
+            ApplyResponsiveLayout();
         }
 
         // ───────────────────────────── Thème ─────────────────────────────
@@ -190,31 +195,31 @@ namespace SaveRestoreGUI
         {
             if (InvokeRequired) { Invoke(() => SetControlsEnabled(enabled)); return; }
 
-            navBackup.Enabled = enabled;
-            navRestore.Enabled = enabled;
+            navBackup.Enabled    = enabled;
+            navRestore.Enabled   = enabled;
             navMigration.Enabled = enabled;
 
-            btnStartBackup.Enabled = enabled;
-            btnStartRestore.Enabled = enabled;
+            btnStartBackup.Enabled    = enabled;
+            btnStartRestore.Enabled   = enabled;
             btnStartMigration.Enabled = enabled;
-            btnBrowseBackup.Enabled = enabled;
-            btnBrowseRestore.Enabled = enabled;
+            btnBrowseBackup.Enabled   = enabled;
+            btnBrowseRestore.Enabled  = enabled;
             if (enabled)
             {
                 UpdateOldProfileOptionState();
             }
-            btnSelectAll.Enabled = enabled;
+            btnSelectAll.Enabled   = enabled;
             btnDeselectAll.Enabled = enabled;
-            btnRestoreSelectAll.Enabled = enabled;
+            btnRestoreSelectAll.Enabled   = enabled;
             btnRestoreDeselectAll.Enabled = enabled;
-            btnMigrateSelectAll.Enabled = enabled;
+            btnMigrateSelectAll.Enabled   = enabled;
             btnMigrateDeselectAll.Enabled = enabled;
-            cmbUSBDrives.Enabled = enabled;
-            lstProfiles.Enabled = enabled;
+            cmbUSBDrives.Enabled  = enabled;
+            lstProfiles.Enabled   = enabled;
             btnRefreshUSB.Enabled = enabled;
 
-            btnCancelBackup.Enabled = !enabled;
-            btnCancelRestore.Enabled = !enabled;
+            btnCancelBackup.Enabled    = !enabled;
+            btnCancelRestore.Enabled   = !enabled;
             btnCancelMigration.Enabled = !enabled;
         }
 
@@ -239,7 +244,7 @@ namespace SaveRestoreGUI
         private void UpdateOldProfileOptionState()
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var usersDir = Path.GetDirectoryName(userProfile);
+            var usersDir    = Path.GetDirectoryName(userProfile);
             var currentUser = Environment.UserName;
             if (usersDir == null)
             {
