@@ -319,8 +319,8 @@ namespace SaveRestoreGUI
             var driveLetter = selectedDrive.Letter.TrimEnd('\\');
             if (!driveLetter.EndsWith(':')) driveLetter += ":";
 
-            btnBitLocker.Enabled    = false;
-            lblBitLockerStatus.Text = "Vérification en cours…";
+            btnBitLocker.Enabled = false;
+            lblBitLockerStatus.Text = "Vérification en cours…"; }
         // ─── Bouton BitLocker ───────────────────────────────────────────────────────
         /// <summary>
         /// Vérifie l'état BitLocker du disque sélectionné dans cmbUSBDrives
@@ -350,88 +350,95 @@ namespace SaveRestoreGUI
             try
             {
                 var state = await Task.Run(() => GetBitLockerStatePowerShell(driveLetter + "\\"));
-                selectedDrive.BitLocker = state;
-
-                var idx = cmbUSBDrives.SelectedIndex;
-                cmbUSBDrives.Items[idx]    = selectedDrive;
-                cmbUSBDrives.SelectedIndex = idx;
-                UpdateBitLockerLabel(selectedDrive);
-
-                switch (state)
+                if (cmbUSBDrives.SelectedItem is USBDriveInfo selectedDrive)
                 {
-                    case BitLockerState.NotEncrypted:
-                        LogSuccess(rtbMigrationLog, $"{driveLetter} — Pas de chiffrement BitLocker actif.");
-                        MessageBox.Show($"{driveLetter} n'est pas chiffré par BitLocker.",
-                            "BitLocker", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
+                    selectedDrive.BitLocker = state;
 
-                    case BitLockerState.Locked:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} est verrouillé par BitLocker.");
-                        await HandleBitLockerUnlockAsync(selectedDrive, driveLetter);
-                        break;
-
-                    case BitLockerState.Unlocked:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} est chiffré (BitLocker actif, déverrouillé).");
-                        MessageBox.Show(
-                            $"{driveLetter} est chiffré mais déverrouillé.\n" +
-                            "Vous pouvez migrer les données normalement.",
-                            "BitLocker actif", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
-
-                    default:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} — état BitLocker indéterminé (module absent ?).");
-                        break;
-                var (output, error) = await Task.Run(() => RunManageBde(driveLetter));
-
-                if (!string.IsNullOrWhiteSpace(error))
-                {
-                    LogWarning(rtbMigrationLog, $"manage-bde : {error.Trim()}");
-                }
-
-                if (string.IsNullOrWhiteSpace(output))
-                {
-                    lblBitLockerStatus.Text = "⚠️ Aucune réponse de manage-bde.";
-                    LogWarning(rtbMigrationLog, "Aucune sortie de manage-bde. Vérifiez les droits administrateur.");
-                    return;
-                }
-
-                // Afficher la sortie brute dans le log
-                foreach (var line in output.Split('\n'))
-                {
-                    var l = line.TrimEnd('\r');
-                    if (!string.IsNullOrWhiteSpace(l))
-                        Log(rtbMigrationLog, $"  {l}");
-                }
-
-                // Extraire l'état de protection pour le label résumé
-                var statusLine = output
-                    .Split('\n')
-                    .FirstOrDefault(l =>
-                        l.Contains("Protection Status", StringComparison.OrdinalIgnoreCase) ||
-                        l.Contains("État de la protection", StringComparison.OrdinalIgnoreCase) ||
-                        l.Contains("Statut de la protection", StringComparison.OrdinalIgnoreCase));
-
-                if (statusLine != null)
-                {
-                    var isProtected =
-                        statusLine.Contains("Protection On", StringComparison.OrdinalIgnoreCase) ||
-                        statusLine.Contains("Active", StringComparison.OrdinalIgnoreCase) ||
-                        statusLine.Contains("Activé", StringComparison.OrdinalIgnoreCase);
-
-                    lblBitLockerStatus.Text = isProtected
-                        ? $"🔒 {driveLetter} — BitLocker ACTIVÉ"
-                        : $"🔓 {driveLetter} — BitLocker désactivé";
-
-                    if (isProtected)
-                        LogWarning(rtbMigrationLog,
-                            $"{driveLetter} est chiffré — déchiffrez le disque avant la migration.");
-                    else
-                        LogSuccess(rtbMigrationLog,
-                            $"{driveLetter} — pas de chiffrement BitLocker actif.");
+                    var idx = cmbUSBDrives.SelectedIndex;
+                    cmbUSBDrives.Items[idx] = selectedDrive;
+                    cmbUSBDrives.SelectedIndex = idx;
+                    UpdateBitLockerLabel(selectedDrive);
                 }
                 else
                 {
-                    lblBitLockerStatus.Text = $"ℹ️ {driveLetter} — état indéterminé (voir log)";
+
+                    switch (state)
+                    {
+                        case BitLockerState.NotEncrypted:
+                            LogSuccess(rtbMigrationLog, $"{driveLetter} — Pas de chiffrement BitLocker actif.");
+                            MessageBox.Show($"{driveLetter} n'est pas chiffré par BitLocker.",
+                                "BitLocker", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            break;
+
+                        case BitLockerState.Locked:
+                            LogWarning(rtbMigrationLog, $"{driveLetter} est verrouillé par BitLocker.");
+                            await HandleBitLockerUnlockAsync(drive: selectedDrive, driveLetter);
+                            break;
+
+                        case BitLockerState.Unlocked:
+                            LogWarning(rtbMigrationLog, $"{driveLetter} est chiffré (BitLocker actif, déverrouillé).");
+                            MessageBox.Show(
+                                $"{driveLetter} est chiffré mais déverrouillé.\n" +
+                                "Vous pouvez migrer les données normalement.",
+                                "BitLocker actif", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            break;
+
+                        default:
+                            LogWarning(rtbMigrationLog, $"{driveLetter} — état BitLocker indéterminé (module absent ?).");
+                            break;
+                            var (output, error) = await Task.Run(() => RunManageBde(driveLetter));
+
+                            if (!string.IsNullOrWhiteSpace(error))
+                            {
+                                LogWarning(rtbMigrationLog, $"manage-bde : {error.Trim()}");
+                            }
+
+                            if (string.IsNullOrWhiteSpace(output))
+                            {
+                                lblBitLockerStatus.Text = "⚠️ Aucune réponse de manage-bde.";
+                                LogWarning(rtbMigrationLog, "Aucune sortie de manage-bde. Vérifiez les droits administrateur.");
+                                return;
+                            }
+
+                            // Afficher la sortie brute dans le log
+                            foreach (var line in output.Split('\n'))
+                            {
+                                var l = line.TrimEnd('\r');
+                                if (!string.IsNullOrWhiteSpace(l))
+                                    Log(rtbMigrationLog, $"  {l}");
+                            }
+
+                            // Extraire l'état de protection pour le label résumé
+                            var statusLine = output
+                                .Split('\n')
+                                .FirstOrDefault(l =>
+                                    l.Contains("Protection Status", StringComparison.OrdinalIgnoreCase) ||
+                                    l.Contains("État de la protection", StringComparison.OrdinalIgnoreCase) ||
+                                    l.Contains("Statut de la protection", StringComparison.OrdinalIgnoreCase));
+
+                            if (statusLine != null)
+                            {
+                                var isProtected =
+                                    statusLine.Contains("Protection On", StringComparison.OrdinalIgnoreCase) ||
+                                    statusLine.Contains("Active", StringComparison.OrdinalIgnoreCase) ||
+                                    statusLine.Contains("Activé", StringComparison.OrdinalIgnoreCase);
+
+                                lblBitLockerStatus.Text = isProtected
+                                    ? $"🔒 {driveLetter} — BitLocker ACTIVÉ"
+                                    : $"🔓 {driveLetter} — BitLocker désactivé";
+
+                                if (isProtected)
+                                    LogWarning(rtbMigrationLog,
+                                        $"{driveLetter} est chiffré — déchiffrez le disque avant la migration.");
+                                else
+                                    LogSuccess(rtbMigrationLog,
+                                        $"{driveLetter} — pas de chiffrement BitLocker actif.");
+                            }
+                            else
+                            {
+                                lblBitLockerStatus.Text = $"ℹ️ {driveLetter} — état indéterminé (voir log)";
+                            }
+                    }
                 }
             }
             catch (Exception ex)
