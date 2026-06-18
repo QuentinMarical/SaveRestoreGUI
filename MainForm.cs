@@ -61,9 +61,6 @@ namespace SaveRestoreGUI
                 _ => ""
             };
 
-            // Force le recalcul des bounds APRÈS que la page soit visible.
-            // Sans cela, ClientSize = {0,0} sur les pages cachées lors du Load initial,
-            // ce qui laisse tous les contrôles (dont btnUnlockBitLocker) à Size(0,0).
             ApplyResponsiveLayout();
         }
 
@@ -96,7 +93,7 @@ namespace SaveRestoreGUI
             Invalidate(true);
         }
 
-        private void ApplyThemeRecursive(Control root, ThemePalette p)
+        private static void ApplyThemeRecursive(Control root, ThemePalette p)
         {
             foreach (Control ctrl in root.Controls)
             {

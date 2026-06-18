@@ -311,15 +311,18 @@ namespace SaveRestoreGUI
         private async void BtnBitLocker_Click(object? sender, EventArgs e)
         {
             string driveLetter;
-            if (cmbUSBDrives.SelectedItem is USBDriveInfo selectedDrive)
+            USBDriveInfo? selectedDrive;
+
+            if (cmbUSBDrives.SelectedItem is USBDriveInfo drive)
             {
-                driveLetter = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
+                selectedDrive = drive;
+                driveLetter   = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
             }
             else
             {
-                driveLetter = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
-                              ?.TrimEnd('\\') ?? "C:";
-                selectedDrive = null!; // pas de disque USB sélectionné
+                selectedDrive = null;
+                driveLetter   = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
+                                 ?.TrimEnd('\\') ?? "C:";
             }
 
             btnBitLocker.Enabled    = false;
@@ -340,7 +343,6 @@ namespace SaveRestoreGUI
                 }
                 else
                 {
-                    // Disque système : affichage direct dans le label
                     lblBitLockerStatus.Text = state switch
                     {
                         BitLockerState.NotEncrypted => $"\u2705 {driveLetter} — Pas de chiffrement",
@@ -361,7 +363,7 @@ namespace SaveRestoreGUI
                     case BitLockerState.Locked:
                         LogWarning(rtbMigrationLog, $"{driveLetter} est verrouillé par BitLocker.");
                         if (selectedDrive != null)
-                            await HandleBitLockerUnlockAsync(selectedDrive, driveLetter);
+                            await HandleBitLockerUnlockAsync(driveLetter);
                         break;
 
                     case BitLockerState.Unlocked:
@@ -389,7 +391,7 @@ namespace SaveRestoreGUI
         }
 
         // ── Déverrouillage BitLocker ──────────────────────────────────────────────────
-        private async Task HandleBitLockerUnlockAsync(USBDriveInfo drive, string driveLetter)
+        private async Task HandleBitLockerUnlockAsync(string driveLetter)
         {
             var answer = MessageBox.Show(
                 $"Le lecteur {driveLetter} est verrouillé par BitLocker.\n\n" +
@@ -491,20 +493,20 @@ namespace SaveRestoreGUI
 
                 var steps = new List<(string Name, Func<Task> Action)>();
 
-                if (chkMigrateDocuments.Checked)    steps.Add(("Documents",          () => MigrateStep(Path.Combine(profile.Path, "Documents"),  Path.Combine(userProfile, "Documents"),  "Documents",          progress, ct, errorList)));
-                if (chkMigrateDesktop.Checked)      steps.Add(("Bureau",             () => MigrateStep(Path.Combine(profile.Path, "Desktop"),   Path.Combine(userProfile, "Desktop"),   "Bureau",             progress, ct, errorList)));
-                if (chkMigrateDownloads.Checked)    steps.Add(("Téléchargements",    () => MigrateStep(Path.Combine(profile.Path, "Downloads"), Path.Combine(userProfile, "Downloads"), "Téléchargements",    progress, ct, errorList)));
-                if (chkMigratePictures.Checked)     steps.Add(("Images",             () => MigrateStep(Path.Combine(profile.Path, "Pictures"),  Path.Combine(userProfile, "Pictures"),  "Images",             progress, ct, errorList)));
-                if (chkMigrateMusic.Checked)        steps.Add(("Musique",            () => MigrateStep(Path.Combine(profile.Path, "Music"),     Path.Combine(userProfile, "Music"),     "Musique",            progress, ct, errorList)));
-                if (chkMigrateVideos.Checked)       steps.Add(("Vidéos",             () => MigrateStep(Path.Combine(profile.Path, "Videos"),    Path.Combine(userProfile, "Videos"),    "Vidéos",             progress, ct, errorList)));
-                if (chkMigrateSignatures.Checked)   steps.Add(("Signatures Outlook", () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Signatures"),   Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),          "Signatures Outlook", progress, ct, errorList)));
-                if (chkMigrateExcelMacros.Checked)  steps.Add(("Macros Excel",       () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Excel", "XLSTART"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"), "Macros Excel",       progress, ct, errorList)));
-                if (chkMigrateTemplates.Checked)    steps.Add(("Modèles Office",     () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Templates"),   Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),          "Modèles Office",     progress, ct, errorList)));
-                if (chkMigrateSap.Checked)          steps.Add(("SAP GUI",            () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "SAP"),                      Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),                              "SAP GUI",            progress, ct, errorList)));
-                if (chkMigratePublic.Checked)       steps.Add(("Dossier Public",     () => MigrateStep(Path.Combine(Path.GetPathRoot(profile.Path) ?? "", "Users", "Public"),        Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),                                                     "Dossier Public",     progress, ct, errorList)));
+                if (chkMigrateDocuments.Checked)    steps.Add(("Documents",          () => MigrateStep(Path.Combine(profile.Path, "Documents"),  Path.Combine(userProfile, "Documents"),  "Documents",          progress, errorList, ct)));
+                if (chkMigrateDesktop.Checked)      steps.Add(("Bureau",             () => MigrateStep(Path.Combine(profile.Path, "Desktop"),   Path.Combine(userProfile, "Desktop"),   "Bureau",             progress, errorList, ct)));
+                if (chkMigrateDownloads.Checked)    steps.Add(("Téléchargements",    () => MigrateStep(Path.Combine(profile.Path, "Downloads"), Path.Combine(userProfile, "Downloads"), "Téléchargements",    progress, errorList, ct)));
+                if (chkMigratePictures.Checked)     steps.Add(("Images",             () => MigrateStep(Path.Combine(profile.Path, "Pictures"),  Path.Combine(userProfile, "Pictures"),  "Images",             progress, errorList, ct)));
+                if (chkMigrateMusic.Checked)        steps.Add(("Musique",            () => MigrateStep(Path.Combine(profile.Path, "Music"),     Path.Combine(userProfile, "Music"),     "Musique",            progress, errorList, ct)));
+                if (chkMigrateVideos.Checked)       steps.Add(("Vidéos",             () => MigrateStep(Path.Combine(profile.Path, "Videos"),    Path.Combine(userProfile, "Videos"),    "Vidéos",             progress, errorList, ct)));
+                if (chkMigrateSignatures.Checked)   steps.Add(("Signatures Outlook", () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Signatures"),   Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),          "Signatures Outlook", progress, errorList, ct)));
+                if (chkMigrateExcelMacros.Checked)  steps.Add(("Macros Excel",       () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Excel", "XLSTART"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"), "Macros Excel",       progress, errorList, ct)));
+                if (chkMigrateTemplates.Checked)    steps.Add(("Modèles Office",     () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Templates"),   Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),          "Modèles Office",     progress, errorList, ct)));
+                if (chkMigrateSap.Checked)          steps.Add(("SAP GUI",            () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "SAP"),                      Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),                              "SAP GUI",            progress, errorList, ct)));
+                if (chkMigratePublic.Checked)       steps.Add(("Dossier Public",     () => MigrateStep(Path.Combine(Path.GetPathRoot(profile.Path) ?? "", "Users", "Public"),        Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),                                                     "Dossier Public",     progress, errorList, ct)));
                 if (chkMigrateOutlook.Checked)      steps.Add(("Données Outlook",    () => MigrateOutlookDataAsync(profile.Path, rtbMigrationLog, ct)));
                 if (chkMigrateStickyNotes.Checked)  steps.Add(("Sticky Notes",       () => MigrateStickyNotesAsync(profile.Path, rtbMigrationLog, ct)));
-                if (chkMigrateEdgeProfile.Checked)  steps.Add(("Profil Edge",        () => MigrateEdgeProfileAsync(profile.Path, rtbMigrationLog, progress, ct, errorList)));
+                if (chkMigrateEdgeProfile.Checked)  steps.Add(("Profil Edge",        () => MigrateEdgeProfileAsync(profile.Path, rtbMigrationLog, progress, errorList, ct)));
                 if (chkMigrateWallpaper.Checked)    steps.Add(("Fond d'écran",       () => MigrateWallpaperAsync(profile.Path, rtbMigrationLog)));
                 if (chkMigrateNetworkDrives.Checked)steps.Add(("Lecteurs réseau",    () => MigrateNetworkDrivesInfoAsync(profile.Path, rtbMigrationLog)));
                 if (chkMigrateOneNote.Checked)      steps.Add(("OneNote (registre)", () => MigrateOneNoteAsync(profile.Path, rtbMigrationLog)));
@@ -555,7 +557,7 @@ namespace SaveRestoreGUI
         // ── Helpers de migration ──────────────────────────────────────────────────────────
         private async Task MigrateStep(
             string source, string destination, string name,
-            IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             if (!Directory.Exists(source)) { LogWarning(rtbMigrationLog, $"{name} : source introuvable."); return; }
             Log(rtbMigrationLog, $"Migration de {name}...");
@@ -635,7 +637,7 @@ namespace SaveRestoreGUI
 
         private async Task MigrateEdgeProfileAsync(
             string sourceProfilePath, RichTextBox rtb,
-            IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             if (System.Diagnostics.Process.GetProcessesByName("msedge").Length > 0)
             { LogWarning(rtb, "Microsoft Edge est ouvert. Fermez-le avant de migrer le profil."); return; }
@@ -643,7 +645,7 @@ namespace SaveRestoreGUI
             var src = Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Edge", "User Data", "Default");
             var dst = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Edge", "User Data", "Default");
-            await MigrateStep(src, dst, "Profil Edge", progress, ct, errorList);
+            await MigrateStep(src, dst, "Profil Edge", progress, errorList, ct);
         }
 
         private async Task MigrateWallpaperAsync(string sourceProfilePath, RichTextBox rtb)

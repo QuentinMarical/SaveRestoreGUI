@@ -56,63 +56,60 @@ namespace SaveRestoreGUI
 
                 if (chkRestoreDocuments.Checked) steps.Add(("Documents", () => RestoreStep(
                     Path.Combine(restoreRoot, "Documents"), Path.Combine(userProfile, "Documents"),
-                    "Documents", rtbRestoreLog, progress, ct, errorList)));
+                    "Documents", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreDesktop.Checked) steps.Add(("Bureau", () => RestoreStep(
                     Path.Combine(restoreRoot, "Desktop"), Path.Combine(userProfile, "Desktop"),
-                    "Bureau", rtbRestoreLog, progress, ct, errorList)));
+                    "Bureau", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreDownloads.Checked) steps.Add(("Téléchargements", () => RestoreStep(
                     Path.Combine(restoreRoot, "Downloads"), Path.Combine(userProfile, "Downloads"),
-                    "Téléchargements", rtbRestoreLog, progress, ct, errorList)));
+                    "Téléchargements", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestorePictures.Checked) steps.Add(("Images", () => RestoreStep(
                     Path.Combine(restoreRoot, "Pictures"), Path.Combine(userProfile, "Pictures"),
-                    "Images", rtbRestoreLog, progress, ct, errorList)));
+                    "Images", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreMusic.Checked) steps.Add(("Musique", () => RestoreStep(
                     Path.Combine(restoreRoot, "Music"), Path.Combine(userProfile, "Music"),
-                    "Musique", rtbRestoreLog, progress, ct, errorList)));
+                    "Musique", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreVideos.Checked) steps.Add(("Vidéos", () => RestoreStep(
                     Path.Combine(restoreRoot, "Videos"), Path.Combine(userProfile, "Videos"),
-                    "Vidéos", rtbRestoreLog, progress, ct, errorList)));
+                    "Vidéos", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreOneNote.Checked) steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, rtbRestoreLog)));
 
                 if (chkRestoreSignatures.Checked) steps.Add(("Signatures Outlook", () => RestoreStep(
                     Path.Combine(restoreRoot, "Signatures"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),
-                    "Signatures Outlook", rtbRestoreLog, progress, ct, errorList)));
+                    "Signatures Outlook", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreTemplates.Checked) steps.Add(("Modèles Office", () => RestoreStep(
                     Path.Combine(restoreRoot, "Templates"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
-                    "Modèles Office", rtbRestoreLog, progress, ct, errorList)));
+                    "Modèles Office", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", () => RestoreStep(
                     Path.Combine(restoreRoot, "Excel", "XLSTART"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
-                    "Macros Excel (XLSTART)", rtbRestoreLog, progress, ct, errorList)));
+                    "Macros Excel (XLSTART)", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreSap.Checked) steps.Add(("SAP GUI", () => RestoreStep(
                     Path.Combine(restoreRoot, "SAP"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
-                    "SAP GUI", rtbRestoreLog, progress, ct, errorList)));
+                    "SAP GUI", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestorePublic.Checked) steps.Add(("Dossier Public", () => RestoreStep(
                     Path.Combine(restoreRoot, "Public"),
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-                    "Dossier Public", rtbRestoreLog, progress, ct, errorList)));
+                    "Dossier Public", rtbRestoreLog, progress, errorList, ct)));
 
                 if (chkRestoreOutlook.Checked) steps.Add(("Données Outlook", () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
                 if (chkRestoreStickyNotes.Checked) steps.Add(("Sticky Notes", () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, ct, errorList)));
+                if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
                 if (chkRestoreNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
                 if (chkRestoreWallpaper.Checked) steps.Add(("Fond d'écran", () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
-
-                // IP Desktop Softphone — réservé, non fonctionnel pour l'instant
-                // if (chkRestoreIpDesktopSoftphone.Checked) steps.Add(("IP Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, ct, errorList)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -125,7 +122,6 @@ namespace SaveRestoreGUI
                     await action();
                 }
 
-                // Lancement des applications
                 if (chkLaunchApps.Checked)
                 {
                     LogTitle(rtbRestoreLog, "Lancement des applications");
@@ -169,7 +165,7 @@ namespace SaveRestoreGUI
         }
 
         private async Task RestoreStep(string source, string destination, string name,
-            RichTextBox rtb, IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            RichTextBox rtb, IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             if (!Directory.Exists(source))
             {
@@ -209,7 +205,6 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            // 1. Fichiers PST
             var pstFiles = Directory.GetFiles(outlookDataDir, "*.pst");
             if (pstFiles.Length > 0)
             {
@@ -246,7 +241,6 @@ namespace SaveRestoreGUI
                 LogInfo(rtb, "Aucun fichier PST à restaurer.");
             }
 
-            // 2. Cache d'autocomplétion
             var roamCacheBackup = Path.Combine(outlookDataDir, "RoamCache");
             if (Directory.Exists(roamCacheBackup))
             {
@@ -265,12 +259,10 @@ namespace SaveRestoreGUI
                     LogSuccess(rtb, $"Cache d'autocomplétion restauré ({files.Length} fichiers)");
             }
 
-            // 3. Profils Outlook (.reg) — import manuel recommandé
             var regFiles = Directory.GetFiles(outlookDataDir, "Outlook_Profile_*.reg");
             foreach (var reg in regFiles)
                 LogInfo(rtb, $"Profil Outlook trouvé : {Path.GetFileName(reg)} (import manuel recommandé)");
 
-            // 4. Règles Outlook (.rwz)
             var rulesFiles = Directory.GetFiles(outlookDataDir, "*.rwz");
             if (rulesFiles.Length > 0)
             {
@@ -293,7 +285,6 @@ namespace SaveRestoreGUI
                 }
             }
 
-            // 5. Boîtes aux lettres partagées : affichage + presse-papiers
             var sharedMailboxFile = Path.Combine(outlookDataDir, "SharedMailboxes.txt");
             if (File.Exists(sharedMailboxFile))
             {
@@ -345,13 +336,12 @@ namespace SaveRestoreGUI
         /// ⚠️ Edge doit être fermé pendant la restauration.
         /// </summary>
         private async Task RestoreEdgeProfileAsync(string restoreRoot, RichTextBox rtb,
-            IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             var edgeDest = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Edge", "User Data", "Default");
 
-            // Vérifier qu'Edge n'est pas en cours d'exécution
             if (System.Diagnostics.Process.GetProcessesByName("msedge").Length > 0)
             {
                 LogWarning(rtb, "Microsoft Edge est ouvert. Fermez-le avant de restaurer le profil.");
@@ -362,7 +352,7 @@ namespace SaveRestoreGUI
                 Path.Combine(restoreRoot, "EdgeProfile"),
                 edgeDest,
                 "Profil Edge",
-                rtb, progress, ct, errorList);
+                rtb, progress, errorList, ct);
         }
 
         /// <summary>Affiche la liste des lecteurs réseau sauvegardés (recréation manuelle).</summary>
