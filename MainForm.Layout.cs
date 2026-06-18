@@ -17,6 +17,7 @@ namespace SaveRestoreGUI
         // ── Carte du haut (destination / source) ──────────────────────
         private const int TopCardH     = 90;   // hauteur carte Backup/Restore
         private const int MigTopCardH  = 360;  // hauteur carte source Migration (agrandi pour BitLocker)
+        private const int MigTopCardH  = 330;  // hauteur carte source Migration (ajusté +40 pour BitLocker)
 
         // ── Carte des options (checkboxes) ───────────────────────
         private const int ChkLabelY    = 12;   // titre de la carte
@@ -47,6 +48,16 @@ namespace SaveRestoreGUI
         private const int MigListH     = 144;
         private const int MigInfoY     = 298;   // Label info
         private const int MigInfoH     = 50;
+        private const int MigLblProfY  = 84;
+        private const int MigListY     = 106;
+        private const int MigListH     = 128;
+        private const int MigInfoY     = 242;
+        private const int MigInfoH     = 40;
+        // BitLocker — positionné sous lblMigrationInfo
+        private const int MigBitLockerY = 288;  // MigInfoY + MigInfoH + 6
+        private const int MigBitLockerH = 32;
+        private const int MigBitLockerStatusY = 288; // aligné à droite du bouton
+        private const int MigBitLockerStatusH = 32;
 
         // ──────────────────────────────────────────────────
 
@@ -65,6 +76,7 @@ namespace SaveRestoreGUI
         //  Col 3 : Fond d'écran, Lecteurs réseau, Modèles, OneNote, Macros Excel
         //  Col 4 : SAP, Ancien profil, Public, IP Softphone
         // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         private void LayoutBackupPage()
         {
             if (pageBackup.ClientSize.Width <= 0) return;
@@ -105,6 +117,7 @@ namespace SaveRestoreGUI
         //  Col 3 : Fond d'écran, Lecteurs réseau, Modèles, OneNote, Macros Excel
         //  Col 4 : SAP, Public, Lancer apps, IP Softphone
         // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         private void LayoutRestorePage()
         {
             if (pageRestore.ClientSize.Width <= 0) return;
@@ -145,6 +158,7 @@ namespace SaveRestoreGUI
         //  Col 3 : Profil Edge, Fond d'écran, Lecteurs réseau, OneNote, Modèles
         //  Col 4 : SAP, Public, IP Softphone
         // ══════════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════════
         private void LayoutMigrationPage()
         {
             if (pageMigration.ClientSize.Width <= 0) return;
@@ -174,6 +188,15 @@ namespace SaveRestoreGUI
 
             // Label info
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
+
+            // ── Bouton BitLocker + label statut (même ligne) ──
+            int bitlockerBtnW = btnBitLocker.Width > 0 ? btnBitLocker.Width : 180;
+            btnBitLocker.SetBounds(InnerPad, MigBitLockerY, bitlockerBtnW, MigBitLockerH);
+            lblBitLockerStatus.SetBounds(
+                InnerPad + bitlockerBtnW + 12,
+                MigBitLockerStatusY,
+                cw - InnerPad * 2 - bitlockerBtnW - 12,
+                MigBitLockerStatusH);
 
             // ── Carte options migration ──
             int optY = Margin + MigTopCardH + CardGap;

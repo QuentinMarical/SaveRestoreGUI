@@ -321,6 +321,30 @@ namespace SaveRestoreGUI
 
             btnBitLocker.Enabled    = false;
             lblBitLockerStatus.Text = "Vérification en cours…";
+        // ─── Bouton BitLocker ───────────────────────────────────────────────────────
+        /// <summary>
+        /// Vérifie l'état BitLocker du disque sélectionné dans cmbUSBDrives
+        /// (ou du disque système si aucun disque externe n'est sélectionné)
+        /// via manage-bde -status, et affiche le résultat dans le log et dans
+        /// lblBitLockerStatus.
+        /// </summary>
+        private async void BtnBitLocker_Click(object? sender, EventArgs e)
+        {
+            // Déterminer la lettre de lecteur à analyser
+            string driveLetter;
+            if (cmbUSBDrives.SelectedItem is USBDriveInfo selectedDrive)
+            {
+                driveLetter = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
+            }
+            else
+            {
+                // Aucun disque externe : on analyse le disque système
+                driveLetter = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
+                              ?.TrimEnd('\\') ?? "C:";
+            }
+
+            btnBitLocker.Enabled = false;
+            lblBitLockerStatus.Text = "Analyse en cours…";
             LogTitle(rtbMigrationLog, $"BitLocker — {driveLetter}");
 
             try
@@ -357,6 +381,57 @@ namespace SaveRestoreGUI
                     default:
                         LogWarning(rtbMigrationLog, $"{driveLetter} — état BitLocker indéterminé (module absent ?).");
                         break;
+                var (output, error) = await Task.Run(() => RunManageBde(driveLetter));
+
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    LogWarning(rtbMigrationLog, $"manage-bde : {error.Trim()}");
+                }
+
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    lblBitLockerStatus.Text = "⚠️ Aucune réponse de manage-bde.";
+                    LogWarning(rtbMigrationLog, "Aucune sortie de manage-bde. Vérifiez les droits administrateur.");
+                    return;
+                }
+
+                // Afficher la sortie brute dans le log
+                foreach (var line in output.Split('\n'))
+                {
+                    var l = line.TrimEnd('\r');
+                    if (!string.IsNullOrWhiteSpace(l))
+                        Log(rtbMigrationLog, $"  {l}");
+                }
+
+                // Extraire l'état de protection pour le label résumé
+                var statusLine = output
+                    .Split('\n')
+                    .FirstOrDefault(l =>
+                        l.Contains("Protection Status", StringComparison.OrdinalIgnoreCase) ||
+                        l.Contains("État de la protection", StringComparison.OrdinalIgnoreCase) ||
+                        l.Contains("Statut de la protection", StringComparison.OrdinalIgnoreCase));
+
+                if (statusLine != null)
+                {
+                    var isProtected =
+                        statusLine.Contains("Protection On", StringComparison.OrdinalIgnoreCase) ||
+                        statusLine.Contains("Active", StringComparison.OrdinalIgnoreCase) ||
+                        statusLine.Contains("Activé", StringComparison.OrdinalIgnoreCase);
+
+                    lblBitLockerStatus.Text = isProtected
+                        ? $"🔒 {driveLetter} — BitLocker ACTIVÉ"
+                        : $"🔓 {driveLetter} — BitLocker désactivé";
+
+                    if (isProtected)
+                        LogWarning(rtbMigrationLog,
+                            $"{driveLetter} est chiffré — déchiffrez le disque avant la migration.");
+                    else
+                        LogSuccess(rtbMigrationLog,
+                            $"{driveLetter} — pas de chiffrement BitLocker actif.");
+                }
+                else
+                {
+                    lblBitLockerStatus.Text = $"ℹ️ {driveLetter} — état indéterminé (voir log)";
                 }
             }
             catch (Exception ex)
@@ -414,6 +489,34 @@ namespace SaveRestoreGUI
         }
 
         // ── Migration ──────────────────────────────────────────────────────────────
+        /// <summary>
+        /// Exécute manage-bde -status sur la lettre de lecteur indiquée
+        /// et retourne (stdout, stderr).
+        /// Nécessite des droits administrateur.
+        /// </summary>
+        private static (string Output, string Error) RunManageBde(string driveLetter)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName               = "manage-bde.exe",
+                Arguments              = $"-status {driveLetter}",
+                UseShellExecute        = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                CreateNoWindow         = true
+            };
+
+            using var proc = System.Diagnostics.Process.Start(psi)
+                             ?? throw new InvalidOperationException("Impossible de démarrer manage-bde.");
+
+            var output = proc.StandardOutput.ReadToEnd();
+            var error  = proc.StandardError.ReadToEnd();
+            proc.WaitForExit();
+
+            return (output, error);
+        }
+
+        // ─── Migration ──────────────────────────────────────────────────────────────
 
         private async void BtnStartMigration_Click(object? sender, EventArgs e)
         {

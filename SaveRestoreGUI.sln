@@ -4,8 +4,6 @@ VisualStudioVersion = 18.3.11520.95
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaveRestoreGUI", "SaveRestoreGUI.csproj", "{99EA7DFC-4E5B-DB1A-3225-7F3E01C04B6B}"
 EndProject
-Project("{840C416C-B8F3-42BC-B0DD-F6BB14C9F8CB}") = "AI Setup Project1", "..\AI Setup Project1\AI Setup Project1.aiproj", "{FAAA48A5-8116-4486-9941-ACA5BC960989}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		All|Any CPU = All|Any CPU
@@ -19,12 +17,6 @@ Global
 		{99EA7DFC-4E5B-DB1A-3225-7F3E01C04B6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99EA7DFC-4E5B-DB1A-3225-7F3E01C04B6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{99EA7DFC-4E5B-DB1A-3225-7F3E01C04B6B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FAAA48A5-8116-4486-9941-ACA5BC960989}.All|Any CPU.ActiveCfg = All
-		{FAAA48A5-8116-4486-9941-ACA5BC960989}.All|Any CPU.Build.0 = All
-		{FAAA48A5-8116-4486-9941-ACA5BC960989}.Debug|Any CPU.ActiveCfg = All
-		{FAAA48A5-8116-4486-9941-ACA5BC960989}.Debug|Any CPU.Build.0 = All
-		{FAAA48A5-8116-4486-9941-ACA5BC960989}.Release|Any CPU.ActiveCfg = All
-		{FAAA48A5-8116-4486-9941-ACA5BC960989}.Release|Any CPU.Build.0 = All
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

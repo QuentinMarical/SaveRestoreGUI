@@ -111,6 +111,8 @@ namespace SaveRestoreGUI
         private Label lblProfiles;
         private ListBox lstProfiles;
         private Label lblMigrationInfo;
+        private ModernButton btnBitLocker;           // ← nouveau
+        private Label lblBitLockerStatus;            // ← nouveau
         private CardPanel cardMigrationOptions;
         private Label lblMigrationOptionsTitle;
         private ModernCheckBox chkMigrateDocuments;
@@ -280,6 +282,91 @@ namespace SaveRestoreGUI
                 chkVideos, chkOutlook, chkSignatures, chkStickyNotes, chkEdgeProfile,
                 chkWallpaper, chkNetworkDrives, chkTemplates, chkOneNote, chkExcelMacros,
                 chkSap, chkOldProfile, chkPublic, chkIpDesktopSoftphone,
+            // Pas de Dock — taille gérée par SyncPageSizes
+            this.pageBackup = new Panel { Visible = false };
+
+            this.cardBackupDest = new CardPanel();
+            this.lblBackupPath = new Label
+            {
+                Text = "Dossier de destination",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Location = new Point(16, 12),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            this.txtBackupPath = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5f),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            this.btnBrowseBackup = new ModernButton
+            {
+                Text = "Parcourir…",
+                Role = ButtonRole.Secondary,
+                Size = new Size(120, 32)
+            };
+            this.btnBrowseBackup.Click += BtnBrowseBackup_Click;
+            this.cardBackupDest.Controls.Add(this.lblBackupPath);
+            this.cardBackupDest.Controls.Add(this.txtBackupPath);
+            this.cardBackupDest.Controls.Add(this.btnBrowseBackup);
+
+            this.cardBackupOptions = new CardPanel();
+            this.lblBackupOptionsTitle = new Label
+            {
+                Text = "Éléments à sauvegarder",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Location = new Point(16, 12),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+
+            this.chkDocuments    = MakeCheck("📄 Documents", true);
+            this.chkDesktop      = MakeCheck("🖥️ Bureau", true);
+            this.chkDownloads    = MakeCheck("⬇️ Téléchargements", true);
+            this.chkPictures     = MakeCheck("🖼️ Images", true);
+            this.chkMusic        = MakeCheck("🎵 Musique", true);
+            this.chkVideos       = MakeCheck("🎬 Vidéos", true);
+
+            this.chkOutlook      = MakeCheck("📧 Outlook (PST, profils)", true);
+            this.chkSignatures   = MakeCheck("✍️ Signatures Outlook", true);
+            this.chkStickyNotes  = MakeCheck("📌 Sticky Notes", true);
+            this.chkEdgeProfile  = MakeCheck("🌐 Profil Edge", true);
+            this.chkWallpaper    = MakeCheck("🖼️ Fond d'écran", true);
+            this.chkNetworkDrives = MakeCheck("🔗 Lecteurs réseau", true);
+
+            this.chkOldProfile   = MakeCheck("👤 Détecter ancien profil", false);
+            this.chkTemplates    = MakeCheck("📋 Modèles Office", true);
+            this.chkOneNote      = MakeCheck("📓 OneNote (registre)", true);
+            this.chkExcelMacros  = MakeCheck("📊 Macros Excel (XLSTART)", true);
+            this.chkSap          = MakeCheck("💼 SAP GUI", true);
+            this.chkPublic       = MakeCheck("📁 Dossier Public (%public%)", true);
+
+            // IP Desktop Softphone — désactivé, en cours de développement
+            this.chkIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
+            this.chkIpDesktopSoftphone.Enabled = false;
+
+            this.btnSelectAll = new ModernButton
+            {
+                Text = "Tout cocher",
+                Role = ButtonRole.Secondary,
+                Size = new Size(120, 34)
+            };
+            this.btnSelectAll.Click += (s, e) => SetAllChecks(cardBackupOptions, true);
+            this.btnDeselectAll = new ModernButton
+            {
+                Text = "Tout décocher",
+                Role = ButtonRole.Secondary,
+                Size = new Size(130, 34)
+            };
+            this.btnDeselectAll.Click += (s, e) => SetAllChecks(cardBackupOptions, false);
+
+            this.cardBackupOptions.Controls.Add(this.lblBackupOptionsTitle);
+            this.cardBackupOptions.Controls.AddRange(new Control[]
+            {
+                chkDocuments, chkDesktop, chkDownloads, chkPictures, chkMusic, chkVideos,
+                chkOutlook, chkSignatures, chkStickyNotes, chkEdgeProfile, chkWallpaper, chkNetworkDrives,
+                chkOldProfile, chkTemplates, chkOneNote, chkExcelMacros, chkSap,
+                chkPublic, chkIpDesktopSoftphone,
                 btnSelectAll, btnDeselectAll
             });
 
@@ -304,6 +391,82 @@ namespace SaveRestoreGUI
             foreach (Control c in cardBackupOptions.Controls)
                 if (c is ModernCheckBox chk && chk != chkOldProfile) chk.Checked = value;
         }
+            this.pageRestore = new Panel { Visible = false };
+
+            this.cardRestoreSource = new CardPanel();
+            this.lblRestorePath = new Label
+            {
+                Text = "Dossier source de la sauvegarde",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Location = new Point(16, 12),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            this.txtRestorePath = new TextBox
+            {
+                Font = new Font("Segoe UI", 9.5f),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            this.btnBrowseRestore = new ModernButton
+            {
+                Text = "Parcourir…",
+                Role = ButtonRole.Secondary,
+                Size = new Size(120, 32)
+            };
+            this.btnBrowseRestore.Click += BtnBrowseRestore_Click;
+            this.cardRestoreSource.Controls.Add(this.lblRestorePath);
+            this.cardRestoreSource.Controls.Add(this.txtRestorePath);
+            this.cardRestoreSource.Controls.Add(this.btnBrowseRestore);
+
+            this.cardRestoreOptions = new CardPanel();
+            this.lblRestoreOptionsTitle = new Label
+            {
+                Text = "Éléments à restaurer",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Location = new Point(16, 12),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+
+            this.chkRestoreDocuments   = MakeCheck("📄 Documents", true);
+            this.chkRestoreDesktop     = MakeCheck("🖥️ Bureau", true);
+            this.chkRestoreDownloads   = MakeCheck("⬇️ Téléchargements", true);
+            this.chkRestorePictures    = MakeCheck("🖼️ Images", true);
+            this.chkRestoreMusic       = MakeCheck("🎵 Musique", true);
+            this.chkRestoreVideos      = MakeCheck("🎬 Vidéos", true);
+
+            this.chkRestoreOutlook     = MakeCheck("📧 Outlook (PST, règles)", true);
+            this.chkRestoreSignatures  = MakeCheck("✍️ Signatures Outlook", true);
+            this.chkRestoreStickyNotes = MakeCheck("📌 Sticky Notes", true);
+            this.chkRestoreEdgeProfile = MakeCheck("🌐 Profil Edge", true);
+            this.chkRestoreWallpaper   = MakeCheck("🖼️ Fond d'écran", true);
+            this.chkRestoreNetworkDrives = MakeCheck("🔗 Lecteurs réseau (info)", true);
+
+            this.chkRestoreOneNote     = MakeCheck("📓 OneNote (registre)", true);
+            this.chkRestoreExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
+            this.chkRestoreTemplates   = MakeCheck("📋 Modèles Office", true);
+            this.chkRestoreSap         = MakeCheck("💼 SAP GUI", true);
+            this.chkRestorePublic      = MakeCheck("📁 Dossier Public (%public%)", true);
+            this.chkLaunchApps         = MakeCheck("🚀 Lancer les applications", true);
+
+            // IP Desktop Softphone — désactivé, en cours de développement
+            this.chkRestoreIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
+            this.chkRestoreIpDesktopSoftphone.Enabled = false;
+
+            this.btnRestoreSelectAll = new ModernButton
+            {
+                Text = "Tout cocher",
+                Role = ButtonRole.Secondary,
+                Size = new Size(120, 34)
+            };
+            this.btnRestoreSelectAll.Click += (s, e) => SetAllChecks(cardRestoreOptions, true);
+            this.btnRestoreDeselectAll = new ModernButton
+            {
+                Text = "Tout décocher",
+                Role = ButtonRole.Secondary,
+                Size = new Size(130, 34)
+            };
+            this.btnRestoreDeselectAll.Click += (s, e) => SetAllChecks(cardRestoreOptions, false);
 
         // ══════════════════════════════════════════════════════════════════════
         //  Construction de la page Restauration
@@ -418,6 +581,126 @@ namespace SaveRestoreGUI
                 lblProfiles, lstProfiles,
                 lblMigrationInfo
             });
+            this.pageMigration = new Panel { Visible = false };
+
+            this.cardMigrationSource = new CardPanel();
+            this.lblUSBDrives = new Label
+            {
+                Text = "Disque externe contenant Windows",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Location = new Point(16, 12),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            this.cmbUSBDrives = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9.5f),
+                FlatStyle = FlatStyle.Flat
+            };
+            this.cmbUSBDrives.SelectedIndexChanged += CmbUSBDrives_SelectedIndexChanged;
+            this.btnRefreshUSB = new ModernButton
+            {
+                Text = "🔄",
+                Role = ButtonRole.Secondary,
+                Size = new Size(40, 32)
+            };
+            this.btnRefreshUSB.Click += BtnRefreshUSB_Click;
+
+            this.lblProfiles = new Label
+            {
+                Text = "Profil utilisateur à migrer",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            this.lstProfiles = new ListBox
+            {
+                Font = new Font("Segoe UI", 9.5f),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            this.lblMigrationInfo = new Label
+            {
+                Text = "Sélectionnez un disque pour afficher les profils.",
+                Font = new Font("Segoe UI", 8.5f),
+                BackColor = Color.Transparent,
+                Tag = "secondary"
+            };
+
+            // ── Bouton BitLocker ──
+            this.btnBitLocker = new ModernButton
+            {
+                Text = "🔒 Vérifier BitLocker",
+                Role = ButtonRole.Secondary,
+                Size = new Size(180, 32)
+            };
+            this.btnBitLocker.Click += BtnBitLocker_Click;
+
+            // ── Label statut BitLocker ──
+            this.lblBitLockerStatus = new Label
+            {
+                Text = "",
+                Font = new Font("Segoe UI", 8.5f),
+                AutoSize = false,
+                BackColor = Color.Transparent,
+                Tag = "secondary"
+            };
+
+            this.cardMigrationSource.Controls.Add(this.lblUSBDrives);
+            this.cardMigrationSource.Controls.Add(this.cmbUSBDrives);
+            this.cardMigrationSource.Controls.Add(this.btnRefreshUSB);
+            this.cardMigrationSource.Controls.Add(this.lblProfiles);
+            this.cardMigrationSource.Controls.Add(this.lstProfiles);
+            this.cardMigrationSource.Controls.Add(this.lblMigrationInfo);
+            this.cardMigrationSource.Controls.Add(this.btnBitLocker);       // ← ajouté
+            this.cardMigrationSource.Controls.Add(this.lblBitLockerStatus); // ← ajouté
+
+            this.cardMigrationOptions = new CardPanel();
+            this.lblMigrationOptionsTitle = new Label
+            {
+                Text = "Éléments à migrer (mode fusion : les fichiers plus récents sont conservés)",
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Location = new Point(16, 12),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+
+            this.chkMigrateDocuments   = MakeCheck("📄 Documents", true);
+            this.chkMigrateDesktop     = MakeCheck("🖥️ Bureau", true);
+            this.chkMigrateDownloads   = MakeCheck("⬇️ Téléchargements", true);
+            this.chkMigratePictures    = MakeCheck("🖼️ Images", true);
+            this.chkMigrateMusic       = MakeCheck("🎵 Musique", true);
+            this.chkMigrateVideos      = MakeCheck("🎬 Vidéos", true);
+            this.chkMigrateOutlook     = MakeCheck("📧 Outlook (PST)", true);
+            this.chkMigrateSignatures  = MakeCheck("✍️ Signatures Outlook", true);
+            this.chkMigrateExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
+            this.chkMigrateStickyNotes = MakeCheck("📌 Sticky Notes", true);
+            this.chkMigrateEdgeProfile = MakeCheck("🌐 Profil Edge", true);
+            this.chkMigrateWallpaper   = MakeCheck("🖼️ Fond d'écran", true);
+            this.chkMigrateNetworkDrives = MakeCheck("🔗 Lecteurs réseau", true);
+            this.chkMigrateOneNote     = MakeCheck("📓 OneNote (registre)", true);
+            this.chkMigrateTemplates   = MakeCheck("📋 Modèles Office", true);
+            this.chkMigrateSap         = MakeCheck("💼 SAP GUI", true);
+            this.chkMigratePublic      = MakeCheck("📁 Dossier Public (%public%)", true);
+
+            // IP Desktop Softphone — désactivé, en cours de développement
+            this.chkMigrateIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
+            this.chkMigrateIpDesktopSoftphone.Enabled = false;
+
+            this.btnMigrateSelectAll = new ModernButton
+            {
+                Text = "Tout cocher",
+                Role = ButtonRole.Secondary,
+                Size = new Size(120, 34)
+            };
+            this.btnMigrateSelectAll.Click += (s, e) => SetAllChecks(cardMigrationOptions, true);
+            this.btnMigrateDeselectAll = new ModernButton
+            {
+                Text = "Tout décocher",
+                Role = ButtonRole.Secondary,
+                Size = new Size(130, 34)
+            };
+            this.btnMigrateDeselectAll.Click += (s, e) => SetAllChecks(cardMigrationOptions, false);
 
             // ── Carte options ─────────────────────────────────────────────
             cardMigrationOptions    = new CardPanel();
