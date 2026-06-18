@@ -6,7 +6,6 @@ namespace SaveRestoreGUI.Services
     /// </summary>
     public static class FileService
     {
-        /// <summary>Fichiers parasites exclus de toute copie.</summary>
         private static readonly string[] ExcludedFileNames = { "desktop.ini", "Thumbs.db" };
 
         public sealed record CopyResult(int Copied, int Skipped, long TotalBytes, List<string> Errors)
@@ -17,15 +16,11 @@ namespace SaveRestoreGUI.Services
         public static string FormatSize(long bytes)
         {
             if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F2} Go";
-            if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F2} Mo";
-            if (bytes >= 1024) return $"{bytes / 1024.0:F2} Ko";
+            if (bytes >= 1_048_576)     return $"{bytes / 1_048_576.0:F2} Mo";
+            if (bytes >= 1024)          return $"{bytes / 1024.0:F2} Ko";
             return $"{bytes} octets";
         }
 
-        /// <summary>
-        /// Énumère les fichiers en ignorant les points de reparse (liens symboliques, jonctions)
-        /// et les dossiers inaccessibles.
-        /// </summary>
         public static IEnumerable<string> EnumerateFilesSafe(string directory)
         {
             var dirs = new Stack<string>();
@@ -69,11 +64,6 @@ namespace SaveRestoreGUI.Services
                    || Path.GetExtension(filePath).Equals(".search-ms", StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Copie un dossier avec progression et annulation.
-        /// En mode fusion (mergeMode), les fichiers de destination plus récents sont conservés.
-        /// Les fichiers identiques (taille + date) sont ignorés.
-        /// </summary>
         public static async Task<CopyResult> CopyFolderAsync(
             string source, string destination,
             IProgress<int> progress, IProgress<string>? currentFile,
@@ -94,10 +84,9 @@ namespace SaveRestoreGUI.Services
             {
                 ct.ThrowIfCancellationRequested();
 
-                var relativePath = file.AsSpan(source.Length).TrimStart(['\\', '/']).ToString(""
-);
+                var relativePath = file.AsSpan(source.Length).TrimStart(['\\', '/']).ToString();
                 var destPath = Path.Combine(destination, relativePath);
-                var destDir = Path.GetDirectoryName(destPath);
+                var destDir  = Path.GetDirectoryName(destPath);
 
                 if (IsExcluded(file))
                 {
@@ -116,7 +105,6 @@ namespace SaveRestoreGUI.Services
                     {
                         var destInfo = new FileInfo(destPath);
 
-                        // Fichier identique → ignorer
                         if (sourceInfo.Length == destInfo.Length &&
                             Math.Abs((sourceInfo.LastWriteTime - destInfo.LastWriteTime).TotalSeconds) < 2)
                         {
@@ -125,7 +113,6 @@ namespace SaveRestoreGUI.Services
                             continue;
                         }
 
-                        // Mode fusion → conserver le plus récent
                         if (mergeMode && destInfo.LastWriteTime > sourceInfo.LastWriteTime)
                         {
                             skipped++; count++;
@@ -152,7 +139,6 @@ namespace SaveRestoreGUI.Services
             return new CopyResult(copied, skipped, totalSize, errors);
         }
 
-        /// <summary>Calcule la taille totale d'un dossier (récursif, sans erreur bloquante).</summary>
         public static long GetDirectorySize(string path)
         {
             long size = 0;

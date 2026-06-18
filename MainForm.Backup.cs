@@ -159,7 +159,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>Étape de copie générique avec log des résultats.</summary>
         private async Task CopyStep(string source, string destination, string name,
             RichTextBox rtb, IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -187,7 +186,6 @@ namespace SaveRestoreGUI
             LogSuccess(rtb, $"{name} : {result.Copied} fichiers copiés, {result.Skipped} ignorés — {FileService.FormatSize(result.TotalBytes)}");
         }
 
-        /// <summary>Signatures Outlook : dossier + clés registre MailSettings (toutes versions Office).</summary>
         private async Task BackupSignaturesAsync(string backupRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -200,10 +198,6 @@ namespace SaveRestoreGUI
                 msg => LogInfo(rtb, msg)), ct);
         }
 
-        /// <summary>
-        /// Données Outlook complètes : PST (standards + registre), liste des chemins PST,
-        /// cache d'autocomplétion, profils registre, règles .rwz, boîtes partagées.
-        /// </summary>
         private async Task BackupOutlookDataAsync(string backupRoot, RichTextBox rtb, CancellationToken ct)
         {
             var outlookDir = Path.Combine(backupRoot, "OutlookData");
@@ -293,11 +287,10 @@ namespace SaveRestoreGUI
             }
             else
             {
-                LogInfo(rtb, "Aucune boîte aux lettres partagée détectée.");
+                LogInfo(rtb, "Aucun boîte aux lettres partagée détectée.");
             }
         }
 
-        /// <summary>Clés OneNote : RecentNotebooks + User MRU (toutes versions) + OpenNotebook.</summary>
         private async Task BackupOneNoteAsync(string backupRoot, RichTextBox rtb)
         {
             Log(rtb, "Export des clés de registre OneNote...");
@@ -326,10 +319,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Profil Edge complet : copie le dossier «Default» depuis User Data.
-        /// Inclut favoris, extensions, paramètres, cookies, mots de passe enregistrés…
-        /// </summary>
         private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -343,10 +332,6 @@ namespace SaveRestoreGUI
                 rtb, progress, errorList, ct);
         }
 
-        /// <summary>
-        /// Fond d'écran : lit le chemin réel dans le registre (HKCU\Control Panel\Desktop)
-        /// avec repli sur TranscodedWallpaper — conserve l'extension d'origine.
-        /// </summary>
         private async Task BackupWallpaperAsync(string backupRoot, RichTextBox rtb)
         {
             await Task.Run(() =>
@@ -401,10 +386,8 @@ namespace SaveRestoreGUI
                         "SELECT * FROM Win32_MappedLogicalDisk");
                     foreach (var drive in searcher.Get().Cast<System.Management.ManagementObject>())
                     {
-                        var driveLetter = drive["DeviceID"]?.ToString(""
-);
-                        var providerName = drive["ProviderName"]?.ToString(""
-);
+                        var driveLetter   = drive["DeviceID"]?.ToString();
+                        var providerName  = drive["ProviderName"]?.ToString();
                         if (!string.IsNullOrEmpty(driveLetter) && !string.IsNullOrEmpty(providerName))
                         {
                             lines.Add($"Lettre: {driveLetter} → Chemin: {providerName}");
@@ -429,7 +412,6 @@ namespace SaveRestoreGUI
             });
         }
 
-        /// <summary>Détecte les anciens profils utilisateurs (ex: user.DOMAIN) dans C:\Users.</summary>
         private void DetectAndLogOldProfiles(RichTextBox rtb)
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -442,7 +424,7 @@ namespace SaveRestoreGUI
                 .Where(d =>
                 {
                     var name = Path.GetFileName(d);
-                    return !name.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
+                    return !name!.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
                            && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase)
                            && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase);
                 })
