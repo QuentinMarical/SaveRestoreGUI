@@ -28,15 +28,14 @@ namespace SaveRestoreGUI
             public string UsersPath { get; init; } = "";
             public BitLockerState BitLocker { get; set; } = BitLockerState.Unknown;
 
-            public override string ToString()
+            public string ToString(string v)
             {
                 var sizeStr = Size > 0 ? FileService.FormatSize(Size) : "Inconnu";
                 var bde = BitLocker switch
                 {
                     BitLockerState.Locked   => " \U0001f512 BitLocker verrouillé",
                     BitLockerState.Unlocked => " \U0001f513 BitLocker actif (déverrouillé)",
-                    _                       => ""
-                    BitLockerState.Locked => " \U0001f512 BitLocker verrouillé",
+                    _ => v                    BitLockerState.Locked => " \U0001f512 BitLocker verrouillé",
                     BitLockerState.Unlocked => " \U0001f513 BitLocker actif (déverrouillé)",
                     _ => ""
                 };
@@ -259,7 +258,7 @@ namespace SaveRestoreGUI
                 BitLockerState.Locked       => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",  Color.OrangeRed),
                 BitLockerState.Unlocked     => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)", Color.DarkOrange),
                 BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",    Color.SeaGreen),
-                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu", SystemColors.GrayText)
+                _ => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu", SystemColors.GrayText)
                 BitLockerState.Locked => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ", Color.OrangeRed),
                 BitLockerState.Unlocked => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)", Color.DarkOrange),
                 BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement", Color.SeaGreen),
@@ -329,7 +328,7 @@ namespace SaveRestoreGUI
             else
             {
                 selectedDrive = null;
-                driveLetter   = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
+                driveLetter = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows)) + ":";
                 driveLetter = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
                                  ?.TrimEnd('\\') ?? "C:";
             }
