@@ -96,7 +96,7 @@ namespace SaveRestoreGUI
             Invalidate(true);
         }
 
-        private void ApplyThemeRecursive(Control root, ThemePalette p)
+        private static void ApplyThemeRecursive(Control root, ThemePalette p)
         {
             foreach (Control ctrl in root.Controls)
             {
@@ -138,6 +138,26 @@ namespace SaveRestoreGUI
         }
 
         // ───────────────────────────── Helpers UI ─────────────────────────────
+
+        /// <summary>
+        /// Crée une <see cref="ModernCheckBox"/> avec le texte et l'état cochée demandés.
+        /// Factoriel utilisé dans BuildPage* pour éviter la répétition.
+        /// </summary>
+        private static ModernCheckBox MakeCheck(string text, bool isChecked)
+            => new() { Text = text, Checked = isChecked, AutoSize = true };
+
+        /// <summary>
+        /// Coche ou décoche toutes les <see cref="ModernCheckBox"/> activées
+        /// qui se trouvent dans le conteneur spécifié.
+        /// </summary>
+        private static void SetAllChecks(Control container, bool value)
+        {
+            foreach (Control ctrl in container.Controls)
+            {
+                if (ctrl is ModernCheckBox chk && chk.Enabled)
+                    chk.Checked = value;
+            }
+        }
 
         private void Log(RichTextBox rtb, string message, Color? color = null, bool toast = false, ToastKind kind = ToastKind.Info)
         {
