@@ -110,6 +110,8 @@ namespace SaveRestoreGUI
         private Label lblProfiles;
         private ListBox lstProfiles;
         private Label lblMigrationInfo;
+        private ModernButton btnBitLocker;           // ← nouveau
+        private Label lblBitLockerStatus;            // ← nouveau
         private CardPanel cardMigrationOptions;
         private Label lblMigrationOptionsTitle;
         private ModernCheckBox chkMigrateDocuments;
@@ -377,7 +379,7 @@ namespace SaveRestoreGUI
             this.chkOutlook      = MakeCheck("📧 Outlook (PST, profils)", true);
             this.chkSignatures   = MakeCheck("✍️ Signatures Outlook", true);
             this.chkStickyNotes  = MakeCheck("📌 Sticky Notes", true);
-            this.chkEdgeProfile  = MakeCheck("🌐 Profil Edge", true);   // renommé
+            this.chkEdgeProfile  = MakeCheck("🌐 Profil Edge", true);
             this.chkWallpaper    = MakeCheck("🖼️ Fond d'écran", true);
             this.chkNetworkDrives = MakeCheck("🔗 Lecteurs réseau", true);
 
@@ -386,7 +388,7 @@ namespace SaveRestoreGUI
             this.chkOneNote      = MakeCheck("📓 OneNote (registre)", true);
             this.chkExcelMacros  = MakeCheck("📊 Macros Excel (XLSTART)", true);
             this.chkSap          = MakeCheck("💼 SAP GUI", true);
-            this.chkPublic       = MakeCheck("📁 Dossier Public (%public%)", true);  // nouveau
+            this.chkPublic       = MakeCheck("📁 Dossier Public (%public%)", true);
 
             // IP Desktop Softphone — désactivé, en cours de développement
             this.chkIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
@@ -501,7 +503,7 @@ namespace SaveRestoreGUI
             this.chkRestoreOutlook     = MakeCheck("📧 Outlook (PST, règles)", true);
             this.chkRestoreSignatures  = MakeCheck("✍️ Signatures Outlook", true);
             this.chkRestoreStickyNotes = MakeCheck("📌 Sticky Notes", true);
-            this.chkRestoreEdgeProfile = MakeCheck("🌐 Profil Edge", true);  // renommé
+            this.chkRestoreEdgeProfile = MakeCheck("🌐 Profil Edge", true);
             this.chkRestoreWallpaper   = MakeCheck("🖼️ Fond d'écran", true);
             this.chkRestoreNetworkDrives = MakeCheck("🔗 Lecteurs réseau (info)", true);
 
@@ -509,7 +511,7 @@ namespace SaveRestoreGUI
             this.chkRestoreExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
             this.chkRestoreTemplates   = MakeCheck("📋 Modèles Office", true);
             this.chkRestoreSap         = MakeCheck("💼 SAP GUI", true);
-            this.chkRestorePublic      = MakeCheck("📁 Dossier Public (%public%)", true); // nouveau
+            this.chkRestorePublic      = MakeCheck("📁 Dossier Public (%public%)", true);
             this.chkLaunchApps         = MakeCheck("🚀 Lancer les applications", true);
 
             // IP Desktop Softphone — désactivé, en cours de développement
@@ -626,12 +628,33 @@ namespace SaveRestoreGUI
                 Tag = "secondary"
             };
 
+            // ── Bouton BitLocker ──
+            this.btnBitLocker = new ModernButton
+            {
+                Text = "🔒 Vérifier BitLocker",
+                Role = ButtonRole.Secondary,
+                Size = new Size(180, 32)
+            };
+            this.btnBitLocker.Click += BtnBitLocker_Click;
+
+            // ── Label statut BitLocker ──
+            this.lblBitLockerStatus = new Label
+            {
+                Text = "",
+                Font = new Font("Segoe UI", 8.5f),
+                AutoSize = false,
+                BackColor = Color.Transparent,
+                Tag = "secondary"
+            };
+
             this.cardMigrationSource.Controls.Add(this.lblUSBDrives);
             this.cardMigrationSource.Controls.Add(this.cmbUSBDrives);
             this.cardMigrationSource.Controls.Add(this.btnRefreshUSB);
             this.cardMigrationSource.Controls.Add(this.lblProfiles);
             this.cardMigrationSource.Controls.Add(this.lstProfiles);
             this.cardMigrationSource.Controls.Add(this.lblMigrationInfo);
+            this.cardMigrationSource.Controls.Add(this.btnBitLocker);       // ← ajouté
+            this.cardMigrationSource.Controls.Add(this.lblBitLockerStatus); // ← ajouté
 
             this.cardMigrationOptions = new CardPanel();
             this.lblMigrationOptionsTitle = new Label
@@ -653,13 +676,13 @@ namespace SaveRestoreGUI
             this.chkMigrateSignatures  = MakeCheck("✍️ Signatures Outlook", true);
             this.chkMigrateExcelMacros = MakeCheck("📊 Macros Excel (XLSTART)", true);
             this.chkMigrateStickyNotes = MakeCheck("📌 Sticky Notes", true);
-            this.chkMigrateEdgeProfile = MakeCheck("🌐 Profil Edge", true);  // renommé
+            this.chkMigrateEdgeProfile = MakeCheck("🌐 Profil Edge", true);
             this.chkMigrateWallpaper   = MakeCheck("🖼️ Fond d'écran", true);
             this.chkMigrateNetworkDrives = MakeCheck("🔗 Lecteurs réseau", true);
             this.chkMigrateOneNote     = MakeCheck("📓 OneNote (registre)", true);
             this.chkMigrateTemplates   = MakeCheck("📋 Modèles Office", true);
             this.chkMigrateSap         = MakeCheck("💼 SAP GUI", true);
-            this.chkMigratePublic      = MakeCheck("📁 Dossier Public (%public%)", true); // nouveau
+            this.chkMigratePublic      = MakeCheck("📁 Dossier Public (%public%)", true);
 
             // IP Desktop Softphone — désactivé, en cours de développement
             this.chkMigrateIpDesktopSoftphone = MakeCheck("📞 IP Desktop Softphone", false);
