@@ -33,6 +33,9 @@ namespace SaveRestoreGUI
                 var sizeStr = Size > 0 ? FileService.FormatSize(Size) : "Inconnu";
                 var bde = BitLocker switch
                 {
+                    BitLockerState.Locked   => " \U0001f512 BitLocker verrouillé",
+                    BitLockerState.Unlocked => " \U0001f513 BitLocker actif (déverrouillé)",
+                    _                       => ""
                     BitLockerState.Locked => " \U0001f512 BitLocker verrouillé",
                     BitLockerState.Unlocked => " \U0001f513 BitLocker actif (déverrouillé)",
                     _ => ""
@@ -253,6 +256,10 @@ namespace SaveRestoreGUI
         {
             (lblBitLockerStatus.Text, lblBitLockerStatus.ForeColor) = drive.BitLocker switch
             {
+                BitLockerState.Locked       => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",  Color.OrangeRed),
+                BitLockerState.Unlocked     => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)", Color.DarkOrange),
+                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",    Color.SeaGreen),
+                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu", SystemColors.GrayText)
                 BitLockerState.Locked => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ", Color.OrangeRed),
                 BitLockerState.Unlocked => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)", Color.DarkOrange),
                 BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement", Color.SeaGreen),
@@ -316,16 +323,18 @@ namespace SaveRestoreGUI
             if (cmbUSBDrives.SelectedItem is USBDriveInfo drive)
             {
                 selectedDrive = drive;
+                driveLetter   = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
                 driveLetter = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
             }
             else
             {
                 selectedDrive = null;
+                driveLetter   = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
                 driveLetter = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
                                  ?.TrimEnd('\\') ?? "C:";
             }
 
-            btnBitLocker.Enabled = false;
+            btnBitLocker.Enabled    = false;
             lblBitLockerStatus.Text = "Analyse en cours…";
             LogTitle(rtbMigrationLog, $"BitLocker — {driveLetter}");
 

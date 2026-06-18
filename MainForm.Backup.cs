@@ -60,57 +60,53 @@ namespace SaveRestoreGUI
                 var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 var progress = new Progress<int>(UpdateProgress);
 
-                // Construction de la liste des étapes
                 var steps = new List<(string Name, Func<Task> Action)>();
 
                 if (chkDocuments.Checked) steps.Add(("Documents", () => CopyStep(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    Path.Combine(backupRoot, "Documents"), "Documents", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Documents"), "Documents", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkDesktop.Checked) steps.Add(("Bureau", () => CopyStep(
                     Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                    Path.Combine(backupRoot, "Desktop"), "Bureau", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Desktop"), "Bureau", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkDownloads.Checked) steps.Add(("Téléchargements", () => CopyStep(
                     Path.Combine(userProfile, "Downloads"),
-                    Path.Combine(backupRoot, "Downloads"), "Téléchargements", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Downloads"), "Téléchargements", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkPictures.Checked) steps.Add(("Images", () => CopyStep(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                    Path.Combine(backupRoot, "Pictures"), "Images", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Pictures"), "Images", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkMusic.Checked) steps.Add(("Musique", () => CopyStep(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
-                    Path.Combine(backupRoot, "Music"), "Musique", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Music"), "Musique", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkVideos.Checked) steps.Add(("Vidéos", () => CopyStep(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
-                    Path.Combine(backupRoot, "Videos"), "Vidéos", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Videos"), "Vidéos", rtbBackupLog, progress, errorList, ct)));
 
-                if (chkSignatures.Checked) steps.Add(("Signatures Outlook", () => BackupSignaturesAsync(backupRoot, rtbBackupLog, progress, ct, errorList)));
+                if (chkSignatures.Checked) steps.Add(("Signatures Outlook", () => BackupSignaturesAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
                 if (chkTemplates.Checked) steps.Add(("Modèles Office", () => CopyStep(
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
-                    Path.Combine(backupRoot, "Templates"), "Modèles Office", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Templates"), "Modèles Office", rtbBackupLog, progress, errorList, ct)));
                 if (chkExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", () => CopyStep(
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
-                    Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", rtbBackupLog, progress, errorList, ct)));
                 if (chkSap.Checked) steps.Add(("SAP GUI", () => CopyStep(
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
-                    Path.Combine(backupRoot, "SAP"), "SAP GUI", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "SAP"), "SAP GUI", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkPublic.Checked) steps.Add(("Dossier Public", () => CopyStep(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-                    Path.Combine(backupRoot, "Public"), "Dossier Public", rtbBackupLog, progress, ct, errorList)));
+                    Path.Combine(backupRoot, "Public"), "Dossier Public", rtbBackupLog, progress, errorList, ct)));
 
                 if (chkOutlook.Checked) steps.Add(("Données Outlook", () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
                 if (chkOneNote.Checked) steps.Add(("OneNote (registre)", () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
                 if (chkStickyNotes.Checked) steps.Add(("Sticky Notes", () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
-                if (chkEdgeProfile.Checked) steps.Add(("Profil Edge", () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, ct, errorList)));
+                if (chkEdgeProfile.Checked) steps.Add(("Profil Edge", () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
                 if (chkWallpaper.Checked) steps.Add(("Fond d'écran", () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
                 if (chkNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
-
-                // IP Desktop Softphone — réservé, non fonctionnel pour l'instant
-                // if (chkIpDesktopSoftphone.Checked) steps.Add(("IP Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, ct, errorList)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -123,7 +119,6 @@ namespace SaveRestoreGUI
                     await action();
                 }
 
-                // Récapitulatif final
                 LogTitle(rtbBackupLog, "Récapitulatif final");
                 UpdateStatus("Calcul de la taille finale...");
                 var totalSize = await Task.Run(() => FileService.GetDirectorySize(backupRoot), CancellationToken.None);
@@ -166,7 +161,7 @@ namespace SaveRestoreGUI
 
         /// <summary>Étape de copie générique avec log des résultats.</summary>
         private async Task CopyStep(string source, string destination, string name,
-            RichTextBox rtb, IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            RichTextBox rtb, IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             if (!Directory.Exists(source))
             {
@@ -194,12 +189,12 @@ namespace SaveRestoreGUI
 
         /// <summary>Signatures Outlook : dossier + clés registre MailSettings (toutes versions Office).</summary>
         private async Task BackupSignaturesAsync(string backupRoot, RichTextBox rtb,
-            IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             var signaturesPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures");
             await CopyStep(signaturesPath, Path.Combine(backupRoot, "Signatures"), "Signatures Outlook",
-                rtb, progress, ct, errorList);
+                rtb, progress, errorList, ct);
 
             await Task.Run(() => RegistryService.BackupOutlookSignatureSettings(backupRoot,
                 msg => LogInfo(rtb, msg)), ct);
@@ -249,7 +244,6 @@ namespace SaveRestoreGUI
                 LogInfo(rtb, "Aucun fichier PST détecté.");
             }
 
-            // Cache d'autocomplétion
             var roamCachePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Outlook", "RoamCache");
@@ -337,7 +331,7 @@ namespace SaveRestoreGUI
         /// Inclut favoris, extensions, paramètres, cookies, mots de passe enregistrés…
         /// </summary>
         private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
-            IProgress<int> progress, CancellationToken ct, List<string> errorList)
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             var edgeDefault = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -346,7 +340,7 @@ namespace SaveRestoreGUI
             await CopyStep(edgeDefault,
                 Path.Combine(backupRoot, "EdgeProfile"),
                 "Profil Edge",
-                rtb, progress, ct, errorList);
+                rtb, progress, errorList, ct);
         }
 
         /// <summary>
@@ -376,7 +370,6 @@ namespace SaveRestoreGUI
                         return;
                     }
 
-                    // Repli : TranscodedWallpaper
                     var transcoded = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                         "Microsoft", "Windows", "Themes", "TranscodedWallpaper");

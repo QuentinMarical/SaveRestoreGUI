@@ -61,9 +61,6 @@ namespace SaveRestoreGUI
                 _ => ""
             };
 
-            // Force le recalcul des bounds APRÈS que la page soit visible.
-            // Sans cela, ClientSize = {0,0} sur les pages cachées lors du Load initial,
-            // ce qui laisse tous les contrôles (dont btnUnlockBitLocker) à Size(0,0).
             ApplyResponsiveLayout();
         }
 
@@ -300,6 +297,35 @@ namespace SaveRestoreGUI
                 _cancellationTokenSource.Cancel();
                 LogWarning(rtb, "Annulation en cours...");
             }
+        }
+
+        // ───────────────────────────── Fabriques (Designer helpers) ─────────────────────────────
+
+        /// <summary>Crée une ModernCheckBox préconfigurée pour les listes d'options.</summary>
+        private static ModernCheckBox MakeCheck(string text, bool isChecked)
+            => new ModernCheckBox { Text = text, Checked = isChecked };
+
+        /// <summary>Coche ou décoche toutes les ModernCheckBox d'un conteneur.</summary>
+        private static void SetAllChecks(Control container, bool value)
+        {
+            foreach (Control c in container.Controls)
+                if (c is ModernCheckBox cb) cb.Checked = value;
+        }
+
+        // ───────────────────────────── BitLocker handlers ─────────────────────────────
+
+        /// <summary>Handler du timer de clignotement du bouton BitLocker.</summary>
+        private void BitLockerBlinkTimer_Tick(object? sender, EventArgs e)
+        {
+            if (btnUnlockBitLocker != null)
+                btnUnlockBitLocker.Visible = !btnUnlockBitLocker.Visible;
+        }
+
+        /// <summary>Handler du bouton "Déverrouiller ce disque (BitLocker)".</summary>
+        private void BtnUnlockBitLocker_Click(object? sender, EventArgs e)
+        {
+            // Délégué à la logique Migration (MainForm.Migration.cs)
+            UnlockBitLockerDrive();
         }
     }
 }

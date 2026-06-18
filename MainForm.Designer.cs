@@ -140,9 +140,6 @@ namespace SaveRestoreGUI
         private ModernButton btnExportMigrationLog;
         private RichTextBox rtbMigrationLog;
 
-        // ─── Timer clignotement BitLocker ───
-        private System.Windows.Forms.Timer _bitlockerBlinkTimer;
-
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
@@ -215,14 +212,6 @@ namespace SaveRestoreGUI
 
             // ── Assemblage final
             Controls.AddRange(new Control[] { contentPanel, headerPanel, sidebarPanel, statusPanel });
-
-            // ── Timer BitLocker
-            _bitlockerBlinkTimer = new System.Windows.Forms.Timer(components)
-            {
-                Interval = 500,
-                Enabled  = false
-            };
-            _bitlockerBlinkTimer.Tick += BitLockerBlinkTimer_Tick;
 
             ResumeLayout(false);
             PerformLayout();
@@ -420,7 +409,7 @@ namespace SaveRestoreGUI
                 Visible = false,
                 Role    = ButtonRole.Secondary
             };
-            btnUnlockBitLocker.Click += BtnUnlockBitLocker_Click;
+            btnUnlockBitLocker.Click += (s, e) => BtnBitLocker_Click(s, e);
 
             lblProfiles = new Label
             {
