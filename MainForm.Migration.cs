@@ -306,21 +306,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ── Bouton BitLocker ────────────────────────────────────────────────────────
-        private async void BtnBitLocker_Click(object? sender, EventArgs e)
-        {
-            if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
-            {
-                MessageBox.Show("Sélectionnez d'abord un lecteur dans la liste.",
-                    "BitLocker", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
 
-            var driveLetter = selectedDrive.Letter.TrimEnd('\\');
-            if (!driveLetter.EndsWith(':')) driveLetter += ":";
-
-            btnBitLocker.Enabled = false;
-            lblBitLockerStatus.Text = "Vérification en cours…"; }
         // ─── Bouton BitLocker ───────────────────────────────────────────────────────
         /// <summary>
         /// Vérifie l'état BitLocker du disque sélectionné dans cmbUSBDrives
