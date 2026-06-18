@@ -36,7 +36,6 @@
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Update="MainForm.Migration.cs">
-      <SubType>Code</SubType>
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Update="MainForm.Restore.cs">
