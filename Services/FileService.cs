@@ -94,7 +94,8 @@ namespace SaveRestoreGUI.Services
             {
                 ct.ThrowIfCancellationRequested();
 
-                var relativePath = file.AsSpan(source.Length).TrimStart(['\\', '/']).ToString();
+                var relativePath = file.AsSpan(source.Length).TrimStart(['\\', '/']).ToString(""
+);
                 var destPath = Path.Combine(destination, relativePath);
                 var destDir = Path.GetDirectoryName(destPath);
 
