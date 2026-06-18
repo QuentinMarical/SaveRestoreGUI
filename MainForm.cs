@@ -6,7 +6,7 @@ namespace SaveRestoreGUI
     /// <summary>
     /// Fenêtre principale — refonte graphique V5 :
     /// navigation latérale moderne, cartes arrondies, thème clair/sombre dynamique.
-    /// Structure : Sidebar (gauche) + zone de contenu (pages empilées) + barre d'état.
+    /// Structure : Sidebar (gauche) + zone de contenu (pages empilées) + barre d'état.
     /// </summary>
     public partial class MainForm : Form
     {
@@ -84,7 +84,7 @@ namespace SaveRestoreGUI
             lblPageSubtitle.ForeColor = p.TextSecondary;
             statusLabel.ForeColor = p.TextSecondary;
 
-            btnToggleTheme.Text = ThemeManager.IsDark ? "🌙  Thème sombre" : "☀️  Thème clair";
+            btnToggleTheme.Text = ThemeManager.IsDark ? "\U0001f319  Thème sombre" : "\u2600\ufe0f  Thème clair";
 
             ApplyThemeRecursive(pageBackup, p);
             ApplyThemeRecursive(pageRestore, p);
@@ -136,17 +136,9 @@ namespace SaveRestoreGUI
 
         // ───────────────────────────── Helpers UI ─────────────────────────────
 
-        /// <summary>
-        /// Crée une <see cref="ModernCheckBox"/> avec le texte et l'état cochée demandés.
-        /// Factoriel utilisé dans BuildPage* pour éviter la répétition.
-        /// </summary>
         private static ModernCheckBox MakeCheck(string text, bool isChecked)
             => new() { Text = text, Checked = isChecked, AutoSize = true };
 
-        /// <summary>
-        /// Coche ou décoche toutes les <see cref="ModernCheckBox"/> activées
-        /// qui se trouvent dans le conteneur spécifié.
-        /// </summary>
         private static void SetAllChecks(Control container, bool value)
         {
             foreach (Control ctrl in container.Controls)
@@ -182,11 +174,11 @@ namespace SaveRestoreGUI
             if (toast) ToastService.Show(this, message, kind);
         }
 
-        private void LogSuccess(RichTextBox rtb, string message) => Log(rtb, "✓ " + message, Color.FromArgb(80, 250, 123));
-        private void LogError(RichTextBox rtb, string message) => Log(rtb, "✗ " + message, Color.FromArgb(255, 121, 121), toast: true, kind: ToastKind.Error);
-        private void LogWarning(RichTextBox rtb, string message) => Log(rtb, "⚠ " + message, Color.FromArgb(241, 250, 140));
-        private void LogInfo(RichTextBox rtb, string message) => Log(rtb, "ℹ " + message, Color.FromArgb(139, 233, 253));
-        private void LogTitle(RichTextBox rtb, string message) => Log(rtb, $"\n══════ {message.ToUpper()} ══════", Color.FromArgb(255, 184, 108));
+        private void LogSuccess(RichTextBox rtb, string message) => Log(rtb, "\u2713 " + message, Color.FromArgb(80, 250, 123));
+        private void LogError(RichTextBox rtb, string message)   => Log(rtb, "\u2717 " + message, Color.FromArgb(255, 121, 121), toast: true, kind: ToastKind.Error);
+        private void LogWarning(RichTextBox rtb, string message) => Log(rtb, "\u26a0 " + message, Color.FromArgb(241, 250, 140));
+        private void LogInfo(RichTextBox rtb, string message)    => Log(rtb, "\u2139 " + message, Color.FromArgb(139, 233, 253));
+        private void LogTitle(RichTextBox rtb, string message)   => Log(rtb, $"\n\u2550\u2550\u2550\u2550\u2550\u2550 {message.ToUpper()} \u2550\u2550\u2550\u2550\u2550\u2550", Color.FromArgb(255, 184, 108));
 
         private void UpdateStatus(string message)
         {
@@ -254,10 +246,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Active/désactive l'option "ancien profil" selon la présence d'un profil
-        /// {utilisateur}.ZEPRODBUR (ou fallback {utilisateur}.*) dans C:\Users.
-        /// </summary>
         private void UpdateOldProfileOptionState()
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -280,7 +268,7 @@ namespace SaveRestoreGUI
                     .Select(Path.GetFileName)
                     .Any(name =>
                         !string.IsNullOrWhiteSpace(name)
-                        && !name.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
+                        && !name!.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
                         && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase)
                         && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase));
             }
@@ -297,35 +285,6 @@ namespace SaveRestoreGUI
                 _cancellationTokenSource.Cancel();
                 LogWarning(rtb, "Annulation en cours...");
             }
-        }
-
-        // ───────────────────────────── Fabriques (Designer helpers) ─────────────────────────────
-
-        /// <summary>Crée une ModernCheckBox préconfigurée pour les listes d'options.</summary>
-        private static ModernCheckBox MakeCheck(string text, bool isChecked)
-            => new ModernCheckBox { Text = text, Checked = isChecked };
-
-        /// <summary>Coche ou décoche toutes les ModernCheckBox d'un conteneur.</summary>
-        private static void SetAllChecks(Control container, bool value)
-        {
-            foreach (Control c in container.Controls)
-                if (c is ModernCheckBox cb) cb.Checked = value;
-        }
-
-        // ───────────────────────────── BitLocker handlers ─────────────────────────────
-
-        /// <summary>Handler du timer de clignotement du bouton BitLocker.</summary>
-        private void BitLockerBlinkTimer_Tick(object? sender, EventArgs e)
-        {
-            if (btnUnlockBitLocker != null)
-                btnUnlockBitLocker.Visible = !btnUnlockBitLocker.Visible;
-        }
-
-        /// <summary>Handler du bouton "Déverrouiller ce disque (BitLocker)".</summary>
-        private void BtnUnlockBitLocker_Click(object? sender, EventArgs e)
-        {
-            // Délégué à la logique Migration (MainForm.Migration.cs)
-            UnlockBitLockerDrive();
         }
     }
 }
