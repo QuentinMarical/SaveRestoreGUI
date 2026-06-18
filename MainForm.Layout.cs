@@ -7,63 +7,60 @@ namespace SaveRestoreGUI
 {
     /// <summary>
     /// Mise en page responsive : toute la géométrie est calculée ici, une seule fois,
-    /// à partir de page.ClientSize. Chaque page a sa propre méthode de layout
-    /// pour garantir un positionnement précis et indépendant.
+    /// à partir de page.ClientSize.
     /// </summary>
     public partial class MainForm
     {
-        // ── Marges et espacements ──────────────────────────────────────────
-        private new const int Margin      = 28;   // marge gauche/droite des pages
-        private const int CardGap         = 14;   // espace vertical entre les cartes
-        private const int InnerPad        = 16;   // padding interne des cartes
+        // ── Marges et espacements
+        private new const int Margin   = 28;
+        private const int CardGap      = 14;
+        private const int InnerPad     = 16;
 
-        // ── Carte du haut ─────────────────────────────────────────────────
-        private const int TopCardH        = 90;   // hauteur carte Backup/Restore
-        private const int MigTopCardH     = 340;  // hauteur carte source Migration
+        // ── Carte du haut
+        private const int TopCardH     = 90;
+        private const int MigTopCardH  = 340;  // carte source Migration
 
-        // ── Carte des options (checkboxes) ────────────────────────────────
-        private const int ChkLabelY       = 12;
-        private const int ChkStartY       = 44;
-        private const int ChkStepY        = 32;
-        private const int ChkH            = 28;
-        private const int ChkColGap       = 12;
-        private const int BtnGapY         = 14;
-        private const int CardPadBot      = 16;
+        // ── Carte options (checkboxes)
+        private const int ChkLabelY    = 12;
+        private const int ChkStartY    = 44;
+        private const int ChkStepY     = 32;
+        private const int ChkH         = 28;
+        private const int ChkColGap    = 12;
+        private const int BtnGapY      = 14;
+        private const int CardPadBot   = 16;
 
-        // ── Barre d'actions ───────────────────────────────────────────────
-        private const int ActionH         = 44;
-        private const int BtnStartW       = 230;
-        private const int BtnCancelW      = 120;
-        private const int BtnExportW      = 150;
+        // ── Barre d'actions
+        private const int ActionH      = 44;
+        private const int BtnStartW    = 230;
+        private const int BtnCancelW   = 120;
+        private const int BtnExportW   = 150;
 
-        // ── Console log ───────────────────────────────────────────────────
-        private const int LogMinH         = 120;
-        private const int LogMarginBot    = 12;
+        // ── Console log
+        private const int LogMinH      = 120;
+        private const int LogMarginBot = 12;
 
-        // ── Migration : zones internes de la carte source ─────────────────
+        // ── Migration : zones internes de la carte source
         //  Y=12  : lblUSBDrives
-        //  Y=38  : cmbUSBDrives + btnRefreshUSB
-        //  Y=76  : btnUnlockBitLocker (visible si disque verrouillé BitLocker)
-        //  Y=118 : lblProfiles
-        //  Y=140 : lstProfiles (hauteur 128 → bas à Y=268)
-        //  Y=220 : btnBitLocker + lblBitLockerStatus  (dans lstProfiles, superposé si Visible)
-        //  Y=276 : lblMigrationInfo
-        //  carte = 340 px de haut
-        private const int MigCmbY         = 38;
-        private const int MigCmbH         = 30;
-        private const int MigBitlocY      = 76;   // btnUnlockBitLocker
-        private const int MigBitlocH      = 34;
-        private const int MigLblProfY     = 118;
-        private const int MigListY        = 140;
-        private const int MigListH        = 128;
-        private const int MigBitLockerY   = 220;  // btnBitLocker (vérif statut)
-        private const int MigBitLockerH   = 32;
-        private const int MigBitLockerSY  = 220;  // lblBitLockerStatus
-        private const int MigBitLockerSH  = 32;
-        private const int MigInfoY        = 276;
-        private const int MigInfoH        = 40;
-
-        // ─────────────────────────────────────────────────────────────────
+        //  Y=40  : cmbUSBDrives + btnRefreshUSB
+        //  Y=78  : btnUnlockBitLocker (visible si disque verrouillé)
+        //  Y=120 : lblProfiles
+        //  Y=142 : lstProfiles (H=128 → fin à 270)
+        //  Y=278 : btnBitLocker + lblBitLockerStatus
+        //  Y=318 : lblMigrationInfo
+        //  carte = 340 px
+        private const int MigCmbY           = 40;
+        private const int MigCmbH           = 30;
+        private const int MigBitlocY        = 78;
+        private const int MigBitlocH        = 34;
+        private const int MigLblProfY       = 120;
+        private const int MigListY          = 142;
+        private const int MigListH          = 128;
+        private const int MigBitLockerY     = 278;
+        private const int MigBitLockerH     = 32;
+        private const int MigBitLockerSY    = 278;
+        private const int MigBitLockerSH    = 32;
+        private const int MigInfoY          = 318;
+        private const int MigInfoH          = 16;
 
         public void ApplyResponsiveLayout()
         {
@@ -72,9 +69,9 @@ namespace SaveRestoreGUI
             LayoutMigrationPage();
         }
 
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         // PAGE SAUVEGARDE
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         private void LayoutBackupPage()
         {
             if (pageBackup.ClientSize.Width <= 0) return;
@@ -88,10 +85,10 @@ namespace SaveRestoreGUI
             int optY = Margin + TopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkDocuments,  chkDesktop,       chkDownloads,   chkPictures,           chkMusic },
-                new[] { chkVideos,     chkOutlook,        chkSignatures,  chkStickyNotes,        chkEdgeProfile },
-                new[] { chkWallpaper,  chkNetworkDrives,  chkTemplates,   chkOneNote,            chkExcelMacros },
-                new[] { chkSap,        chkOldProfile,     chkPublic,      chkIpDesktopSoftphone }
+                new[] { chkDocuments,     chkDesktop,        chkDownloads,      chkPictures,           chkMusic          },
+                new[] { chkVideos,        chkOutlook,        chkSignatures,     chkStickyNotes,        chkEdgeProfile    },
+                new[] { chkWallpaper,     chkNetworkDrives,  chkTemplates,      chkOneNote,            chkExcelMacros    },
+                new[] { chkSap,           chkOldProfile,     chkPublic,         chkIpDesktopSoftphone }
             };
             int optH = LayoutOptionsCard(cw, cols, btnSelectAll, btnDeselectAll);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
@@ -103,9 +100,9 @@ namespace SaveRestoreGUI
             rtbBackupLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         // PAGE RESTAURATION
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         private void LayoutRestorePage()
         {
             if (pageRestore.ClientSize.Width <= 0) return;
@@ -119,10 +116,10 @@ namespace SaveRestoreGUI
             int optY = Margin + TopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkRestoreDocuments, chkRestoreDesktop,       chkRestoreDownloads,    chkRestorePictures,    chkRestoreMusic },
-                new[] { chkRestoreVideos,    chkRestoreOutlook,        chkRestoreSignatures,   chkRestoreStickyNotes, chkRestoreEdgeProfile },
-                new[] { chkRestoreWallpaper, chkRestoreNetworkDrives,  chkRestoreTemplates,    chkRestoreOneNote,     chkRestoreExcelMacros },
-                new[] { chkRestoreSap,       chkRestorePublic,         chkLaunchApps,          chkRestoreIpDesktopSoftphone }
+                new[] { chkRestoreDocuments,  chkRestoreDesktop,       chkRestoreDownloads,   chkRestorePictures,      chkRestoreMusic       },
+                new[] { chkRestoreVideos,     chkRestoreOutlook,       chkRestoreSignatures,  chkRestoreStickyNotes,   chkRestoreEdgeProfile },
+                new[] { chkRestoreWallpaper,  chkRestoreNetworkDrives, chkRestoreTemplates,   chkRestoreOneNote,       chkRestoreExcelMacros },
+                new[] { chkRestoreSap,        chkRestorePublic,        chkLaunchApps,         chkRestoreIpDesktopSoftphone }
             };
             int optH = LayoutOptionsCard(cw, cols, btnRestoreSelectAll, btnRestoreDeselectAll);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
@@ -134,9 +131,9 @@ namespace SaveRestoreGUI
             rtbRestoreLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         // PAGE MIGRATION
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         private void LayoutMigrationPage()
         {
             if (pageMigration.ClientSize.Width <= 0) return;
@@ -144,23 +141,22 @@ namespace SaveRestoreGUI
             int H  = pageMigration.ClientSize.Height;
             int cw = W - Margin * 2;
 
-            // Carte source
             cardMigrationSource.SetBounds(Margin, Margin, cw, MigTopCardH);
 
-            // ComboBox + bouton refresh
+            // ComboBox + refresh
             int refreshW = btnRefreshUSB.Width > 0 ? btnRefreshUSB.Width : 40;
             int cmbW     = cw - InnerPad * 2 - refreshW - ChkColGap;
             cmbUSBDrives.SetBounds(InnerPad, MigCmbY, cmbW, MigCmbH);
             btnRefreshUSB.SetBounds(InnerPad + cmbW + ChkColGap, MigCmbY, refreshW, MigCmbH + 2);
 
-            // Bouton déverrouillage BitLocker (visible si disque verrouillé)
+            // Bouton déverrouillage BitLocker
             btnUnlockBitLocker.SetBounds(InnerPad, MigBitlocY, cw - InnerPad * 2, MigBitlocH);
 
             // Label + ListBox profils
             lblProfiles.SetBounds(InnerPad, MigLblProfY, cw - InnerPad * 2, 20);
             lstProfiles.SetBounds(InnerPad, MigListY,    cw - InnerPad * 2, MigListH);
 
-            // Bouton BitLocker (vérification statut) + label statut
+            // Bouton vérif BitLocker + label statut (même ligne)
             int bitlockerBtnW = btnBitLocker.Width > 0 ? btnBitLocker.Width : 180;
             btnBitLocker.SetBounds(InnerPad, MigBitLockerY, bitlockerBtnW, MigBitLockerH);
             lblBitLockerStatus.SetBounds(
@@ -169,17 +165,17 @@ namespace SaveRestoreGUI
                 cw - InnerPad * 2 - bitlockerBtnW - 12,
                 MigBitLockerSH);
 
-            // Label info
+            // Label info (bas de carte)
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
-            // Carte options migration
+            // Carte options
             int optY = Margin + MigTopCardH + CardGap;
             var cols = new ModernCheckBox[][]
             {
-                new[] { chkMigrateDocuments,   chkMigrateDesktop,       chkMigrateDownloads,     chkMigratePictures,    chkMigrateMusic },
-                new[] { chkMigrateVideos,       chkMigrateOutlook,        chkMigrateSignatures,    chkMigrateExcelMacros, chkMigrateStickyNotes },
-                new[] { chkMigrateEdgeProfile,  chkMigrateWallpaper,      chkMigrateNetworkDrives, chkMigrateOneNote,     chkMigrateTemplates },
-                new[] { chkMigrateSap,          chkMigratePublic,         chkMigrateIpDesktopSoftphone }
+                new[] { chkMigrateDocuments,   chkMigrateDesktop,      chkMigrateDownloads,     chkMigratePictures,    chkMigrateMusic          },
+                new[] { chkMigrateVideos,      chkMigrateOutlook,      chkMigrateSignatures,    chkMigrateExcelMacros, chkMigrateStickyNotes    },
+                new[] { chkMigrateEdgeProfile, chkMigrateWallpaper,    chkMigrateNetworkDrives, chkMigrateOneNote,     chkMigrateTemplates      },
+                new[] { chkMigrateSap,         chkMigratePublic,       chkMigrateIpDesktopSoftphone }
             };
             int optH = LayoutOptionsCard(cw, cols, btnMigrateSelectAll, btnMigrateDeselectAll);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
@@ -191,14 +187,10 @@ namespace SaveRestoreGUI
             rtbMigrationLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // HELPERS COMMUNS
-        // ══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
+        // HELPERS
+        // ═══════════════════════════════════════════════════════════════════
 
-        /// <summary>
-        /// Positionne le TextBox et le bouton Parcourir dans la carte destination/source.
-        /// Coordonnées relatives à la carte (enfants directs).
-        /// </summary>
         private static void LayoutDestCard(int cardWidth, TextBox txt, Button browse)
         {
             int innerW  = cardWidth - InnerPad * 2;
@@ -208,10 +200,6 @@ namespace SaveRestoreGUI
             browse.SetBounds(InnerPad + txtW + ChkColGap, 36, browseW, 32);
         }
 
-        /// <summary>
-        /// Positionne les colonnes de checkboxes et les boutons Tout/Décocher.
-        /// Retourne la hauteur totale calculée de la carte.
-        /// </summary>
         private static int LayoutOptionsCard(
             int cardWidth,
             ModernCheckBox[][] cols,
@@ -230,9 +218,7 @@ namespace SaveRestoreGUI
                 int x = startX + c * (colW + ChkColGap);
                 maxRows = Math.Max(maxRows, cols[c].Length);
                 for (int r = 0; r < cols[c].Length; r++)
-                {
                     cols[c][r].SetBounds(x, ChkStartY + r * ChkStepY, colW, ChkH);
-                }
             }
 
             int lastChkBottom = ChkStartY + (maxRows - 1) * ChkStepY + ChkH;
@@ -252,9 +238,6 @@ namespace SaveRestoreGUI
             return lastChkBottom + CardPadBot;
         }
 
-        /// <summary>
-        /// Positionne les trois boutons d'action sur une ligne horizontale.
-        /// </summary>
         private static void LayoutActionBar(
             int left, int top, int availableWidth,
             Button start, Button cancel, Button export)

@@ -11,9 +11,7 @@ namespace SaveRestoreGUI
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
-            {
                 components.Dispose();
-            }
             base.Dispose(disposing);
         }
 
@@ -107,7 +105,6 @@ namespace SaveRestoreGUI
         private Panel pageMigration;
         private CardPanel cardMigrationSource;
         private Label lblUSBDrives;
-        private Label lblMigrationSourceTitle;
         private ComboBox cmbUSBDrives;
         private ModernButton btnRefreshUSB;
         private ModernButton btnUnlockBitLocker;
@@ -148,24 +145,23 @@ namespace SaveRestoreGUI
 
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
-            this.SuspendLayout();
+            components = new System.ComponentModel.Container();
+            SuspendLayout();
 
-            // ── Fenêtre principale ──────────────────────────────────────────
-            this.Text          = "SaveRestore GUI";
-            this.Size          = new Size(1100, 780);
-            this.MinimumSize   = new Size(900, 620);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Font          = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
+            // ── Fenêtre principale
+            Text          = "SaveRestore GUI";
+            Size          = new Size(1100, 780);
+            MinimumSize   = new Size(900, 620);
+            StartPosition = FormStartPosition.CenterScreen;
+            Font          = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
 
-            // ── Sidebar ────────────────────────────────────────────────────
+            // ── Sidebar
             sidebarPanel = new Panel { Dock = DockStyle.Left, Width = 220 };
 
             lblAppTitle    = new Label { Text = "SaveRestore", AutoSize = true, Font = new Font("Segoe UI", 14f, FontStyle.Bold) };
-            lblAppSubtitle = new Label { Text = "Gestionnaire de profil", AutoSize = true };
+            lblAppSubtitle = new Label { Text = "Gestionnaire de profil", AutoSize = true, Tag = "secondary" };
             lblAppTitle.SetBounds(20, 20, 180, 30);
             lblAppSubtitle.SetBounds(20, 52, 180, 20);
-            lblAppSubtitle.Tag = "secondary";
 
             navBackup    = new NavButton { Text = "\U0001f4be  Sauvegarde" };
             navRestore   = new NavButton { Text = "\U0001f4c2  Restauration" };
@@ -173,7 +169,6 @@ namespace SaveRestoreGUI
             navBackup.SetBounds(20, 100, 180, 44);
             navRestore.SetBounds(20, 152, 180, 44);
             navMigration.SetBounds(20, 204, 180, 44);
-
             navBackup.Click    += (s, e) => ShowPage(0);
             navRestore.Click   += (s, e) => ShowPage(1);
             navMigration.Click += (s, e) => ShowPage(2);
@@ -189,26 +184,25 @@ namespace SaveRestoreGUI
                 btnToggleTheme
             });
 
-            // ── Header ─────────────────────────────────────────────────────
+            // ── Header
             headerPanel     = new Panel { Dock = DockStyle.Top, Height = 72 };
             lblPageTitle    = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
-            lblPageSubtitle = new Label { Text = "", AutoSize = true };
+            lblPageSubtitle = new Label { Text = "", AutoSize = true, Tag = "secondary" };
             lblPageTitle.SetBounds(28, 14, 600, 28);
             lblPageSubtitle.SetBounds(28, 44, 700, 20);
-            lblPageSubtitle.Tag = "secondary";
             headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle });
 
-            // ── Status bar ─────────────────────────────────────────────────
+            // ── Status bar
             statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 32 };
             statusLabel = new Label { Text = "Prêt", AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
             statusLabel.Padding = new Padding(12, 0, 0, 0);
             progressBar = new ModernProgressBar { Dock = DockStyle.Right, Width = 200, Visible = false };
             statusPanel.Controls.AddRange(new Control[] { statusLabel, progressBar });
 
-            // ── Content panel ──────────────────────────────────────────────
+            // ── Content panel
             contentPanel = new Panel { Dock = DockStyle.Fill };
 
-            // ── Pages ──────────────────────────────────────────────────────
+            // ── Pages
             pageBackup    = new Panel { Dock = DockStyle.Fill, Visible = true  };
             pageRestore   = new Panel { Dock = DockStyle.Fill, Visible = false };
             pageMigration = new Panel { Dock = DockStyle.Fill, Visible = false };
@@ -219,33 +213,32 @@ namespace SaveRestoreGUI
 
             contentPanel.Controls.AddRange(new Control[] { pageBackup, pageRestore, pageMigration });
 
-            // ── Assemblage final ───────────────────────────────────────────
-            this.Controls.AddRange(new Control[] { contentPanel, headerPanel, sidebarPanel, statusPanel });
+            // ── Assemblage final
+            Controls.AddRange(new Control[] { contentPanel, headerPanel, sidebarPanel, statusPanel });
 
-            // ── Timer BitLocker ────────────────────────────────────────────
-            _bitlockerBlinkTimer = new System.Windows.Forms.Timer(this.components)
+            // ── Timer BitLocker
+            _bitlockerBlinkTimer = new System.Windows.Forms.Timer(components)
             {
                 Interval = 500,
                 Enabled  = false
             };
             _bitlockerBlinkTimer.Tick += BitLockerBlinkTimer_Tick;
 
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  Construction de la page Sauvegarde
-        // ══════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
+        //  Page Sauvegarde
+        // ═══════════════════════════════════════════════════════════════════
         private void BuildPageBackup()
         {
-            cardBackupDest  = new CardPanel();
-            lblBackupPath   = new Label
+            cardBackupDest = new CardPanel();
+            lblBackupPath  = new Label
             {
-                Text = "Dossier de destination",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Location = new Point(16, 12),
-                AutoSize = true,
+                Text      = "Dossier de destination",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
             txtBackupPath   = new TextBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
@@ -256,10 +249,9 @@ namespace SaveRestoreGUI
             cardBackupOptions    = new CardPanel();
             lblBackupOptionsTitle = new Label
             {
-                Text = "Éléments à sauvegarder",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Location = new Point(16, 12),
-                AutoSize = true,
+                Text      = "Éléments à sauvegarder",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
 
@@ -315,34 +307,30 @@ namespace SaveRestoreGUI
             });
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  Construction de la page Restauration
-        // ══════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
+        //  Page Restauration
+        // ═══════════════════════════════════════════════════════════════════
         private void BuildPageRestore()
         {
             cardRestoreSource = new CardPanel();
             lblRestorePath    = new Label
             {
-                Text = "Dossier source de la sauvegarde",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Location = new Point(16, 12),
-                AutoSize = true,
+                Text      = "Dossier source de la sauvegarde",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
             txtRestorePath   = new TextBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
             btnBrowseRestore = new ModernButton { Text = "Parcourir\u2026", Role = ButtonRole.Secondary, Size = new Size(120, 32) };
             btnBrowseRestore.Click += BtnBrowseRestore_Click;
-            cardRestoreSource.Controls.Add(lblRestorePath);
-            cardRestoreSource.Controls.Add(txtRestorePath);
-            cardRestoreSource.Controls.Add(btnBrowseRestore);
+            cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
 
             cardRestoreOptions    = new CardPanel();
             lblRestoreOptionsTitle = new Label
             {
-                Text = "Éléments à restaurer",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Location = new Point(16, 12),
-                AutoSize = true,
+                Text      = "Éléments à restaurer",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
 
@@ -398,63 +386,59 @@ namespace SaveRestoreGUI
             });
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        //  Construction de la page Migration
-        // ══════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
+        //  Page Migration
+        // ═══════════════════════════════════════════════════════════════════
         private void BuildPageMigration()
         {
-            // ── Carte source ──────────────────────────────────────────────
+            // ── Carte source
             cardMigrationSource = new CardPanel();
+
             lblUSBDrives = new Label
             {
-                Text = "Disque externe contenant Windows",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Location = new Point(16, 12),
-                AutoSize = true,
+                Text      = "Disque externe contenant Windows",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
-            lblMigrationSourceTitle = lblUSBDrives; // alias de compatibilité
 
             cmbUSBDrives = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Segoe UI", 9.5f),
-                FlatStyle = FlatStyle.Flat
+                Font          = new Font("Segoe UI", 9.5f),
+                FlatStyle     = FlatStyle.Flat
             };
             cmbUSBDrives.SelectedIndexChanged += CmbUSBDrives_SelectedIndexChanged;
 
             btnRefreshUSB = new ModernButton { Text = "\U0001f504", Role = ButtonRole.Secondary, Size = new Size(40, 32) };
             btnRefreshUSB.Click += BtnRefreshUSB_Click;
 
-            // Bouton déverrouillage BitLocker — visible uniquement si disque verrouillé
             btnUnlockBitLocker = new ModernButton
             {
                 Text    = "\U0001f512 Déverrouiller ce disque (BitLocker)",
                 Height  = 34,
                 Visible = false,
-                Enabled = true,
                 Role    = ButtonRole.Secondary
             };
             btnUnlockBitLocker.Click += BtnUnlockBitLocker_Click;
 
             lblProfiles = new Label
             {
-                Text = "Profil utilisateur à migrer",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true,
+                Text      = "Profil utilisateur à migrer",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
             lstProfiles = new ListBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
 
             lblMigrationInfo = new Label
             {
-                Text = "Sélectionnez un disque pour afficher les profils.",
-                Font = new Font("Segoe UI", 8.5f),
+                Text      = "Sélectionnez un disque pour afficher les profils.",
+                Font      = new Font("Segoe UI", 8.5f),
                 BackColor = Color.Transparent,
-                Tag = "secondary"
+                Tag       = "secondary"
             };
 
-            // ── Bouton BitLocker (vérification statut) ──
             btnBitLocker = new ModernButton
             {
                 Text = "\U0001f512 Vérifier BitLocker",
@@ -463,35 +447,32 @@ namespace SaveRestoreGUI
             };
             btnBitLocker.Click += BtnBitLocker_Click;
 
-            // ── Label statut BitLocker ──
             lblBitLockerStatus = new Label
             {
-                Text = "",
-                Font = new Font("Segoe UI", 8.5f),
-                AutoSize = false,
+                Text      = "",
+                Font      = new Font("Segoe UI", 8.5f),
+                AutoSize  = false,
                 BackColor = Color.Transparent,
-                Tag = "secondary"
+                Tag       = "secondary"
             };
 
-            // ── Ajout de tous les contrôles à la carte source ──
             cardMigrationSource.Controls.Add(lblUSBDrives);
             cardMigrationSource.Controls.Add(cmbUSBDrives);
             cardMigrationSource.Controls.Add(btnRefreshUSB);
             cardMigrationSource.Controls.Add(btnUnlockBitLocker);
             cardMigrationSource.Controls.Add(lblProfiles);
             cardMigrationSource.Controls.Add(lstProfiles);
-            cardMigrationSource.Controls.Add(lblMigrationInfo);
             cardMigrationSource.Controls.Add(btnBitLocker);
             cardMigrationSource.Controls.Add(lblBitLockerStatus);
+            cardMigrationSource.Controls.Add(lblMigrationInfo);
 
-            // ── Carte options ─────────────────────────────────────────────
+            // ── Carte options
             cardMigrationOptions = new CardPanel();
             lblMigrationOptionsTitle = new Label
             {
-                Text = "Éléments à migrer (mode fusion : les fichiers plus récents sont conservés)",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Location = new Point(16, 12),
-                AutoSize = true,
+                Text      = "Éléments à migrer (mode fusion : les fichiers plus récents sont conservés)",
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+                AutoSize  = true,
                 BackColor = Color.Transparent
             };
 
