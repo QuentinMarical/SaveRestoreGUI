@@ -401,8 +401,10 @@ namespace SaveRestoreGUI
                         "SELECT * FROM Win32_MappedLogicalDisk");
                     foreach (var drive in searcher.Get().Cast<System.Management.ManagementObject>())
                     {
-                        var driveLetter = drive["DeviceID"]?.ToString();
-                        var providerName = drive["ProviderName"]?.ToString();
+                        var driveLetter = drive["DeviceID"]?.ToString(""
+);
+                        var providerName = drive["ProviderName"]?.ToString(""
+);
                         if (!string.IsNullOrEmpty(driveLetter) && !string.IsNullOrEmpty(providerName))
                         {
                             lines.Add($"Lettre: {driveLetter} → Chemin: {providerName}");
