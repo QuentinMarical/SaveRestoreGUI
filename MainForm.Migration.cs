@@ -5,7 +5,7 @@ namespace SaveRestoreGUI
 {
     public partial class MainForm
     {
-        // ── État BitLocker d'un lecteur ───────────────────────────────────────────────
+        // ── État BitLocker d'un lecteur ────────────────────────────────────────────
         private enum BitLockerState
         {
             Unknown,
@@ -52,7 +52,7 @@ namespace SaveRestoreGUI
         // ───────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Appel direct à kernel32 : retourne le type du point de montage MÊME si le
+        /// Appel direct à kernel32 : retourne le type du point de montage MÊM E si le
         /// volume est inaccessible (BitLocker verrouillé, disque non prêt…).
         /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
         ///           3=Fixed, 4=Network, 5=CDROM, 6=RAMDisk
@@ -192,7 +192,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ── Helpers PowerShell BitLocker ───────────────────────────────────────────────
+        // ── Helpers PowerShell BitLocker ────────────────────────────────────────────
         private static BitLockerState GetBitLockerStatePowerShell(string drivePath)
         {
             try
@@ -460,73 +460,73 @@ namespace SaveRestoreGUI
 
                 var steps = new List<(string Name, Func<Task> Action)>();
 
-                if (chkMigrateDocuments.Checked) steps.Add(("Documents", () => MigrateFolderStep(
+                if (chkMigrateDocuments.Checked) steps.Add(("Documents", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "Documents"),
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "Documents", progress, errorList, ct)));
+                    "Documents", progress, errorList, ct))));
 
-                if (chkMigrateDesktop.Checked) steps.Add(("Bureau", () => MigrateFolderStep(
+                if (chkMigrateDesktop.Checked) steps.Add(("Bureau", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "Desktop"),
                     Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                    "Bureau", progress, errorList, ct)));
+                    "Bureau", progress, errorList, ct))));
 
-                if (chkMigrateDownloads.Checked) steps.Add(("Téléchargements", () => MigrateFolderStep(
+                if (chkMigrateDownloads.Checked) steps.Add(("Téléchargements", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "Downloads"),
                     Path.Combine(destProfile, "Downloads"),
-                    "Téléchargements", progress, errorList, ct)));
+                    "Téléchargements", progress, errorList, ct))));
 
-                if (chkMigratePictures.Checked) steps.Add(("Images", () => MigrateFolderStep(
+                if (chkMigratePictures.Checked) steps.Add(("Images", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "Pictures"),
                     Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                    "Images", progress, errorList, ct)));
+                    "Images", progress, errorList, ct))));
 
-                if (chkMigrateMusic.Checked) steps.Add(("Musique", () => MigrateFolderStep(
+                if (chkMigrateMusic.Checked) steps.Add(("Musique", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "Music"),
                     Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
-                    "Musique", progress, errorList, ct)));
+                    "Musique", progress, errorList, ct))));
 
-                if (chkMigrateVideos.Checked) steps.Add(("Vidéos", () => MigrateFolderStep(
+                if (chkMigrateVideos.Checked) steps.Add(("Vidéos", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "Videos"),
                     Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
-                    "Vidéos", progress, errorList, ct)));
+                    "Vidéos", progress, errorList, ct))));
 
-                if (chkMigrateSignatures.Checked) steps.Add(("Signatures Outlook", () => MigrateFolderStep(
+                if (chkMigrateSignatures.Checked) steps.Add(("Signatures Outlook", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Signatures"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),
-                    "Signatures Outlook", progress, errorList, ct)));
+                    "Signatures Outlook", progress, errorList, ct))));
 
-                if (chkMigrateTemplates.Checked) steps.Add(("Modèles Office", () => MigrateFolderStep(
+                if (chkMigrateTemplates.Checked) steps.Add(("Modèles Office", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Templates"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
-                    "Modèles Office", progress, errorList, ct)));
+                    "Modèles Office", progress, errorList, ct))));
 
-                if (chkMigrateExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", () => MigrateFolderStep(
+                if (chkMigrateExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Excel", "XLSTART"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
-                    "Macros Excel (XLSTART)", progress, errorList, ct)));
+                    "Macros Excel (XLSTART)", progress, errorList, ct))));
 
-                if (chkMigrateSap.Checked) steps.Add(("SAP GUI", () => MigrateFolderStep(
+                if (chkMigrateSap.Checked) steps.Add(("SAP GUI", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "AppData", "Roaming", "SAP"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
-                    "SAP GUI", progress, errorList, ct)));
+                    "SAP GUI", progress, errorList, ct))));
 
-                if (chkMigrateEdgeProfile.Checked) steps.Add(("Profil Edge", () => MigrateFolderStep(
+                if (chkMigrateEdgeProfile.Checked) steps.Add(("Profil Edge", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(sourceProfile, "AppData", "Local", "Microsoft", "Edge", "User Data", "Default"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "Edge", "User Data", "Default"),
-                    "Profil Edge", progress, errorList, ct)));
+                    "Profil Edge", progress, errorList, ct))));
 
-                if (chkMigrateStickyNotes.Checked) steps.Add(("Sticky Notes", () => MigrateStickyNotesAsync(sourceProfile, ct)));
+                if (chkMigrateStickyNotes.Checked) steps.Add(("Sticky Notes", (Func<Task>)(() => MigrateStickyNotesAsync(sourceProfile, ct))));
 
-                if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook (PST)", () => MigrateOutlookAsync(sourceProfile, ct)));
+                if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook (PST)", (Func<Task>)(() => MigrateOutlookAsync(sourceProfile, ct))));
 
-                if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran", () => MigrateWallpaperAsync(sourceProfile)));
+                if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran", (Func<Task>)(() => MigrateWallpaperAsync(sourceProfile))));
 
-                if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => MigrateNetworkDrivesAsync(sourceProfile)));
+                if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau", (Func<Task>)(() => MigrateNetworkDrivesAsync(sourceProfile))));
 
-                if (chkMigratePublic.Checked) steps.Add(("Dossier Public", () => MigrateFolderStep(
+                if (chkMigratePublic.Checked) steps.Add(("Dossier Public", (Func<Task>)(() => MigrateFolderStep(
                     Path.Combine(selectedDrive.Letter + "\\", "Users", "Public"),
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-                    "Dossier Public", progress, errorList, ct)));
+                    "Dossier Public", progress, errorList, ct))));
 
                 int totalSteps  = steps.Count;
                 int currentStep = 0;
@@ -584,7 +584,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────
+        // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────────
         private async void BtnBitLocker_Click(object? sender, EventArgs e)
         {
             if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
