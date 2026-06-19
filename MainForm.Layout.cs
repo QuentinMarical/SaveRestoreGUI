@@ -45,7 +45,7 @@ namespace SaveRestoreGUI
         //  Y=78  : btnUnlockBitLocker (visible si disque verrouillé)
         //  Y=120 : lblProfiles
         //  Y=142 : lstProfiles (H=128 → fin à 270)
-        //  Y=278 : btnBitLocker + lblBitLockerStatus
+        //  Y=278 : lblBitLockerStatus (pleine largeur)
         //  Y=318 : lblMigrationInfo
         //  carte = 340 px
         private const int MigCmbY           = 40;
@@ -55,8 +55,6 @@ namespace SaveRestoreGUI
         private const int MigLblProfY       = 120;
         private const int MigListY          = 142;
         private const int MigListH          = 128;
-        private const int MigBitLockerY     = 278;
-        private const int MigBitLockerH     = 32;
         private const int MigBitLockerSY    = 278;
         private const int MigBitLockerSH    = 32;
         private const int MigInfoY          = 318;
@@ -156,13 +154,11 @@ namespace SaveRestoreGUI
             lblProfiles.SetBounds(InnerPad, MigLblProfY, cw - InnerPad * 2, 20);
             lstProfiles.SetBounds(InnerPad, MigListY,    cw - InnerPad * 2, MigListH);
 
-            // Bouton vérif BitLocker + label statut (même ligne)
-            int bitlockerBtnW = btnBitLocker.Width > 0 ? btnBitLocker.Width : 180;
-            btnBitLocker.SetBounds(InnerPad, MigBitLockerY, bitlockerBtnW, MigBitLockerH);
+            // Label statut BitLocker (pleine largeur, btnBitLocker supprimé)
             lblBitLockerStatus.SetBounds(
-                InnerPad + bitlockerBtnW + 12,
+                InnerPad,
                 MigBitLockerSY,
-                cw - InnerPad * 2 - bitlockerBtnW - 12,
+                cw - InnerPad * 2,
                 MigBitLockerSH);
 
             // Label info (bas de carte)
