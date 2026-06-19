@@ -5,7 +5,7 @@ namespace SaveRestoreGUI
 {
     public partial class MainForm
     {
-        // ── État BitLocker d'un lecteur ───────────────────────────────────────────────────
+        // ── État BitLocker d'un lecteur ───────────────────────────────────────────────
         private enum BitLockerState
         {
             Unknown,
@@ -245,51 +245,59 @@ namespace SaveRestoreGUI
             return letters;
         }
 
-        private static void OpenBitLockerExplorerPrompt(string driveLetter)
+        /// <summary>
+        /// Ouvre la page de gestion BitLocker du Panneau de configuration.
+        /// Priorité : Panneau de config classique (fonctionne sur toutes les éditions Pro/Enterprise).
+        /// Fallback : ms-settings:deviceencryption (Windows 11 Home).
+        /// </summary>
+        private static void OpenBitLockerControlPanel()
         {
-            // Option 1 : Paramètres Windows 10/11 → chiffrement de l'appareil / BitLocker
+            // Option 1 : Panneau de configuration → Chiffrement de lecteur BitLocker
+            // Chemin : Panneau de configuration\Système et sécurité\Chiffrement de lecteur BitLocker
             try
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "ms-settings:deviceencryption",
+                    FileName        = "control.exe",
+                    Arguments       = "/name Microsoft.BitLockerDriveEncryption",
+                    UseShellExecute = true
+                });
+                return;
+            }
+            catch { /* control.exe non disponible — très rare */ }
+
+            // Option 2 : Paramètres Windows 10/11 → chiffrement de l'appareil
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName        = "ms-settings:deviceencryption",
                     UseShellExecute = true
                 });
                 return;
             }
             catch { /* ms-settings non disponible (édition Home sans BitLocker UI) */ }
 
-            // Option 2 : Panneau de configuration classique — Chiffrement de lecteur BitLocker
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "control.exe",
-                    Arguments = "/name Microsoft.BitLockerDriveEncryption",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Impossible d'ouvrir la gestion BitLocker.\n{ex.Message}\n\n" +
-                    "Ouvrez manuellement : Panneau de configuration → Chiffrement de lecteur BitLocker",
-                    "BitLocker",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
+            // Option 3 : message manuel
+            MessageBox.Show(
+                "Impossible d'ouvrir automatiquement la gestion BitLocker.\n\n" +
+                "Ouvrez manuellement :\n" +
+                "Panneau de configuration → Système et sécurité → Chiffrement de lecteur BitLocker",
+                "BitLocker",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
         }
 
         private static string RunPowerShellInline(string script)
         {
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -NonInteractive -Command \"{script.Replace("\"", "\\\"")}\"",
-                UseShellExecute = false,
+                FileName               = "powershell.exe",
+                Arguments              = $"-NoProfile -NonInteractive -Command \"{script.Replace("\"", "\\\"")}\"",
+                UseShellExecute        = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
+                RedirectStandardError  = true,
+                CreateNoWindow         = true
             };
             using var proc = System.Diagnostics.Process.Start(psi)
                 ?? throw new InvalidOperationException("Impossible de démarrer PowerShell.");
@@ -340,10 +348,10 @@ namespace SaveRestoreGUI
         {
             (lblBitLockerStatus.Text, lblBitLockerStatus.ForeColor) = drive.BitLocker switch
             {
-                BitLockerState.Locked => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ", Color.OrangeRed),
-                BitLockerState.Unlocked => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)", Color.DarkOrange),
-                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement", Color.SeaGreen),
-                _ => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu", SystemColors.GrayText)
+                BitLockerState.Locked      => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",              Color.OrangeRed),
+                BitLockerState.Unlocked    => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)",    Color.DarkOrange),
+                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",                   Color.SeaGreen),
+                _                          => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",          SystemColors.GrayText)
             };
         }
 
@@ -464,21 +472,21 @@ namespace SaveRestoreGUI
 
             var answer = MessageBox.Show(
                 $"Le lecteur {letter} est verrouillé par BitLocker.\n\n" +
-                "Windows va ouvrir la fenêtre de déverrouillage native.\n" +
-                "Saisissez votre clé de récupération ou mot de passe dans cette fenêtre,\n" +
+                "Le Panneau de configuration BitLocker va s'ouvrir.\n" +
+                "Déverrouillez le lecteur depuis cette fenêtre,\n" +
                 "puis cliquez OK ici pour rafraîchir l'état du lecteur.",
-                "BitLocker — Déverrouillage natif",
+                "BitLocker — Déverrouillage",
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Information);
 
             if (answer != DialogResult.OK) return;
 
-            // Ouvre la popup native Windows BitLocker — aucun droit admin requis
-            OpenBitLockerExplorerPrompt(letter);
+            // Ouvre le Panneau de configuration → Chiffrement de lecteur BitLocker
+            OpenBitLockerControlPanel();
 
-            // L'utilisateur saisit sa clé dans la fenêtre Windows ; on attend sa confirmation
+            // L'utilisateur déverrouille dans le Panneau de config, puis confirme ici
             MessageBox.Show(
-                $"Cliquez OK une fois que vous avez saisi votre clé dans la fenêtre Windows pour {letter}.\n\n" +
+                $"Cliquez OK une fois que vous avez déverrouillé {letter} dans le Panneau de configuration.\n\n" +
                 "La liste des lecteurs sera automatiquement actualisée.",
                 "Attente déverrouillage",
                 MessageBoxButtons.OK,
