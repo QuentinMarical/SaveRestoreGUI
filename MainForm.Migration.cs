@@ -197,8 +197,8 @@ namespace SaveRestoreGUI
         {
             try
             {
-                var letter = drivePath.TrimEnd('\\', '/');
-                if (!letter.EndsWith(':')) letter = letter.TrimEnd(Path.DirectorySeparatorChar);
+                var letter = drivePath.Replace("/", "\\").TrimEnd('\\').ToUpperInvariant();
+                if (!letter.EndsWith(':')) letter += ":";
 
                 var script =
                     $"$v = Get-BitLockerVolume -MountPoint '{letter}' -ErrorAction SilentlyContinue; " +
@@ -245,25 +245,15 @@ namespace SaveRestoreGUI
             return letters;
         }
 
-        private static (bool Success, string Message) UnlockBitLockerWithRecoveryKey(
-            string driveLetter, string recoveryKey)
+        private static void OpenBitLockerExplorerPrompt(string driveLetter)
         {
-            try
+            var letter = driveLetter.TrimEnd('\\', ':').ToUpperInvariant() + ":";
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                var letter = driveLetter.TrimEnd('\\');
-                if (!letter.EndsWith(':')) letter += ":";
-
-                var script =
-                    $"$key = '{recoveryKey.Replace("'", "''")}'; " +
-                    $"Unlock-BitLocker -MountPoint '{letter}' -RecoveryPassword $key -ErrorAction Stop; " +
-                    "'OK'";
-
-                var output = RunPowerShellInline(script);
-                return output.Trim() == "OK"
-                    ? (true, "Déverrouillage réussi.")
-                    : (false, $"Réponse inattendue : {output.Trim()}");
-            }
-            catch (Exception ex) { return (false, ex.Message); }
+                FileName = "explorer.exe",
+                Arguments = letter,
+                UseShellExecute = true
+            });
         }
 
         private static string RunPowerShellInline(string script)
@@ -446,45 +436,56 @@ namespace SaveRestoreGUI
         // ── Déverrouillage BitLocker ────────────────────────────────────────────────
         private async Task HandleBitLockerUnlockAsync(string driveLetter)
         {
+            var letter = driveLetter.TrimEnd('\\', ':').ToUpperInvariant() + ":";
+
             var answer = MessageBox.Show(
-                $"Le lecteur {driveLetter} est verrouillé par BitLocker.\n\n" +
-                "Voulez-vous le déverrouiller avec une clé de récupération (48 chiffres) ?",
-                "BitLocker verrouillé",
-                MessageBoxButtons.YesNo,
+                $"Le lecteur {letter} est verrouillé par BitLocker.\n\n" +
+                "Windows va ouvrir la fenêtre de déverrouillage native.\n" +
+                "Saisissez votre clé de récupération ou mot de passe dans cette fenêtre,\n" +
+                "puis cliquez OK ici pour rafraîchir l'état du lecteur.",
+                "BitLocker — Déverrouillage natif",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Information);
+
+            if (answer != DialogResult.OK) return;
+
+            // Ouvre la popup native Windows BitLocker — aucun droit admin requis
+            OpenBitLockerExplorerPrompt(letter);
+
+            // L'utilisateur saisit sa clé dans la fenêtre Windows ; on attend sa confirmation
+            MessageBox.Show(
+                $"Cliquez OK une fois que vous avez saisi votre clé dans la fenêtre Windows pour {letter}.\n\n" +
+                "La liste des lecteurs sera automatiquement actualisée.",
+                "Attente déverrouillage",
+                MessageBoxButtons.OK,
                 MessageBoxIcon.Question);
 
-            if (answer != DialogResult.Yes) return;
+            // Pause courte pour laisser Windows monter le volume
+            lblBitLockerStatus.Text = "Actualisation…";
+            await Task.Delay(800);
 
-            using var dlg = new BitLockerKeyDialog(driveLetter);
-            if (dlg.ShowDialog(this) != DialogResult.OK) return;
-
-            var recoveryKey = dlg.RecoveryKey;
-            if (string.IsNullOrWhiteSpace(recoveryKey)) return;
-
-            btnBitLocker.Enabled    = false;
-            lblBitLockerStatus.Text = $"\U0001f513 Déverrouillage de {driveLetter}…";
-            Log(rtbMigrationLog, $"Tentative de déverrouillage BitLocker de {driveLetter}…");
-
-            var (success, message) = await Task.Run(() =>
-                UnlockBitLockerWithRecoveryKey(driveLetter, recoveryKey));
-
-            if (success)
+            // Réévaluer l'état BitLocker du lecteur dans la combobox
+            for (int i = 0; i < cmbUSBDrives.Items.Count; i++)
             {
-                LogSuccess(rtbMigrationLog, $"{driveLetter} — Déverrouillé avec succès !");
-                MessageBox.Show(
-                    $"{driveLetter} a été déverrouillé avec succès.\nLes profils vont être rechargés.",
-                    "Déverrouillage réussi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadUSBDrives();
+                if (cmbUSBDrives.Items[i] is not USBDriveInfo d) continue;
+                if (!d.Letter.TrimEnd('\\').Equals(letter, StringComparison.OrdinalIgnoreCase)) continue;
+
+                var root = letter + "\\";
+                var newState = await Task.Run(() => GetBitLockerStatePowerShell(root));
+
+                // Si PowerShell ne répond pas, on infère d'après l'accessibilité
+                if (newState == BitLockerState.Unknown)
+                    newState = IsVolumeAccessible(root)
+                        ? BitLockerState.NotEncrypted
+                        : BitLockerState.Locked;
+
+                d.BitLocker = newState;
+                cmbUSBDrives.Items[i] = d;
+                break;
             }
-            else
-            {
-                LogError(rtbMigrationLog, $"Échec du déverrouillage : {message}");
-                MessageBox.Show(
-                    $"Impossible de déverrouiller {driveLetter}.\n\nErreur : {message}\n\n" +
-                    "Vérifiez que la clé est correcte (48 chiffres, groupes de 6 séparés par des tirets).",
-                    "Échec du déverrouillage", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                lblBitLockerStatus.Text = $"\U0001f512 {driveLetter} — Toujours verrouillé";
-            }
+
+            // Reload complet pour reconstruire HasUsers/UsersPath si le volume est maintenant accessible
+            LoadUSBDrives();
         }
 
         // ───────────────────────────────────────────────────────────────────
