@@ -406,7 +406,7 @@ namespace SaveRestoreGUI
             {
                 Text    = "\U0001f512 Déverrouiller ce disque (BitLocker)",
                 Height  = 34,
-                Visible = false,
+                Visible = true,
                 Role    = ButtonRole.Secondary
             };
             btnUnlockBitLocker.Click += (s, e) => BtnBitLocker_Click(s, e);
