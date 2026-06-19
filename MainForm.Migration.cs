@@ -209,10 +209,10 @@ namespace SaveRestoreGUI
 
                 return RunPowerShellInline(script).Trim() switch
                 {
-                    "OFF" => BitLockerState.NotEncrypted,
-                    "LOCKED" => BitLockerState.Locked,
+                    "OFF"     => BitLockerState.NotEncrypted,
+                    "LOCKED"  => BitLockerState.Locked,
                     "UNLOCKED" => BitLockerState.Unlocked,
-                    _ => BitLockerState.Unknown
+                    _         => BitLockerState.Unknown
                 };
             }
             catch { return BitLockerState.Unknown; }
@@ -253,7 +253,6 @@ namespace SaveRestoreGUI
         private static void OpenBitLockerControlPanel()
         {
             // Option 1 : Panneau de configuration → Chiffrement de lecteur BitLocker
-            // Chemin : Panneau de configuration\Système et sécurité\Chiffrement de lecteur BitLocker
             try
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -276,7 +275,7 @@ namespace SaveRestoreGUI
                 });
                 return;
             }
-            catch { /* ms-settings non disponible (édition Home sans BitLocker UI) */ }
+            catch { /* ms-settings non disponible */ }
 
             // Option 3 : message manuel
             MessageBox.Show(
@@ -348,10 +347,10 @@ namespace SaveRestoreGUI
         {
             (lblBitLockerStatus.Text, lblBitLockerStatus.ForeColor) = drive.BitLocker switch
             {
-                BitLockerState.Locked      => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",              Color.OrangeRed),
-                BitLockerState.Unlocked    => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)",    Color.DarkOrange),
+                BitLockerState.Locked       => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",             Color.OrangeRed),
+                BitLockerState.Unlocked     => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)",   Color.DarkOrange),
                 BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",                   Color.SeaGreen),
-                _                          => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",          SystemColors.GrayText)
+                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",         SystemColors.GrayText)
             };
         }
 
@@ -442,15 +441,34 @@ namespace SaveRestoreGUI
                         break;
 
                     case BitLockerState.Unlocked:
+                        // Le lecteur est chiffré mais déverrouillé : propose d'ouvrir la gestion BitLocker
                         LogWarning(rtbMigrationLog, $"{driveLetter} est chiffré (BitLocker actif, déverrouillé).");
-                        MessageBox.Show(
-                            $"{driveLetter} est chiffré mais déverrouillé.\n" +
-                            "Vous pouvez migrer les données normalement.",
-                            "BitLocker actif", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        var openManage = MessageBox.Show(
+                            $"{driveLetter} est chiffré par BitLocker mais déverrouillé.\n" +
+                            "Vous pouvez migrer les données normalement.\n\n" +
+                            "Souhaitez-vous ouvrir la gestion BitLocker\n" +
+                            "(désactiver le chiffrement, changer le mot de passe…) ?",
+                            "BitLocker actif — Déverrouillé",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Information);
+                        if (openManage == DialogResult.Yes)
+                            OpenBitLockerControlPanel();
                         break;
 
                     default:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} — état BitLocker indéterminé (module absent ?).");
+                        // État inconnu (module BitLocker absent ou PowerShell indisponible)
+                        LogWarning(rtbMigrationLog, $"{driveLetter} — État BitLocker indéterminé (module absent ?).");
+                        var openUnknown = MessageBox.Show(
+                            $"L'état BitLocker de {driveLetter} n'a pas pu être déterminé.\n\n" +
+                            "Cela peut indiquer que le module BitLocker est absent\n" +
+                            "ou que PowerShell n'est pas accessible.\n\n" +
+                            "Souhaitez-vous ouvrir le Panneau de configuration BitLocker\n" +
+                            "pour vérifier manuellement l'état du lecteur ?",
+                            "BitLocker — État inconnu",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning);
+                        if (openUnknown == DialogResult.Yes)
+                            OpenBitLockerControlPanel();
                         break;
                 }
             }
@@ -507,284 +525,30 @@ namespace SaveRestoreGUI
 
                 // Si PowerShell ne répond pas, on infère d'après l'accessibilité
                 if (newState == BitLockerState.Unknown)
-                    newState = IsVolumeAccessible(root)
-                        ? BitLockerState.NotEncrypted
-                        : BitLockerState.Locked;
+                    newState = IsVolumeAccessible(root) ? BitLockerState.Unlocked : BitLockerState.Locked;
 
                 d.BitLocker = newState;
                 cmbUSBDrives.Items[i] = d;
+
+                if (cmbUSBDrives.SelectedIndex == i)
+                {
+                    cmbUSBDrives.SelectedIndex = i;
+                    UpdateBitLockerLabel(d);
+                }
+
+                if (newState == BitLockerState.Unlocked || newState == BitLockerState.NotEncrypted)
+                {
+                    LogSuccess(rtbMigrationLog, $"{letter} déverrouillé avec succès.");
+                    // Recharger les profils si disponibles
+                    if (d.HasUsers)
+                        LoadProfiles(d);
+                }
+                else
+                {
+                    LogWarning(rtbMigrationLog, $"{letter} toujours verrouillé après tentative.");
+                }
                 break;
             }
-
-            // Reload complet pour reconstruire HasUsers/UsersPath si le volume est maintenant accessible
-            LoadUSBDrives();
-        }
-
-        // ───────────────────────────────────────────────────────────────────
-        //  MIGRATION
-        // ───────────────────────────────────────────────────────────────────
-        private async void BtnStartMigration_Click(object? _, EventArgs _1)
-        {
-            if (cmbUSBDrives.SelectedItem is not USBDriveInfo drive || !drive.HasUsers)
-            {
-                MessageBox.Show("Veuillez sélectionner un lecteur contenant un dossier Users.",
-                    "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (drive.BitLocker == BitLockerState.Locked)
-            {
-                MessageBox.Show(
-                    $"Le lecteur {drive.Letter} est verrouillé par BitLocker.\n" +
-                    "Déverrouillez-le d'abord via le bouton \U0001f512 Vérifier BitLocker.",
-                    "BitLocker verrouillé", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (lstProfiles.SelectedItem is not UserProfileItem profile)
-            {
-                MessageBox.Show("Veuillez sélectionner un profil utilisateur à migrer.",
-                    "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var result = MessageBox.Show(
-                $"Voulez-vous migrer les données du profil \u00ab {profile.Name} \u00bb vers le profil actuel ?\n\n" +
-                $"Source : {profile.Path}\n" +
-                $"Destination : {Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\n\n" +
-                "Mode fusion : les fichiers locaux plus récents seront conservés.",
-                "Confirmation",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (result != DialogResult.Yes) return;
-
-            rtbMigrationLog.Clear();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var ct = _cancellationTokenSource.Token;
-            var errorList = new List<string>();
-
-            SetControlsEnabled(false);
-
-            try
-            {
-                var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                _logFilePath = Path.Combine(userProfile, $"Migration_USB_{DateTime.Now:yyyyMMdd_HHmmss}.log");
-
-                var progress = new Progress<int>(UpdateProgress);
-
-                LogTitle(rtbMigrationLog, "Migration depuis USB");
-                LogInfo(rtbMigrationLog, $"Source : {profile.Path}");
-                LogInfo(rtbMigrationLog, $"Destination : {userProfile}");
-
-                var steps = new List<(string Name, Func<Task> Action)>();
-
-                if (chkMigrateDocuments.Checked) steps.Add(("Documents", () => MigrateStep(Path.Combine(profile.Path, "Documents"), Path.Combine(userProfile, "Documents"), "Documents", progress, errorList, ct)));
-                if (chkMigrateDesktop.Checked) steps.Add(("Bureau", () => MigrateStep(Path.Combine(profile.Path, "Desktop"), Path.Combine(userProfile, "Desktop"), "Bureau", progress, errorList, ct)));
-                if (chkMigrateDownloads.Checked) steps.Add(("Téléchargements", () => MigrateStep(Path.Combine(profile.Path, "Downloads"), Path.Combine(userProfile, "Downloads"), "Téléchargements", progress, errorList, ct)));
-                if (chkMigratePictures.Checked) steps.Add(("Images", () => MigrateStep(Path.Combine(profile.Path, "Pictures"), Path.Combine(userProfile, "Pictures"), "Images", progress, errorList, ct)));
-                if (chkMigrateMusic.Checked) steps.Add(("Musique", () => MigrateStep(Path.Combine(profile.Path, "Music"), Path.Combine(userProfile, "Music"), "Musique", progress, errorList, ct)));
-                if (chkMigrateVideos.Checked) steps.Add(("Vidéos", () => MigrateStep(Path.Combine(profile.Path, "Videos"), Path.Combine(userProfile, "Videos"), "Vidéos", progress, errorList, ct)));
-                if (chkMigrateSignatures.Checked) steps.Add(("Signatures Outlook", () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Signatures"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"), "Signatures Outlook", progress, errorList, ct)));
-                if (chkMigrateExcelMacros.Checked) steps.Add(("Macros Excel", () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Excel", "XLSTART"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"), "Macros Excel", progress, errorList, ct)));
-                if (chkMigrateTemplates.Checked) steps.Add(("Modèles Office", () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "Microsoft", "Templates"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"), "Modèles Office", progress, errorList, ct)));
-                if (chkMigrateSap.Checked) steps.Add(("SAP GUI", () => MigrateStep(Path.Combine(profile.Path, "AppData", "Roaming", "SAP"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"), "SAP GUI", progress, errorList, ct)));
-                if (chkMigratePublic.Checked) steps.Add(("Dossier Public", () => MigrateStep(Path.Combine(Path.GetPathRoot(profile.Path) ?? "", "Users", "Public"), Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments), "Dossier Public", progress, errorList, ct)));
-                if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook", () => MigrateOutlookDataAsync(profile.Path, rtbMigrationLog, ct)));
-                if (chkMigrateStickyNotes.Checked) steps.Add(("Sticky Notes", () => MigrateStickyNotesAsync(profile.Path, rtbMigrationLog, ct)));
-                if (chkMigrateEdgeProfile.Checked) steps.Add(("Profil Edge", () => MigrateEdgeProfileAsync(profile.Path, rtbMigrationLog, progress, errorList, ct)));
-                if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran", () => MigrateWallpaperAsync(profile.Path, rtbMigrationLog)));
-                if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => MigrateNetworkDrivesInfoAsync(profile.Path, rtbMigrationLog)));
-                if (chkMigrateOneNote.Checked) steps.Add(("OneNote (registre)", () => MigrateOneNoteAsync(profile.Path, rtbMigrationLog)));
-
-                int totalSteps = steps.Count;
-                int currentStep = 0;
-
-                foreach (var (name, action) in steps)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    currentStep++;
-                    UpdateStatus($"Migration {name} ({currentStep}/{totalSteps})");
-                    await action();
-                }
-
-                if (errorList.Count > 0)
-                {
-                    LogTitle(rtbMigrationLog, "Résumé des erreurs rencontrées");
-                    foreach (var err in errorList) LogWarning(rtbMigrationLog, err);
-                }
-
-                LogTitle(rtbMigrationLog, "Migration terminée");
-                UpdateStatus("Migration terminée avec succès");
-                ToastService.Show(this, "Migration terminée avec succès !", ToastKind.Success);
-                MessageBox.Show("Migration terminée avec succès !", "Succès",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (OperationCanceledException)
-            {
-                LogWarning(rtbMigrationLog, "Migration annulée par l'utilisateur.");
-                UpdateStatus("Migration annulée");
-            }
-            catch (Exception ex)
-            {
-                LogError(rtbMigrationLog, $"Erreur : {ex.Message}");
-                UpdateStatus("Erreur lors de la migration");
-                MessageBox.Show($"Erreur lors de la migration :\n{ex.Message}", "Erreur",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                SetControlsEnabled(true);
-                HideProgress();
-                _logFilePath = null;
-            }
-        }
-
-        // ── Helpers de migration ────────────────────────────────────────────────────────
-        private async Task MigrateStep(
-            string source, string destination, string name,
-            IProgress<int> progress, List<string> errorList, CancellationToken ct)
-        {
-            if (!Directory.Exists(source)) { LogWarning(rtbMigrationLog, $"{name} : source introuvable."); return; }
-            Log(rtbMigrationLog, $"Migration de {name}...");
-            var r = await FileService.CopyFolderAsync(source, destination, progress, null, ct, mergeMode: true);
-            foreach (var err in r.Errors) { LogError(rtbMigrationLog, $"Erreur copie {err}"); errorList.Add($"{name} : {err}"); }
-            LogSuccess(rtbMigrationLog, $"{name} : {r.Copied} fichiers migrés, {r.Skipped} ignorés — {FileService.FormatSize(r.TotalBytes)}");
-        }
-
-        private async Task MigrateOutlookDataAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
-        {
-            var pstLocations = new[]
-            {
-                Path.Combine(sourceProfilePath, "Documents", "Outlook Files"),
-                Path.Combine(sourceProfilePath, "Documents", "Fichiers Outlook"),
-                Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Outlook")
-            };
-
-            var pstFiles = pstLocations
-                .Where(Directory.Exists)
-                .SelectMany(loc => Directory.GetFiles(loc, "*.pst"))
-                .ToList();
-
-            if (pstFiles.Count > 0)
-            {
-                var pstDest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Outlook Files");
-                Directory.CreateDirectory(pstDest);
-                Log(rtb, $"Migration de {pstFiles.Count} fichier(s) PST...");
-                foreach (var pst in pstFiles)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var dest = Path.Combine(pstDest, Path.GetFileName(pst));
-                    if (!File.Exists(dest))
-                    {
-                        try
-                        {
-                            var size = new FileInfo(pst).Length;
-                            await Task.Run(() => File.Copy(pst, dest), ct);
-                            LogSuccess(rtb, $"PST migré : {Path.GetFileName(pst)} ({FileService.FormatSize(size)})");
-                        }
-                        catch (OperationCanceledException) { throw; }
-                        catch (Exception ex) { LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}"); }
-                    }
-                    else LogInfo(rtb, $"PST déjà présent : {Path.GetFileName(pst)}");
-                }
-            }
-            else LogInfo(rtb, "Aucun fichier PST trouvé.");
-
-            var roamCacheSrc = Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Outlook", "RoamCache");
-            if (Directory.Exists(roamCacheSrc))
-            {
-                var roamCacheDst = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", "Outlook", "RoamCache");
-                Directory.CreateDirectory(roamCacheDst);
-                var files = Directory.GetFiles(roamCacheSrc, "Stream_Autocomplete_*.dat");
-                foreach (var f in files)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    await Task.Run(() => File.Copy(f, Path.Combine(roamCacheDst, Path.GetFileName(f)), true), ct);
-                }
-                if (files.Length > 0) LogSuccess(rtb, $"Cache d'autosaisie migré ({files.Length} fichiers)");
-            }
-        }
-
-        private async Task MigrateStickyNotesAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
-        {
-            var src = Path.Combine(sourceProfilePath, "AppData", "Local", "Packages",
-                "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState", "plum.sqlite");
-            if (File.Exists(src))
-            {
-                var dst = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
-                Directory.CreateDirectory(dst);
-                await Task.Run(() => File.Copy(src, Path.Combine(dst, "plum.sqlite"), true), ct);
-                LogSuccess(rtb, "Sticky Notes migrés");
-            }
-            else LogInfo(rtb, "Pas de Sticky Notes à migrer.");
-        }
-
-        private async Task MigrateEdgeProfileAsync(
-            string sourceProfilePath, RichTextBox rtb,
-            IProgress<int> progress, List<string> errorList, CancellationToken ct)
-        {
-            if (System.Diagnostics.Process.GetProcessesByName("msedge").Length > 0)
-            { LogWarning(rtb, "Microsoft Edge est ouvert. Fermez-le avant de migrer le profil."); return; }
-
-            var src = Path.Combine(sourceProfilePath, "AppData", "Local", "Microsoft", "Edge", "User Data", "Default");
-            var dst = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Edge", "User Data", "Default");
-            await MigrateStep(src, dst, "Profil Edge", progress, errorList, ct);
-        }
-
-        private async Task MigrateWallpaperAsync(string sourceProfilePath, RichTextBox rtb)
-        {
-            await Task.Run(() =>
-            {
-                try
-                {
-                    var src = Path.Combine(sourceProfilePath, "AppData", "Roaming",
-                        "Microsoft", "Windows", "Themes", "TranscodedWallpaper");
-                    if (File.Exists(src))
-                    {
-                        var dst = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "Microsoft", "Windows", "Themes");
-                        Directory.CreateDirectory(dst);
-                        File.Copy(src, Path.Combine(dst, "TranscodedWallpaper"), true);
-                        LogSuccess(rtb, "Fond d'écran migré (visible après reconnexion)");
-                    }
-                    else LogInfo(rtb, "Pas de fond d'écran à migrer.");
-                }
-                catch (Exception ex) { LogError(rtb, $"Erreur fond d'écran : {ex.Message}"); }
-            });
-        }
-
-        private async Task MigrateNetworkDrivesInfoAsync(string sourceProfilePath, RichTextBox rtb)
-        {
-            await Task.Run(() =>
-            {
-                var f = Path.Combine(sourceProfilePath, "NetworkDrives.txt");
-                if (File.Exists(f))
-                {
-                    try
-                    {
-                        LogInfo(rtb, "Lecteurs réseau de l'ancien poste :");
-                        foreach (var line in File.ReadAllLines(f).Where(l => !string.IsNullOrWhiteSpace(l)))
-                            Log(rtb, $"   {line}");
-                        LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
-                    }
-                    catch (Exception ex) { LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}"); }
-                }
-                else LogInfo(rtb, "Pas de fichier de lecteurs réseau trouvé sur le profil source.");
-            });
-        }
-
-        private async Task MigrateOneNoteAsync(string sourceProfilePath, RichTextBox rtb)
-        {
-            Log(rtb, "Migration des clés de registre OneNote...");
-            await Task.Run(() =>
-            {
-                try { RegistryService.RestoreOneNoteKeys(sourceProfilePath, msg => LogInfo(rtb, msg)); }
-                catch (Exception ex) { LogError(rtb, $"Erreur OneNote : {ex.Message}"); }
-            });
         }
     }
 }
