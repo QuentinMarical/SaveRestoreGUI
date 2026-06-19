@@ -24,7 +24,7 @@ namespace SaveRestoreGUI
             public string UsersPath { get; init; } = "";
             public BitLockerState BitLocker { get; set; } = BitLockerState.Unknown;
 
-            public string ToString(string v)
+            public override string ToString()
             {
                 var sizeStr = Size > 0 ? FileService.FormatSize(Size) : "Inconnu";
                 var bde = BitLocker switch
@@ -247,13 +247,37 @@ namespace SaveRestoreGUI
 
         private static void OpenBitLockerExplorerPrompt(string driveLetter)
         {
-            var letter = driveLetter.TrimEnd('\\', ':').ToUpperInvariant() + ":";
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            // Option 1 : Paramètres Windows 10/11 → chiffrement de l'appareil / BitLocker
+            try
             {
-                FileName = "explorer.exe",
-                Arguments = letter,
-                UseShellExecute = true
-            });
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "ms-settings:deviceencryption",
+                    UseShellExecute = true
+                });
+                return;
+            }
+            catch { /* ms-settings non disponible (édition Home sans BitLocker UI) */ }
+
+            // Option 2 : Panneau de configuration classique — Chiffrement de lecteur BitLocker
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "control.exe",
+                    Arguments = "/name Microsoft.BitLockerDriveEncryption",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Impossible d'ouvrir la gestion BitLocker.\n{ex.Message}\n\n" +
+                    "Ouvrez manuellement : Panneau de configuration → Chiffrement de lecteur BitLocker",
+                    "BitLocker",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
         }
 
         private static string RunPowerShellInline(string script)
