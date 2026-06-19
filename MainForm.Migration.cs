@@ -64,19 +64,38 @@ namespace SaveRestoreGUI
                     .ToUpperInvariant();
 
                 var result = new List<USBDriveInfo>();
+                var seenLetters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 foreach (var drive in DriveInfo.GetDrives()
                     .Where(d => d.DriveType is DriveType.Removable or DriveType.Fixed))
                 {
                     var root = drive.Name.TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
                     if (root == currentRoot) continue;
-                    if (!drive.IsReady) continue;
 
+                    // ── Disque non prêt : peut être verrouillé par BitLocker
+                    if (!drive.IsReady)
+                    {
+                        var bdeState = GetBitLockerStatePowerShell(root + "\\");
+                        if (bdeState == BitLockerState.Locked)
+                        {
+                            result.Add(new USBDriveInfo
+                            {
+                                Letter    = root,
+                                Label     = "Volume verrouillé",
+                                BitLocker = BitLockerState.Locked
+                            });
+                            seenLetters.Add(root);
+                        }
+                        // Sinon lecteur vide/non formaté → skip silencieux
+                        continue;
+                    }
+
+                    // ── Disque prêt : vérifie la présence du dossier Users
                     var usersPath   = Path.Combine(drive.Name, "Users");
                     var windowsPath = Path.Combine(drive.Name, "Windows");
                     if (!Directory.Exists(usersPath)) continue;
 
-                    var bdeState = GetBitLockerStatePowerShell(root + "\\");
+                    var state = GetBitLockerStatePowerShell(root + "\\");
 
                     result.Add(new USBDriveInfo
                     {
@@ -86,14 +105,16 @@ namespace SaveRestoreGUI
                         HasUsers   = true,
                         HasWindows = Directory.Exists(windowsPath),
                         UsersPath  = usersPath,
-                        BitLocker  = bdeState
+                        BitLocker  = state
                     });
+                    seenLetters.Add(root);
                 }
 
+                // ── Fallback : lettres verrouillées détectées par PowerShell global
+                //    (cas où DriveInfo ne remonte pas le lecteur du tout)
                 foreach (var letter in GetLockedBitLockerLetters(currentRoot ?? "C:"))
                 {
-                    if (result.Any(d => d.Letter.Equals(letter, StringComparison.OrdinalIgnoreCase)))
-                        continue;
+                    if (seenLetters.Contains(letter)) continue;
                     result.Add(new USBDriveInfo
                     {
                         Letter    = letter,
