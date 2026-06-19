@@ -111,7 +111,6 @@ namespace SaveRestoreGUI
         private Label lblProfiles;
         private ListBox lstProfiles;
         private Label lblMigrationInfo;
-        private ModernButton btnBitLocker;
         private Label lblBitLockerStatus;
         private CardPanel cardMigrationOptions;
         private Label lblMigrationOptionsTitle;
@@ -428,14 +427,6 @@ namespace SaveRestoreGUI
                 Tag       = "secondary"
             };
 
-            btnBitLocker = new ModernButton
-            {
-                Text = "\U0001f512 Vérifier BitLocker",
-                Role = ButtonRole.Secondary,
-                Size = new Size(180, 32)
-            };
-            btnBitLocker.Click += BtnBitLocker_Click;
-
             lblBitLockerStatus = new Label
             {
                 Text      = "",
@@ -451,7 +442,6 @@ namespace SaveRestoreGUI
             cardMigrationSource.Controls.Add(btnUnlockBitLocker);
             cardMigrationSource.Controls.Add(lblProfiles);
             cardMigrationSource.Controls.Add(lstProfiles);
-            cardMigrationSource.Controls.Add(btnBitLocker);
             cardMigrationSource.Controls.Add(lblBitLockerStatus);
             cardMigrationSource.Controls.Add(lblMigrationInfo);
 
