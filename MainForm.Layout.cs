@@ -23,8 +23,8 @@ namespace SaveRestoreGUI
         // ── Carte options (checkboxes)
         private const int ChkLabelY    = 12;
         private const int ChkStartY    = 44;
-        private const int ChkStepY     = 32;
-        private const int ChkH         = 28;
+        private const int ChkMinH      = 22;   // hauteur minimale par case
+        private const int ChkRowGap    = 6;    // espacement vertical entre cases
         private const int ChkColGap    = 12;
         private const int BtnGapY      = 14;
         private const int CardPadBot   = 16;
@@ -200,6 +200,12 @@ namespace SaveRestoreGUI
             browse.SetBounds(InnerPad + txtW + ChkColGap, 36, browseW, 32);
         }
 
+        /// <summary>
+        /// Positionne les colonnes de checkboxes et les boutons Tout/Décocher.
+        /// La hauteur de chaque case est calculée dynamiquement d'après le texte
+        /// et la police réelle → les libellés longs ne sont plus coupés.
+        /// Retourne la hauteur totale calculée de la carte.
+        /// </summary>
         private static int LayoutOptionsCard(
             int cardWidth,
             ModernCheckBox[][] cols,
@@ -212,16 +218,50 @@ namespace SaveRestoreGUI
             int totalW   = colCount * colW + (colCount - 1) * ChkColGap;
             int startX   = InnerPad + Math.Max(0, (availW - totalW) / 2);
 
-            int maxRows = 0;
-            for (int c = 0; c < colCount; c++)
+            // Calcule la hauteur réelle de chaque case selon son texte et sa police.
+            // On mesure avec un padding horizontal de 20 px (case + espace texte).
+            static int MeasureChkHeight(ModernCheckBox chk, int width)
             {
-                int x = startX + c * (colW + ChkColGap);
-                maxRows = Math.Max(maxRows, cols[c].Length);
-                for (int r = 0; r < cols[c].Length; r++)
-                    cols[c][r].SetBounds(x, ChkStartY + r * ChkStepY, colW, ChkH);
+                var font    = chk.Font ?? SystemFonts.DefaultFont;
+                var maxSize = new Size(Math.Max(1, width - 20), 0);
+                var size    = TextRenderer.MeasureText(
+                    chk.Text,
+                    font,
+                    maxSize,
+                    TextFormatFlags.WordBreak | TextFormatFlags.NoPadding);
+                return Math.Max(ChkMinH, size.Height + 4);  // +4 px de respiration
             }
 
-            int lastChkBottom = ChkStartY + (maxRows - 1) * ChkStepY + ChkH;
+            // Applique AutoSize=false + alignement TopLeft sur toutes les cases
+            // pour que le texte multi-ligne s'affiche correctement.
+            foreach (var col in cols)
+                foreach (var chk in col)
+                {
+                    chk.AutoSize     = false;
+                    chk.CheckAlign   = ContentAlignment.TopLeft;
+                    chk.TextAlign    = ContentAlignment.TopLeft;
+                    chk.UseMnemonic  = false;
+                }
+
+            int globalMaxBottom = ChkStartY;
+
+            for (int c = 0; c < colCount; c++)
+            {
+                int x       = startX + c * (colW + ChkColGap);
+                int yOffset = ChkStartY;
+
+                for (int r = 0; r < cols[c].Length; r++)
+                {
+                    var chk = cols[c][r];
+                    int h   = MeasureChkHeight(chk, colW);
+                    chk.SetBounds(x, yOffset, colW, h);
+                    yOffset += h + ChkRowGap;
+                }
+
+                globalMaxBottom = Math.Max(globalMaxBottom, yOffset - ChkRowGap);
+            }
+
+            int lastChkBottom = globalMaxBottom;
 
             if (btnAll != null && btnNone != null)
             {

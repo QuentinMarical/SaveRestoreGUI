@@ -114,7 +114,7 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur détection disque : {ex.Message}");
+                LogError(rtbMigrationLog, $"Erreur détection disque : {ex.Message}");
             }
         }
 
@@ -135,15 +135,20 @@ namespace SaveRestoreGUI
 
                 return RunPowerShellInline(script).Trim() switch
                 {
-                    "OFF"     => BitLockerState.NotEncrypted,
-                    "LOCKED"  => BitLockerState.Locked,
+                    "OFF"      => BitLockerState.NotEncrypted,
+                    "LOCKED"   => BitLockerState.Locked,
                     "UNLOCKED" => BitLockerState.Unlocked,
-                    _         => BitLockerState.Unknown
+                    _          => BitLockerState.Unknown
                 };
             }
             catch { return BitLockerState.Unknown; }
         }
 
+        /// <summary>
+        /// Retourne les lettres de lecteur verrouillés par BitLocker sur cette machine,
+        /// en excluant le volume système (excludeRoot, ex : "C:").
+        /// Utilise Get-BitLockerVolume sans paramètre → scan TOUS les volumes.
+        /// </summary>
         private static List<string> GetLockedBitLockerLetters(string excludeRoot)
         {
             var letters = new List<string>();
@@ -164,7 +169,7 @@ namespace SaveRestoreGUI
                     letters.Add(root);
                 }
             }
-            catch { /* module BitLocker absent */ }
+            catch { /* module BitLocker absent — silencieux */ }
             return letters;
         }
 
@@ -184,7 +189,7 @@ namespace SaveRestoreGUI
                 var output = RunPowerShellInline(script);
                 return output.Trim() == "OK"
                     ? (true, "Déverrouillage réussi.")
-                    : (false, $"Réponse inattendue : {output.Trim()}");
+                    : (false, $"Réponse inattendue : {output.Trim()}");
             }
             catch (Exception ex) { return (false, ex.Message); }
         }
@@ -294,7 +299,7 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur chargement profils : {ex.Message}");
+                LogError(rtbMigrationLog, $"Erreur chargement profils : {ex.Message}");
                 lblMigrationInfo.Text = "Erreur lors du chargement des profils.";
             }
         }
@@ -302,20 +307,20 @@ namespace SaveRestoreGUI
         // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────
         private async void BtnBitLocker_Click(object? sender, EventArgs e)
         {
-            string driveLetter;
-            USBDriveInfo? selectedDrive;
+            // On n'analyse QUE le lecteur explicitement sélectionné.
+            // Le bouton ne fait jamais de fallback sur C: ou le volume système.
+            if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
+            {
+                MessageBox.Show(
+                    "Sélectionnez d'abord un lecteur dans la liste.\n" +
+                    "Si aucun disque n'apparaît, cliquez sur \U0001f504 pour actualiser.",
+                    "Aucun lecteur sélectionné",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
 
-            if (cmbUSBDrives.SelectedItem is USBDriveInfo drive)
-            {
-                selectedDrive = drive;
-                driveLetter   = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
-            }
-            else
-            {
-                selectedDrive = null;
-                driveLetter   = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))
-                                    ?.TrimEnd('\\') ?? "C:";
-            }
+            string driveLetter = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
 
             btnBitLocker.Enabled    = false;
             lblBitLockerStatus.Text = "Analyse en cours…";
@@ -325,24 +330,11 @@ namespace SaveRestoreGUI
             {
                 var state = await Task.Run(() => GetBitLockerStatePowerShell(driveLetter + "\\"));
 
-                if (selectedDrive != null)
-                {
-                    selectedDrive.BitLocker = state;
-                    var idx = cmbUSBDrives.SelectedIndex;
-                    cmbUSBDrives.Items[idx]    = selectedDrive;
-                    cmbUSBDrives.SelectedIndex = idx;
-                    UpdateBitLockerLabel(selectedDrive);
-                }
-                else
-                {
-                    lblBitLockerStatus.Text = state switch
-                    {
-                        BitLockerState.NotEncrypted => $"\u2705 {driveLetter} — Pas de chiffrement",
-                        BitLockerState.Unlocked     => $"\U0001f513 {driveLetter} — BitLocker actif (déverrouillé)",
-                        BitLockerState.Locked       => $"\U0001f512 {driveLetter} — BitLocker VERROUILLÉ",
-                        _                           => $"\u2139\ufe0f {driveLetter} — État inconnu"
-                    };
-                }
+                selectedDrive.BitLocker = state;
+                var idx = cmbUSBDrives.SelectedIndex;
+                cmbUSBDrives.Items[idx]    = selectedDrive;
+                cmbUSBDrives.SelectedIndex = idx;
+                UpdateBitLockerLabel(selectedDrive);
 
                 switch (state)
                 {
@@ -354,8 +346,7 @@ namespace SaveRestoreGUI
 
                     case BitLockerState.Locked:
                         LogWarning(rtbMigrationLog, $"{driveLetter} est verrouillé par BitLocker.");
-                        if (selectedDrive != null)
-                            await HandleBitLockerUnlockAsync(driveLetter);
+                        await HandleBitLockerUnlockAsync(driveLetter);
                         break;
 
                     case BitLockerState.Unlocked:
@@ -374,7 +365,7 @@ namespace SaveRestoreGUI
             catch (Exception ex)
             {
                 lblBitLockerStatus.Text = "\u274c Erreur lors de la vérification.";
-                LogError(rtbMigrationLog, $"BitLocker : {ex.Message}");
+                LogError(rtbMigrationLog, $"BitLocker : {ex.Message}");
             }
             finally
             {
@@ -387,7 +378,7 @@ namespace SaveRestoreGUI
         {
             var answer = MessageBox.Show(
                 $"Le lecteur {driveLetter} est verrouillé par BitLocker.\n\n" +
-                "Voulez-vous le déverrouiller avec une clé de récupération (48 chiffres) ?",
+                "Voulez-vous le déverrouiller avec une clé de récupération (48 chiffres) ?",
                 "BitLocker verrouillé",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -409,7 +400,7 @@ namespace SaveRestoreGUI
 
             if (success)
             {
-                LogSuccess(rtbMigrationLog, $"{driveLetter} — Déverrouillé avec succès !");
+                LogSuccess(rtbMigrationLog, $"{driveLetter} — Déverrouillé avec succès !");
                 MessageBox.Show(
                     $"{driveLetter} a été déverrouillé avec succès.\nLes profils vont être rechargés.",
                     "Déverrouillage réussi", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -417,9 +408,9 @@ namespace SaveRestoreGUI
             }
             else
             {
-                LogError(rtbMigrationLog, $"Échec du déverrouillage : {message}");
+                LogError(rtbMigrationLog, $"Échec du déverrouillage : {message}");
                 MessageBox.Show(
-                    $"Impossible de déverrouiller {driveLetter}.\n\nErreur : {message}\n\n" +
+                    $"Impossible de déverrouiller {driveLetter}.\n\nErreur : {message}\n\n" +
                     "Vérifiez que la clé est correcte (48 chiffres, groupes de 6 séparés par des tirets).",
                     "Échec du déverrouillage", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 lblBitLockerStatus.Text = $"\U0001f512 {driveLetter} — Toujours verrouillé";
@@ -456,9 +447,9 @@ namespace SaveRestoreGUI
 
             var result = MessageBox.Show(
                 $"Voulez-vous migrer les données du profil \u00ab {profile.Name} \u00bb vers le profil actuel ?\n\n" +
-                $"Source : {profile.Path}\n" +
-                $"Destination : {Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\n\n" +
-                "Mode fusion : les fichiers locaux plus récents seront conservés.",
+                $"Source : {profile.Path}\n" +
+                $"Destination : {Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\n\n" +
+                "Mode fusion : les fichiers locaux plus récents seront conservés.",
                 "Confirmation",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -480,8 +471,8 @@ namespace SaveRestoreGUI
                 var progress = new Progress<int>(UpdateProgress);
 
                 LogTitle(rtbMigrationLog, "Migration depuis USB");
-                LogInfo(rtbMigrationLog, $"Source : {profile.Path}");
-                LogInfo(rtbMigrationLog, $"Destination : {userProfile}");
+                LogInfo(rtbMigrationLog, $"Source : {profile.Path}");
+                LogInfo(rtbMigrationLog, $"Destination : {userProfile}");
 
                 var steps = new List<(string Name, Func<Task> Action)>();
 
@@ -522,8 +513,8 @@ namespace SaveRestoreGUI
 
                 LogTitle(rtbMigrationLog, "Migration terminée");
                 UpdateStatus("Migration terminée avec succès");
-                ToastService.Show(this, "Migration terminée avec succès !", ToastKind.Success);
-                MessageBox.Show("Migration terminée avec succès !", "Succès",
+                ToastService.Show(this, "Migration terminée avec succès !", ToastKind.Success);
+                MessageBox.Show("Migration terminée avec succès !", "Succès",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (OperationCanceledException)
@@ -533,9 +524,9 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur : {ex.Message}");
+                LogError(rtbMigrationLog, $"Erreur : {ex.Message}");
                 UpdateStatus("Erreur lors de la migration");
-                MessageBox.Show($"Erreur lors de la migration :\n{ex.Message}", "Erreur",
+                MessageBox.Show($"Erreur lors de la migration :\n{ex.Message}", "Erreur",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -551,11 +542,11 @@ namespace SaveRestoreGUI
             string source, string destination, string name,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
-            if (!Directory.Exists(source)) { LogWarning(rtbMigrationLog, $"{name} : source introuvable."); return; }
+            if (!Directory.Exists(source)) { LogWarning(rtbMigrationLog, $"{name} : source introuvable."); return; }
             Log(rtbMigrationLog, $"Migration de {name}...");
             var r = await FileService.CopyFolderAsync(source, destination, progress, null, ct, mergeMode: true);
-            foreach (var err in r.Errors) { LogError(rtbMigrationLog, $"Erreur copie {err}"); errorList.Add($"{name} : {err}"); }
-            LogSuccess(rtbMigrationLog, $"{name} : {r.Copied} fichiers migrés, {r.Skipped} ignorés — {FileService.FormatSize(r.TotalBytes)}");
+            foreach (var err in r.Errors) { LogError(rtbMigrationLog, $"Erreur copie {err}"); errorList.Add($"{name} : {err}"); }
+            LogSuccess(rtbMigrationLog, $"{name} : {r.Copied} fichiers migrés, {r.Skipped} ignorés — {FileService.FormatSize(r.TotalBytes)}");
         }
 
         private async Task MigrateOutlookDataAsync(string sourceProfilePath, RichTextBox rtb, CancellationToken ct)
@@ -587,12 +578,12 @@ namespace SaveRestoreGUI
                         {
                             var size = new FileInfo(pst).Length;
                             await Task.Run(() => File.Copy(pst, dest), ct);
-                            LogSuccess(rtb, $"PST migré : {Path.GetFileName(pst)} ({FileService.FormatSize(size)})");
+                            LogSuccess(rtb, $"PST migré : {Path.GetFileName(pst)} ({FileService.FormatSize(size)})");
                         }
                         catch (OperationCanceledException) { throw; }
-                        catch (Exception ex) { LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}"); }
+                        catch (Exception ex) { LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}"); }
                     }
-                    else LogInfo(rtb, $"PST déjà présent : {Path.GetFileName(pst)}");
+                    else LogInfo(rtb, $"PST déjà présent : {Path.GetFileName(pst)}");
                 }
             }
             else LogInfo(rtb, "Aucun fichier PST trouvé.");
@@ -659,7 +650,7 @@ namespace SaveRestoreGUI
                     }
                     else LogInfo(rtb, "Pas de fond d'écran à migrer.");
                 }
-                catch (Exception ex) { LogError(rtb, $"Erreur fond d'écran : {ex.Message}"); }
+                catch (Exception ex) { LogError(rtb, $"Erreur fond d'écran : {ex.Message}"); }
             });
         }
 
@@ -672,12 +663,12 @@ namespace SaveRestoreGUI
                 {
                     try
                     {
-                        LogInfo(rtb, "Lecteurs réseau de l'ancien poste :");
+                        LogInfo(rtb, "Lecteurs réseau de l'ancien poste :");
                         foreach (var line in File.ReadAllLines(f).Where(l => !string.IsNullOrWhiteSpace(l)))
                             Log(rtb, $"   {line}");
                         LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
                     }
-                    catch (Exception ex) { LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}"); }
+                    catch (Exception ex) { LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}"); }
                 }
                 else LogInfo(rtb, "Pas de fichier de lecteurs réseau trouvé sur le profil source.");
             });
@@ -689,7 +680,7 @@ namespace SaveRestoreGUI
             await Task.Run(() =>
             {
                 try { RegistryService.RestoreOneNoteKeys(sourceProfilePath, msg => LogInfo(rtb, msg)); }
-                catch (Exception ex) { LogError(rtb, $"Erreur OneNote : {ex.Message}"); }
+                catch (Exception ex) { LogError(rtb, $"Erreur OneNote : {ex.Message}"); }
             });
         }
     }
