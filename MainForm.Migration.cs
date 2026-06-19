@@ -553,8 +553,12 @@ namespace SaveRestoreGUI
                 ToastService.Show(this, "Migration terminée avec succès !", ToastKind.Success);
 
                 MessageBox.Show(
-                    $"Migration terminée avec succès !\n\nProfil source : {selectedProfile.Name}\nDest : {destProfile}",
-                    "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    $"Migration terminée avec succès !\n\n" +
+                    $"Profil migré : {selectedProfile.Name}\n" +
+                    $"Source       : {selectedDrive.Letter}",
+                    "Migration réussie",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
             catch (OperationCanceledException)
             {
@@ -563,157 +567,21 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur : {ex.Message}");
+                LogError(rtbMigrationLog, $"Erreur migration : {ex.Message}");
                 UpdateStatus("Erreur lors de la migration");
-                MessageBox.Show($"Erreur lors de la migration :\n{ex.Message}", "Erreur",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                MessageBox.Show(
+                    $"Une erreur est survenue :\n{ex.Message}",
+                    "Erreur de migration",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
                 SetControlsEnabled(true);
-                HideProgress();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
             }
-        }
-
-        // ── Helpers migration ─────────────────────────────────────────────────────────
-
-        private async Task MigrateFolderStep(string source, string destination, string name,
-            IProgress<int> progress, List<string> errorList, CancellationToken ct)
-        {
-            if (!Directory.Exists(source))
-            {
-                LogWarning(rtbMigrationLog, $"{name} : source introuvable ({source}).");
-                return;
-            }
-
-            Log(rtbMigrationLog, $"Migration {name}...");
-            var result = await FileService.CopyFolderAsync(source, destination, progress, null, ct);
-
-            foreach (var err in result.Errors)
-            {
-                LogError(rtbMigrationLog, $"Erreur copie {err}");
-                errorList.Add($"{name} : {err}");
-            }
-
-            LogSuccess(rtbMigrationLog,
-                $"{name} : {result.Copied} fichiers copiés, {result.Skipped} ignorés — {FileService.FormatSize(result.TotalBytes)}");
-        }
-
-        private async Task MigrateStickyNotesAsync(string sourceProfile, CancellationToken ct)
-        {
-            var srcPath = Path.Combine(sourceProfile, "AppData", "Local",
-                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState", "plum.sqlite");
-
-            if (!File.Exists(srcPath))
-            {
-                LogInfo(rtbMigrationLog, "Aucune donnée Sticky Notes trouvée sur le profil source.");
-                return;
-            }
-
-            var destDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
-            Directory.CreateDirectory(destDir);
-            await Task.Run(() => File.Copy(srcPath, Path.Combine(destDir, "plum.sqlite"), true), ct);
-            LogSuccess(rtbMigrationLog, "Sticky Notes migrés.");
-        }
-
-        private async Task MigrateOutlookAsync(string sourceProfile, CancellationToken ct)
-        {
-            var srcOutlook = Path.Combine(sourceProfile, "AppData", "Local", "Microsoft", "Outlook");
-            if (!Directory.Exists(srcOutlook))
-            {
-                LogInfo(rtbMigrationLog, "Aucun dossier Outlook trouvé sur le profil source.");
-                return;
-            }
-
-            var pstFiles = Directory.GetFiles(srcOutlook, "*.pst", SearchOption.AllDirectories);
-            if (pstFiles.Length == 0)
-            {
-                LogInfo(rtbMigrationLog, "Aucun fichier PST trouvé.");
-                return;
-            }
-
-            var destOutlook = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Outlook");
-            Directory.CreateDirectory(destOutlook);
-
-            foreach (var pst in pstFiles)
-            {
-                ct.ThrowIfCancellationRequested();
-                var dest = Path.Combine(destOutlook, Path.GetFileName(pst));
-                try
-                {
-                    var size = new FileInfo(pst).Length;
-                    Log(rtbMigrationLog, $"Copie PST {Path.GetFileName(pst)} ({FileService.FormatSize(size)})...");
-                    await Task.Run(() => File.Copy(pst, dest, true), ct);
-                    LogSuccess(rtbMigrationLog, $"PST migré : {Path.GetFileName(pst)}");
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    LogError(rtbMigrationLog, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}");
-                }
-            }
-        }
-
-        private async Task MigrateWallpaperAsync(string sourceProfile)
-        {
-            await Task.Run(() =>
-            {
-                try
-                {
-                    var candidates = new[]
-                    {
-                        Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Windows", "Themes", "TranscodedWallpaper"),
-                        Path.Combine(sourceProfile, "AppData", "Local",   "Microsoft", "Windows", "Themes", "TranscodedWallpaper")
-                    };
-
-                    var found = candidates.FirstOrDefault(File.Exists);
-                    if (found == null)
-                    {
-                        LogInfo(rtbMigrationLog, "Aucun fond d'écran trouvé sur le profil source.");
-                        return;
-                    }
-
-                    var destDir = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "Microsoft", "Windows", "Themes");
-                    Directory.CreateDirectory(destDir);
-                    File.Copy(found, Path.Combine(destDir, "TranscodedWallpaper"), true);
-                    LogSuccess(rtbMigrationLog, "Fond d'écran migré.");
-                }
-                catch (Exception ex)
-                {
-                    LogError(rtbMigrationLog, $"Erreur fond d'écran : {ex.Message}");
-                }
-            });
-        }
-
-        private async Task MigrateNetworkDrivesAsync(string sourceProfile)
-        {
-            await Task.Run(() =>
-            {
-                try
-                {
-                    var txtPath = Path.Combine(sourceProfile, "NetworkDrives.txt");
-                    if (!File.Exists(txtPath))
-                    {
-                        LogInfo(rtbMigrationLog, "Aucun fichier NetworkDrives.txt trouvé sur le profil source.");
-                        return;
-                    }
-
-                    foreach (var line in File.ReadAllLines(txtPath))
-                        LogInfo(rtbMigrationLog, $"Lecteur réseau détecté (source) : {line}");
-
-                    LogInfo(rtbMigrationLog, "Les lecteurs réseau doivent être remappés manuellement ou via GPO.");
-                }
-                catch (Exception ex)
-                {
-                    LogError(rtbMigrationLog, $"Erreur lecteurs réseau : {ex.Message}");
-                }
-            });
         }
 
         // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────
@@ -722,143 +590,79 @@ namespace SaveRestoreGUI
             if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
             {
                 MessageBox.Show(
-                    "Sélectionnez d'abord un lecteur dans la liste.\n" +
-                    "Si aucun disque n'apparaît, cliquez sur \U0001f504 pour actualiser.",
+                    "Veuillez d'abord sélectionner un lecteur dans la liste.",
                     "Aucun lecteur sélectionné",
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    MessageBoxIcon.Warning);
                 return;
             }
 
-            string driveLetter = selectedDrive.Letter.TrimEnd('\\', ':') + ":";
-
-            btnBitLocker.Enabled = false;
-            lblBitLockerStatus.Text = "Analyse en cours…";
-            LogTitle(rtbMigrationLog, $"BitLocker — {driveLetter}");
-
-            try
+            if (selectedDrive.BitLocker == BitLockerState.Locked)
             {
-                var state = await Task.Run(() => GetBitLockerStatePowerShell(driveLetter + "\\"));
+                // Ouverture directe de Gérer BitLocker — sans popup intermédiaire
+                OpenBitLockerControlPanel();
 
-                selectedDrive.BitLocker = state;
-                var idx = cmbUSBDrives.SelectedIndex;
-                cmbUSBDrives.Items[idx] = selectedDrive;
-                cmbUSBDrives.SelectedIndex = idx;
+                // Attente silencieuse que l'utilisateur déverrouille, puis rafraîchissement auto
+                await HandleBitLockerUnlockAsync(selectedDrive);
+            }
+            else
+            {
+                // Lecteur non verrouillé : simple rafraîchissement de l'état
+                var root = selectedDrive.Letter + "\\";
+                selectedDrive.BitLocker = GetBitLockerStatePowerShell(root);
                 UpdateBitLockerLabel(selectedDrive);
 
-                switch (state)
-                {
-                    case BitLockerState.NotEncrypted:
-                        LogSuccess(rtbMigrationLog, $"{driveLetter} — Pas de chiffrement BitLocker actif.");
-                        MessageBox.Show($"{driveLetter} n'est pas chiffré par BitLocker.",
-                            "BitLocker", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        break;
-
-                    case BitLockerState.Locked:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} est verrouillé par BitLocker.");
-                        await HandleBitLockerUnlockAsync(driveLetter);
-                        break;
-
-                    case BitLockerState.Unlocked:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} est chiffré (BitLocker actif, déverrouillé).");
-                        var openManage = MessageBox.Show(
-                            $"{driveLetter} est chiffré par BitLocker mais déverrouillé.\n" +
-                            "Vous pouvez migrer les données normalement.\n\n" +
-                            "Souhaitez-vous ouvrir la gestion BitLocker\n" +
-                            "(désactiver le chiffrement, changer le mot de passe…) ?",
-                            "BitLocker actif — Déverrouillé",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Information);
-                        if (openManage == DialogResult.Yes)
-                            OpenBitLockerControlPanel();
-                        break;
-
-                    default:
-                        LogWarning(rtbMigrationLog, $"{driveLetter} — État BitLocker indéterminé (module absent ?).");
-                        var openUnknown = MessageBox.Show(
-                            $"L'état BitLocker de {driveLetter} n'a pas pu être déterminé.\n\n" +
-                            "Cela peut indiquer que le module BitLocker est absent\n" +
-                            "ou que PowerShell n'est pas accessible.\n\n" +
-                            "Souhaitez-vous ouvrir le Panneau de configuration BitLocker\n" +
-                            "pour vérifier manuellement l'état du lecteur ?",
-                            "BitLocker — État inconnu",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Warning);
-                        if (openUnknown == DialogResult.Yes)
-                            OpenBitLockerControlPanel();
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                lblBitLockerStatus.Text = "\u274c Erreur lors de la vérification.";
-                LogError(rtbMigrationLog, $"BitLocker : {ex.Message}");
-            }
-            finally
-            {
-                btnBitLocker.Enabled = true;
+                if (selectedDrive.BitLocker != BitLockerState.Locked && selectedDrive.HasUsers)
+                    LoadProfiles(selectedDrive);
             }
         }
 
-        // ── Déverrouillage BitLocker ────────────────────────────────────────────────
-        private async Task HandleBitLockerUnlockAsync(string driveLetter)
+        /// <summary>
+        /// Attend que le disque soit déverrouillé (polling toutes les 2 s, max 5 min)
+        /// puis recharge automatiquement la liste des profils.
+        /// </summary>
+        private async Task HandleBitLockerUnlockAsync(USBDriveInfo drive)
         {
-            var letter = driveLetter.TrimEnd('\\', ':').ToUpperInvariant() + ":";
+            const int pollIntervalMs = 2000;
+            const int maxAttempts    = 150; // 5 minutes
 
-            var answer = MessageBox.Show(
-                $"Le lecteur {letter} est verrouillé par BitLocker.\n\n" +
-                "Le Panneau de configuration BitLocker va s'ouvrir.\n" +
-                "Déverrouillez le lecteur depuis cette fenêtre,\n" +
-                "puis cliquez OK ici pour rafraîchir l'état du lecteur.",
-                "BitLocker — Déverrouillage",
-                MessageBoxButtons.OKCancel,
-                MessageBoxIcon.Information);
-
-            if (answer != DialogResult.OK) return;
-
-            OpenBitLockerControlPanel();
-
-            MessageBox.Show(
-                $"Cliquez OK une fois que vous avez déverrouillé {letter} dans le Panneau de configuration.\n\n" +
-                "La liste des lecteurs sera automatiquement actualisée.",
-                "Attente déverrouillage",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Question);
-
-            lblBitLockerStatus.Text = "Actualisation…";
-            await Task.Delay(800);
-
-            for (int i = 0; i < cmbUSBDrives.Items.Count; i++)
+            for (int i = 0; i < maxAttempts; i++)
             {
-                if (cmbUSBDrives.Items[i] is not USBDriveInfo d) continue;
-                if (!d.Letter.TrimEnd('\\').Equals(letter, StringComparison.OrdinalIgnoreCase)) continue;
+                await Task.Delay(pollIntervalMs);
 
-                var root     = letter + "\\";
-                var newState = await Task.Run(() => GetBitLockerStatePowerShell(root));
+                var newState = GetBitLockerStatePowerShell(drive.Letter + "\\");
 
-                if (newState == BitLockerState.Unknown)
-                    newState = IsVolumeAccessible(root) ? BitLockerState.Unlocked : BitLockerState.Locked;
-
-                d.BitLocker = newState;
-                cmbUSBDrives.Items[i] = d;
-
-                if (cmbUSBDrives.SelectedIndex == i)
+                if (newState != BitLockerState.Locked)
                 {
-                    cmbUSBDrives.SelectedIndex = i;
-                    UpdateBitLockerLabel(d);
-                }
+                    drive.BitLocker  = newState;
+                    drive.BitLocker  = IsVolumeAccessible(drive.Letter + "\\")
+                        ? newState
+                        : BitLockerState.Locked;
 
-                if (newState == BitLockerState.Unlocked || newState == BitLockerState.NotEncrypted)
-                {
-                    LogSuccess(rtbMigrationLog, $"{letter} déverrouillé avec succès.");
-                    if (d.HasUsers) LoadProfiles(d);
+                    if (drive.BitLocker != BitLockerState.Locked)
+                    {
+                        // Recharge complète pour récupérer label, taille, UsersPath
+                        LoadUSBDrives();
+
+                        // Resélectionner la même lettre si possible
+                        for (int idx = 0; idx < cmbUSBDrives.Items.Count; idx++)
+                        {
+                            if (cmbUSBDrives.Items[idx] is USBDriveInfo d &&
+                                d.Letter.Equals(drive.Letter, StringComparison.OrdinalIgnoreCase))
+                            {
+                                cmbUSBDrives.SelectedIndex = idx;
+                                break;
+                            }
+                        }
+
+                        Log(rtbMigrationLog, $"\U0001f513 {drive.Letter} déverrouillé — profils rechargés.");
+                        return;
+                    }
                 }
-                else
-                {
-                    LogWarning(rtbMigrationLog, $"{letter} toujours verrouillé après tentative.");
-                }
-                break;
             }
+
+            // Timeout : l'utilisateur n'a pas déverrouillé dans les 5 minutes
+            Log(rtbMigrationLog, $"\u26a0\ufe0f Délai dépassé — {drive.Letter} toujours verrouillé.");
         }
     }
 }
