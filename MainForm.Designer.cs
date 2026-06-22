@@ -111,6 +111,7 @@ namespace SaveRestoreGUI
         private Label lblProfiles;
         private ListBox lstProfiles;
         private Label lblMigrationInfo;
+        private ModernButton btnBitLocker;
         private Label lblBitLockerStatus;
         private CardPanel cardMigrationOptions;
         private Label lblMigrationOptionsTitle;
@@ -145,11 +146,11 @@ namespace SaveRestoreGUI
             SuspendLayout();
 
             // ── Fenêtre principale
-            Text          = "SaveRestore GUI";
-            Size          = new Size(1100, 780);
-            MinimumSize   = new Size(900, 620);
-            StartPosition = FormStartPosition.CenterScreen;
-            Font          = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
+            Text            = "SaveRestore GUI";
+            Size            = new Size(1100, 780);
+            MinimumSize     = new Size(900, 620);
+            StartPosition   = FormStartPosition.CenterScreen;
+            Font            = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
 
             // ── Sidebar
             sidebarPanel = new Panel { Dock = DockStyle.Left, Width = 220 };
@@ -159,9 +160,9 @@ namespace SaveRestoreGUI
             lblAppTitle.SetBounds(20, 20, 180, 30);
             lblAppSubtitle.SetBounds(20, 52, 180, 20);
 
-            navBackup    = new NavButton { Text = "\U0001f4be  Sauvegarde" };
-            navRestore   = new NavButton { Text = "\U0001f4c2  Restauration" };
-            navMigration = new NavButton { Text = "\U0001f504  Migration USB" };
+            navBackup    = new NavButton { Text = "\U0001f4be Sauvegarde" };
+            navRestore   = new NavButton { Text = "\U0001f4c2 Restauration" };
+            navMigration = new NavButton { Text = "\U0001f504 Migration USB" };
             navBackup.SetBounds(20, 100, 180, 44);
             navRestore.SetBounds(20, 152, 180, 44);
             navMigration.SetBounds(20, 204, 180, 44);
@@ -169,7 +170,7 @@ namespace SaveRestoreGUI
             navRestore.Click   += (s, e) => ShowPage(1);
             navMigration.Click += (s, e) => ShowPage(2);
 
-            btnToggleTheme = new ModernButton { Text = "\U0001f319  Thème sombre", AutoSize = true };
+            btnToggleTheme = new ModernButton { Text = "\U0001f319 Thème sombre", AutoSize = true };
             btnToggleTheme.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnToggleTheme.SetBounds(16, 680, 188, 34);
             btnToggleTheme.Click += (s, e) => { ThemeManager.Toggle(); ApplyTheme(); };
@@ -181,18 +182,18 @@ namespace SaveRestoreGUI
             });
 
             // ── Header
-            headerPanel     = new Panel { Dock = DockStyle.Top, Height = 72 };
-            lblPageTitle    = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
+            headerPanel    = new Panel { Dock = DockStyle.Top, Height = 72 };
+            lblPageTitle   = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
             lblPageSubtitle = new Label { Text = "", AutoSize = true, Tag = "secondary" };
             lblPageTitle.SetBounds(28, 14, 600, 28);
             lblPageSubtitle.SetBounds(28, 44, 700, 20);
             headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle });
 
             // ── Status bar
-            statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 32 };
-            statusLabel = new Label { Text = "Prêt", AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            statusPanel  = new Panel { Dock = DockStyle.Bottom, Height = 32 };
+            statusLabel  = new Label { Text = "Prêt", AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
             statusLabel.Padding = new Padding(12, 0, 0, 0);
-            progressBar = new ModernProgressBar { Dock = DockStyle.Right, Width = 200, Visible = false };
+            progressBar  = new ModernProgressBar { Dock = DockStyle.Right, Width = 200, Visible = false };
             statusPanel.Controls.AddRange(new Control[] { statusLabel, progressBar });
 
             // ── Content panel
@@ -217,12 +218,12 @@ namespace SaveRestoreGUI
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  Page Sauvegarde
+        // Page Sauvegarde
         // ═══════════════════════════════════════════════════════════════════
         private void BuildPageBackup()
         {
-            cardBackupDest = new CardPanel();
-            lblBackupPath  = new Label
+            cardBackupDest  = new CardPanel();
+            lblBackupPath   = new Label
             {
                 Text      = "Dossier de destination",
                 Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
@@ -234,8 +235,8 @@ namespace SaveRestoreGUI
             btnBrowseBackup.Click += BtnBrowseBackup_Click;
             cardBackupDest.Controls.AddRange(new Control[] { lblBackupPath, txtBackupPath, btnBrowseBackup });
 
-            cardBackupOptions    = new CardPanel();
-            lblBackupOptionsTitle = new Label
+            cardBackupOptions      = new CardPanel();
+            lblBackupOptionsTitle  = new Label
             {
                 Text      = "Éléments à sauvegarder",
                 Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
@@ -243,25 +244,25 @@ namespace SaveRestoreGUI
                 BackColor = Color.Transparent
             };
 
-            chkDocuments          = MakeCheck("\U0001f4c4 Documents", true);
-            chkDesktop            = MakeCheck("\U0001f5a5\ufe0f Bureau", true);
-            chkDownloads          = MakeCheck("\u2b07\ufe0f Téléchargements", true);
-            chkPictures           = MakeCheck("\U0001f5bc\ufe0f Images", true);
-            chkMusic              = MakeCheck("\U0001f3b5 Musique", true);
-            chkVideos             = MakeCheck("\U0001f3ac Vidéos", true);
-            chkOutlook            = MakeCheck("\U0001f4e7 Outlook (PST, profils)", true);
-            chkSignatures         = MakeCheck("\u270d\ufe0f Signatures Outlook", true);
-            chkStickyNotes        = MakeCheck("\U0001f4cc Sticky Notes", true);
-            chkEdgeProfile        = MakeCheck("\U0001f310 Profil Edge", true);
-            chkWallpaper          = MakeCheck("\U0001f5bc\ufe0f Fond d'écran", true);
-            chkNetworkDrives      = MakeCheck("\U0001f517 Lecteurs réseau", true);
-            chkOldProfile         = MakeCheck("\U0001f464 Détecter ancien profil", false);
-            chkTemplates          = MakeCheck("\U0001f4cb Modèles Office", true);
-            chkOneNote            = MakeCheck("\U0001f4d3 OneNote (registre)", true);
-            chkExcelMacros        = MakeCheck("\U0001f4ca Macros Excel (XLSTART)", true);
-            chkSap                = MakeCheck("\U0001f4bc SAP GUI", true);
-            chkPublic             = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
-            chkIpDesktopSoftphone = MakeCheck("\U0001f4de IP Desktop Softphone", false);
+            chkDocuments           = MakeCheck("\U0001f4c4 Documents", true);
+            chkDesktop             = MakeCheck("\U0001f5a5\ufe0f Bureau", true);
+            chkDownloads           = MakeCheck("\u2b07\ufe0f Téléchargements", true);
+            chkPictures            = MakeCheck("\U0001f5bc\ufe0f Images", true);
+            chkMusic               = MakeCheck("\U0001f3b5 Musique", true);
+            chkVideos              = MakeCheck("\U0001f3ac Vidéos", true);
+            chkOutlook             = MakeCheck("\U0001f4e7 Outlook (PST, profils)", true);
+            chkSignatures          = MakeCheck("\u270d\ufe0f Signatures Outlook", true);
+            chkStickyNotes         = MakeCheck("\U0001f4cc Sticky Notes", true);
+            chkEdgeProfile         = MakeCheck("\U0001f310 Profil Edge", true);
+            chkWallpaper           = MakeCheck("\U0001f5bc\ufe0f Fond d'écran", true);
+            chkNetworkDrives       = MakeCheck("\U0001f517 Lecteurs réseau", true);
+            chkOldProfile          = MakeCheck("\U0001f464 Détecter ancien profil", false);
+            chkTemplates           = MakeCheck("\U0001f4cb Modèles Office", true);
+            chkOneNote             = MakeCheck("\U0001f4d3 OneNote (registre)", true);
+            chkExcelMacros         = MakeCheck("\U0001f4ca Macros Excel (XLSTART)", true);
+            chkSap                 = MakeCheck("\U0001f4bc SAP GUI", true);
+            chkPublic              = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
+            chkIpDesktopSoftphone  = MakeCheck("\U0001f4de IP Desktop Softphone", false);
             chkIpDesktopSoftphone.Enabled = false;
 
             btnSelectAll   = new ModernButton { Text = "Tout cocher",   Role = ButtonRole.Secondary, Size = new Size(120, 34) };
@@ -279,9 +280,9 @@ namespace SaveRestoreGUI
                 btnSelectAll, btnDeselectAll
             });
 
-            btnStartBackup     = new ModernButton { Text = "\u25b6  Démarrer la sauvegarde",  Height = 44, Role = ButtonRole.Primary };
-            btnCancelBackup    = new ModernButton { Text = "\u2b1b  Annuler",                  Height = 44, Enabled = false };
-            btnExportBackupLog = new ModernButton { Text = "\U0001f4c4 Exporter le log",       Height = 34 };
+            btnStartBackup      = new ModernButton { Text = "\u25b6 Démarrer la sauvegarde", Height = 44, Role = ButtonRole.Primary };
+            btnCancelBackup     = new ModernButton { Text = "\u2b1b Annuler", Height = 44, Enabled = false };
+            btnExportBackupLog  = new ModernButton { Text = "\U0001f4c4 Exporter le log", Height = 34 };
             btnStartBackup.Click     += BtnStartBackup_Click;
             btnCancelBackup.Click    += (s, e) => CancelCurrentOperation(rtbBackupLog);
             btnExportBackupLog.Click += (s, e) => ExportLog(rtbBackupLog, $"Sauvegarde_{System.DateTime.Now:yyyyMMdd_HHmm}.txt");
@@ -296,24 +297,24 @@ namespace SaveRestoreGUI
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  Page Restauration
+        // Page Restauration
         // ═══════════════════════════════════════════════════════════════════
         private void BuildPageRestore()
         {
-            cardRestoreSource = new CardPanel();
-            lblRestorePath    = new Label
+            cardRestoreSource  = new CardPanel();
+            lblRestorePath     = new Label
             {
                 Text      = "Dossier source de la sauvegarde",
                 Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
                 AutoSize  = true,
                 BackColor = Color.Transparent
             };
-            txtRestorePath   = new TextBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
-            btnBrowseRestore = new ModernButton { Text = "Parcourir\u2026", Role = ButtonRole.Secondary, Size = new Size(120, 32) };
+            txtRestorePath    = new TextBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
+            btnBrowseRestore  = new ModernButton { Text = "Parcourir\u2026", Role = ButtonRole.Secondary, Size = new Size(120, 32) };
             btnBrowseRestore.Click += BtnBrowseRestore_Click;
             cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
 
-            cardRestoreOptions    = new CardPanel();
+            cardRestoreOptions     = new CardPanel();
             lblRestoreOptionsTitle = new Label
             {
                 Text      = "Éléments à restaurer",
@@ -339,7 +340,7 @@ namespace SaveRestoreGUI
             chkRestoreTemplates          = MakeCheck("\U0001f4cb Modèles Office", true);
             chkRestoreSap                = MakeCheck("\U0001f4bc SAP GUI", true);
             chkRestorePublic             = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
-            chkLaunchApps               = MakeCheck("\U0001f680 Lancer les applications", true);
+            chkLaunchApps                = MakeCheck("\U0001f680 Lancer les applications", true);
             chkRestoreIpDesktopSoftphone = MakeCheck("\U0001f4de IP Desktop Softphone", false);
             chkRestoreIpDesktopSoftphone.Enabled = false;
 
@@ -358,9 +359,9 @@ namespace SaveRestoreGUI
                 btnRestoreSelectAll, btnRestoreDeselectAll
             });
 
-            btnStartRestore     = new ModernButton { Text = "\u25b6  Démarrer la restauration", Height = 44, Role = ButtonRole.Primary };
-            btnCancelRestore    = new ModernButton { Text = "\u2b1b  Annuler",                   Height = 44, Enabled = false };
-            btnExportRestoreLog = new ModernButton { Text = "\U0001f4c4 Exporter le log",        Height = 34 };
+            btnStartRestore      = new ModernButton { Text = "\u25b6 Démarrer la restauration", Height = 44, Role = ButtonRole.Primary };
+            btnCancelRestore     = new ModernButton { Text = "\u2b1b Annuler", Height = 44, Enabled = false };
+            btnExportRestoreLog  = new ModernButton { Text = "\U0001f4c4 Exporter le log", Height = 34 };
             btnStartRestore.Click     += BtnStartRestore_Click;
             btnCancelRestore.Click    += (s, e) => CancelCurrentOperation(rtbRestoreLog);
             btnExportRestoreLog.Click += (s, e) => ExportLog(rtbRestoreLog, $"Restauration_{System.DateTime.Now:yyyyMMdd_HHmm}.txt");
@@ -375,7 +376,7 @@ namespace SaveRestoreGUI
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  Page Migration
+        // Page Migration
         // ═══════════════════════════════════════════════════════════════════
         private void BuildPageMigration()
         {
@@ -405,7 +406,7 @@ namespace SaveRestoreGUI
             {
                 Text    = "\U0001f512 Déverrouiller ce disque (BitLocker)",
                 Height  = 34,
-                Visible = true,
+                Visible = false,
                 Role    = ButtonRole.Secondary
             };
             btnUnlockBitLocker.Click += (s, e) => BtnBitLocker_Click(s, e);
@@ -427,6 +428,14 @@ namespace SaveRestoreGUI
                 Tag       = "secondary"
             };
 
+            btnBitLocker = new ModernButton
+            {
+                Text = "\U0001f512 Vérifier BitLocker",
+                Role = ButtonRole.Secondary,
+                Size = new Size(180, 32)
+            };
+            btnBitLocker.Click += BtnBitLocker_Click;
+
             lblBitLockerStatus = new Label
             {
                 Text      = "",
@@ -442,11 +451,12 @@ namespace SaveRestoreGUI
             cardMigrationSource.Controls.Add(btnUnlockBitLocker);
             cardMigrationSource.Controls.Add(lblProfiles);
             cardMigrationSource.Controls.Add(lstProfiles);
+            cardMigrationSource.Controls.Add(btnBitLocker);
             cardMigrationSource.Controls.Add(lblBitLockerStatus);
             cardMigrationSource.Controls.Add(lblMigrationInfo);
 
             // ── Carte options
-            cardMigrationOptions = new CardPanel();
+            cardMigrationOptions     = new CardPanel();
             lblMigrationOptionsTitle = new Label
             {
                 Text      = "Éléments à migrer (mode fusion : les fichiers plus récents sont conservés)",
@@ -455,23 +465,23 @@ namespace SaveRestoreGUI
                 BackColor = Color.Transparent
             };
 
-            chkMigrateDocuments          = MakeCheck("\U0001f4c4 Documents", true);
-            chkMigrateDesktop            = MakeCheck("\U0001f5a5\ufe0f Bureau", true);
-            chkMigrateDownloads          = MakeCheck("\u2b07\ufe0f Téléchargements", true);
-            chkMigratePictures           = MakeCheck("\U0001f5bc\ufe0f Images", true);
-            chkMigrateMusic              = MakeCheck("\U0001f3b5 Musique", true);
-            chkMigrateVideos             = MakeCheck("\U0001f3ac Vidéos", true);
-            chkMigrateOutlook            = MakeCheck("\U0001f4e7 Outlook (PST)", true);
-            chkMigrateSignatures         = MakeCheck("\u270d\ufe0f Signatures Outlook", true);
-            chkMigrateExcelMacros        = MakeCheck("\U0001f4ca Macros Excel (XLSTART)", true);
-            chkMigrateStickyNotes        = MakeCheck("\U0001f4cc Sticky Notes", true);
-            chkMigrateEdgeProfile        = MakeCheck("\U0001f310 Profil Edge", true);
-            chkMigrateWallpaper          = MakeCheck("\U0001f5bc\ufe0f Fond d'écran", true);
-            chkMigrateNetworkDrives      = MakeCheck("\U0001f517 Lecteurs réseau", true);
-            chkMigrateOneNote            = MakeCheck("\U0001f4d3 OneNote (registre)", true);
-            chkMigrateTemplates          = MakeCheck("\U0001f4cb Modèles Office", true);
-            chkMigrateSap                = MakeCheck("\U0001f4bc SAP GUI", true);
-            chkMigratePublic             = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
+            chkMigrateDocuments         = MakeCheck("\U0001f4c4 Documents", true);
+            chkMigrateDesktop           = MakeCheck("\U0001f5a5\ufe0f Bureau", true);
+            chkMigrateDownloads         = MakeCheck("\u2b07\ufe0f Téléchargements", true);
+            chkMigratePictures          = MakeCheck("\U0001f5bc\ufe0f Images", true);
+            chkMigrateMusic             = MakeCheck("\U0001f3b5 Musique", true);
+            chkMigrateVideos            = MakeCheck("\U0001f3ac Vidéos", true);
+            chkMigrateOutlook           = MakeCheck("\U0001f4e7 Outlook (PST)", true);
+            chkMigrateSignatures        = MakeCheck("\u270d\ufe0f Signatures Outlook", true);
+            chkMigrateExcelMacros       = MakeCheck("\U0001f4ca Macros Excel (XLSTART)", true);
+            chkMigrateStickyNotes       = MakeCheck("\U0001f4cc Sticky Notes", true);
+            chkMigrateEdgeProfile       = MakeCheck("\U0001f310 Profil Edge", true);
+            chkMigrateWallpaper         = MakeCheck("\U0001f5bc\ufe0f Fond d'écran", true);
+            chkMigrateNetworkDrives     = MakeCheck("\U0001f517 Lecteurs réseau", true);
+            chkMigrateOneNote           = MakeCheck("\U0001f4d3 OneNote (registre)", true);
+            chkMigrateTemplates         = MakeCheck("\U0001f4cb Modèles Office", true);
+            chkMigrateSap               = MakeCheck("\U0001f4bc SAP GUI", true);
+            chkMigratePublic            = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
             chkMigrateIpDesktopSoftphone = MakeCheck("\U0001f4de IP Desktop Softphone", false);
             chkMigrateIpDesktopSoftphone.Enabled = false;
 
@@ -490,9 +500,9 @@ namespace SaveRestoreGUI
                 btnMigrateSelectAll, btnMigrateDeselectAll
             });
 
-            btnStartMigration     = new ModernButton { Text = "\u25b6  Démarrer la migration", Height = 44, Role = ButtonRole.Primary };
-            btnCancelMigration    = new ModernButton { Text = "\u2b1b  Annuler",                Height = 44, Enabled = false };
-            btnExportMigrationLog = new ModernButton { Text = "\U0001f4c4 Exporter le log",     Height = 34 };
+            btnStartMigration      = new ModernButton { Text = "\u25b6 Démarrer la migration", Height = 44, Role = ButtonRole.Primary };
+            btnCancelMigration     = new ModernButton { Text = "\u2b1b Annuler", Height = 44, Enabled = false };
+            btnExportMigrationLog  = new ModernButton { Text = "\U0001f4c4 Exporter le log", Height = 34 };
             btnStartMigration.Click     += BtnStartMigration_Click;
             btnCancelMigration.Click    += (s, e) => CancelCurrentOperation(rtbMigrationLog);
             btnExportMigrationLog.Click += (s, e) => ExportLog(rtbMigrationLog, $"Migration_{System.DateTime.Now:yyyyMMdd_HHmm}.txt");
