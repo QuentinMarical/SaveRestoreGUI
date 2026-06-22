@@ -87,7 +87,7 @@ namespace SaveRestoreGUI
         /// </summary>
         private async Task MigrateOutlookAsync(string sourceProfile, CancellationToken ct)
         {
-            // ── 1. Fichiers PST ───────────────────────────────────────────────
+            // ── 1. Fichiers PST ────────────────────────────────────────────────────────────
             var pstDirs = new[]
             {
                 Path.Combine(sourceProfile, "Documents", "Outlook Files"),
@@ -135,7 +135,7 @@ namespace SaveRestoreGUI
                 LogInfo(rtbMigrationLog, "  Fichier > Ouvrir et exporter > Ouvrir le fichier de données Outlook");
             }
 
-            // ── 2. Cache d'autocompltion ────────────────────────────────────────────
+            // ── 2. Cache d'autocompltion ───────────────────────────────────────────────────────────
             var roamSrc = Path.Combine(
                 sourceProfile, "AppData", "Local", "Microsoft", "Outlook", "RoamCache");
 
@@ -159,7 +159,7 @@ namespace SaveRestoreGUI
                         $"Cache autocompltion Outlook migré ({autocomplete.Length} fichier(s)).");
             }
 
-            // ── 3. Règles .rwz ───────────────────────────────────────────────
+            // ── 3. Règles .rwz ────────────────────────────────────────────────────────────────
             var outlookRoamSrc = Path.Combine(
                 sourceProfile, "AppData", "Roaming", "Microsoft", "Outlook");
 
@@ -250,8 +250,11 @@ namespace SaveRestoreGUI
         // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Lit la liste des lecteurs réseau depuis le registre du profil source
-        /// et affiche les chemins UNC dans le log pour recréation manuelle.
+        /// Lit la liste des lecteurs réseau sauvegardés et affiche les chemins UNC dans le log.
+        /// Ordre de recherche du fichier NetworkDrives.txt :
+        ///   1. Racine du drive USB (ex. E:\NetworkDrives.txt)
+        ///   2. Dossier parent du profil source (ex. E:\Backup\NetworkDrives.txt)
+        ///   3. Dossier du profil source lui-même
         /// </summary>
         private async Task MigrateNetworkDrivesAsync(string sourceProfile)
         {
@@ -259,10 +262,30 @@ namespace SaveRestoreGUI
             {
                 try
                 {
-                    var networkDrivesFile = Path.Combine(sourceProfile, "..", "NetworkDrives.txt");
-                    networkDrivesFile = Path.GetFullPath(networkDrivesFile);
+                    // #4 — Cherche NetworkDrives.txt dans cet ordre de priorité :
+                    //   1. Racine du drive USB (E:\ par exemple)
+                    //   2. Dossier parent du profil (E:\Backup\)
+                    //   3. Dossier du profil lui-même
+                    var driveRoot     = Path.GetPathRoot(sourceProfile) ?? sourceProfile;
+                    var parentFolder  = Path.GetDirectoryName(sourceProfile) ?? sourceProfile;
 
-                    if (File.Exists(networkDrivesFile))
+                    string? networkDrivesFile = null;
+                    foreach (var candidate in new[]
+                    {
+                        Path.Combine(driveRoot,    "NetworkDrives.txt"),
+                        Path.Combine(parentFolder, "NetworkDrives.txt"),
+                        Path.Combine(sourceProfile,"NetworkDrives.txt"),
+                    })
+                    {
+                        if (File.Exists(candidate))
+                        {
+                            networkDrivesFile = candidate;
+                            LogInfo(rtbMigrationLog, $"NetworkDrives.txt trouvé : {candidate}");
+                            break;
+                        }
+                    }
+
+                    if (networkDrivesFile != null)
                     {
                         var lines = File.ReadAllLines(networkDrivesFile)
                             .Where(l => !string.IsNullOrWhiteSpace(l))
@@ -279,6 +302,7 @@ namespace SaveRestoreGUI
                         }
                     }
 
+                    // Fallback : lecteurs actuellement montés via WMI
                     var mapped = new List<string>();
                     using var searcher = new System.Management.ManagementObjectSearcher(
                         "SELECT * FROM Win32_MappedLogicalDisk");
@@ -326,7 +350,7 @@ namespace SaveRestoreGUI
             {
                 try
                 {
-                    // ── 1. Copie du dossier AppData\Roaming\Microsoft\OneNote ───────
+                    // ── 1. Copie du dossier AppData\Roaming\Microsoft\OneNote ───────────
                     var oneNoteSrc = Path.Combine(
                         sourceProfile, "AppData", "Roaming", "Microsoft", "OneNote");
                     var oneNoteDest = Path.Combine(
@@ -343,7 +367,7 @@ namespace SaveRestoreGUI
                         LogInfo(rtbMigrationLog, "OneNote : aucun dossier de configuration trouvé dans le profil source.");
                     }
 
-                    // ── 2. Import des clés de registre depuis ntuser.dat ─────────
+                    // ── 2. Import des clés de registre depuis ntuser.dat ──────────────
                     var ntUserDat = Path.Combine(sourceProfile, "NTUSER.DAT");
                     if (!File.Exists(ntUserDat))
                     {
