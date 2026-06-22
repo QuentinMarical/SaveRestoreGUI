@@ -319,6 +319,12 @@ namespace SaveRestoreGUI
             }
         }
 
+        /// <summary>
+        /// Sauvegarde le profil Edge.
+        /// Si msedge.exe tourne au moment de la sauvegarde, les processus sont tués
+        /// (arbre complet) afin de libérer les fichiers du profil, la copie est réalisée,
+        /// puis Edge est relancé uniquement s'il était ouvert avant.
+        /// </summary>
         private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -326,10 +332,74 @@ namespace SaveRestoreGUI
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Edge", "User Data", "Default");
 
+            // ── 1. Détection Edge ────────────────────────────────────────────────────
+            var edgeProcesses = System.Diagnostics.Process.GetProcessesByName("msedge");
+            bool edgeWasRunning = edgeProcesses.Length > 0;
+
+            if (edgeWasRunning)
+            {
+                LogInfo(rtb, $"Edge détecté ({edgeProcesses.Length} processus) — fermeture avant copie...");
+
+                // ── 2. Kill de l'arbre complet ───────────────────────────────────────
+                await Task.Run(() =>
+                {
+                    foreach (var proc in edgeProcesses)
+                    {
+                        try { proc.Kill(entireProcessTree: true); }
+                        catch { /* déjà terminé */ }
+                        finally { proc.Dispose(); }
+                    }
+                }, ct);
+
+                // ── 3. Attente libération des fichiers (max 5 s) ────────────────────
+                var deadline = DateTime.UtcNow.AddSeconds(5);
+                while (DateTime.UtcNow < deadline)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await Task.Delay(300, ct);
+                    if (System.Diagnostics.Process.GetProcessesByName("msedge").Length == 0)
+                        break;
+                }
+
+                LogInfo(rtb, "Edge fermé — démarrage de la copie du profil.");
+            }
+
+            // ── 4. Copie du profil ───────────────────────────────────────────────────
             await CopyStep(edgeDefault,
                 Path.Combine(backupRoot, "EdgeProfile"),
                 "Profil Edge",
                 rtb, progress, errorList, ct);
+
+            // ── 5. Relance Edge si besoin ────────────────────────────────────────────
+            if (edgeWasRunning)
+            {
+                await Task.Run(() =>
+                {
+                    // Cherche l'exécutable dans les emplacements standards
+                    var candidates = new[]
+                    {
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                            "Microsoft", "Edge", "Application", "msedge.exe"),
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                            "Microsoft", "Edge", "Application", "msedge.exe")
+                    };
+
+                    var edgeExe = candidates.FirstOrDefault(File.Exists);
+                    if (edgeExe != null)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName        = edgeExe,
+                            UseShellExecute = true
+                        });
+                        LogInfo(rtb, "Edge relancé.");
+                    }
+                    else
+                    {
+                        LogWarning(rtb, "Impossible de relancer Edge : exécutable introuvable.");
+                    }
+                }, CancellationToken.None); // on ne cancelle pas le relancement
+            }
         }
 
         private async Task BackupWallpaperAsync(string backupRoot, RichTextBox rtb)
