@@ -53,12 +53,19 @@ namespace SaveRestoreGUI.Services
             catch { return false; }
         }
 
-        /// <summary>Importe un fichier .reg dans le registre. Retourne true si réussi.</summary>
-        public static bool ImportRegFile(string regFilePath)
+        /// <summary>
+        /// Importe un fichier .reg dans le registre. Retourne true si réussi.
+        /// Le callback <paramref name="log"/> optionnel reçoit les messages de progression.
+        /// </summary>
+        public static bool ImportRegFile(string regFilePath, Action<string>? log = null)
         {
             try
             {
-                if (!File.Exists(regFilePath)) return false;
+                if (!File.Exists(regFilePath))
+                {
+                    log?.Invoke($"Fichier introuvable : {regFilePath}");
+                    return false;
+                }
                 using var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = "reg",
@@ -69,9 +76,19 @@ namespace SaveRestoreGUI.Services
                     RedirectStandardError = true
                 });
                 process!.WaitForExit(10000);
-                return process.ExitCode == 0;
+                bool success = process.ExitCode == 0;
+                if (!success)
+                {
+                    var err = process.StandardError.ReadToEnd().Trim();
+                    log?.Invoke($"reg import a retourné ExitCode={process.ExitCode}{(string.IsNullOrEmpty(err) ? "" : $" : {err}")}");
+                }
+                return success;
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                log?.Invoke($"Exception ImportRegFile : {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -177,7 +194,7 @@ namespace SaveRestoreGUI.Services
             var regFiles = Directory.GetFiles(restoreRoot, "OneNote_*.reg");
             foreach (var reg in regFiles)
             {
-                if (ImportRegFile(reg))
+                if (ImportRegFile(reg, log))
                     log($"Clés importées : {Path.GetFileName(reg)}");
                 else
                     log($"Échec import : {Path.GetFileName(reg)}");
@@ -186,7 +203,7 @@ namespace SaveRestoreGUI.Services
             var openNotebook = Path.Combine(restoreRoot, "OpenNotebook.reg");
             if (File.Exists(openNotebook))
             {
-                if (ImportRegFile(openNotebook))
+                if (ImportRegFile(openNotebook, log))
                     log("Clés OpenNotebook importées.");
                 else
                     log("Échec import OpenNotebook.reg.");
@@ -199,7 +216,7 @@ namespace SaveRestoreGUI.Services
             var sigFiles = Directory.GetFiles(restoreRoot, "Outlook_Signature_Settings_*.reg");
             foreach (var sig in sigFiles)
             {
-                if (ImportRegFile(sig))
+                if (ImportRegFile(sig, log))
                     log($"Paramètres signatures importés : {Path.GetFileName(sig)}");
             }
         }
