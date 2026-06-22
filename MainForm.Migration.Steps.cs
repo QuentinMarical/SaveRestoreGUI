@@ -9,9 +9,9 @@ namespace SaveRestoreGUI
     /// </summary>
     public partial class MainForm
     {
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  COPIE GÉNÉRIQUE DE DOSSIER (équivalent de CopyStep / RestoreStep)
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Copie <paramref name="source"/> vers <paramref name="destination"/>.
@@ -45,9 +45,9 @@ namespace SaveRestoreGUI
                 $"{name} : {result.Copied} fichier(s) migré(s), {result.Skipped} ignoré(s) — {FileService.FormatSize(result.TotalBytes)}");
         }
 
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  STICKY NOTES
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Migre la base Sticky Notes (plum.sqlite) depuis le profil USB.
@@ -77,17 +77,17 @@ namespace SaveRestoreGUI
             LogSuccess(rtbMigrationLog, "Sticky Notes migrés.");
         }
 
-        // ───────────────────────────────────────────────────────────────────
-        //  OUTLOOK (PST + autocomplétion + règles + boîtes partagées)
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
+        //  OUTLOOK (PST + autocompltion + règles + boîtes partagées)
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Migre les données Outlook depuis le profil USB :
-        /// fichiers PST, cache d'autocomplétion RoamCache et fichiers de règles .rwz.
+        /// fichiers PST, cache d'autocompltion RoamCache et fichiers de règles .rwz.
         /// </summary>
         private async Task MigrateOutlookAsync(string sourceProfile, CancellationToken ct)
         {
-            // ── 1. Fichiers PST ──────────────────────────────────────────
+            // ── 1. Fichiers PST ───────────────────────────────────────────────
             var pstDirs = new[]
             {
                 Path.Combine(sourceProfile, "Documents", "Outlook Files"),
@@ -135,7 +135,7 @@ namespace SaveRestoreGUI
                 LogInfo(rtbMigrationLog, "  Fichier > Ouvrir et exporter > Ouvrir le fichier de données Outlook");
             }
 
-            // ── 2. Cache d'autocomplétion ────────────────────────────────
+            // ── 2. Cache d'autocompltion ────────────────────────────────────────────
             var roamSrc = Path.Combine(
                 sourceProfile, "AppData", "Local", "Microsoft", "Outlook", "RoamCache");
 
@@ -156,10 +156,10 @@ namespace SaveRestoreGUI
 
                 if (autocomplete.Length > 0)
                     LogSuccess(rtbMigrationLog,
-                        $"Cache autocomplétion Outlook migré ({autocomplete.Length} fichier(s)).");
+                        $"Cache autocompltion Outlook migré ({autocomplete.Length} fichier(s)).");
             }
 
-            // ── 3. Règles .rwz ───────────────────────────────────────────
+            // ── 3. Règles .rwz ───────────────────────────────────────────────
             var outlookRoamSrc = Path.Combine(
                 sourceProfile, "AppData", "Roaming", "Microsoft", "Outlook");
 
@@ -189,9 +189,9 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  FOND D'ÉCRAN
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Migre le fond d'écran depuis le profil USB.
@@ -203,7 +203,6 @@ namespace SaveRestoreGUI
             {
                 try
                 {
-                    // Tentative via clé de registre de l'ancien profil (si accessible)
                     string? wallpaperPath = null;
                     try
                     {
@@ -213,7 +212,6 @@ namespace SaveRestoreGUI
                     }
                     catch { /* registre courant — pas celui du profil source */ }
 
-                    // TranscodedWallpaper dans le profil source
                     var transcoded = Path.Combine(
                         sourceProfile,
                         "AppData", "Roaming", "Microsoft", "Windows", "Themes",
@@ -247,15 +245,13 @@ namespace SaveRestoreGUI
             });
         }
 
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  LECTEURS RÉSEAU
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Lit la liste des lecteurs réseau depuis le registre du profil source
         /// et affiche les chemins UNC dans le log pour recréation manuelle.
-        /// (La recréation automatique nécessiterait d'impersonner l'utilisateur source,
-        ///  ce qui dépasse le périmètre de la migration locale.)
         /// </summary>
         private async Task MigrateNetworkDrivesAsync(string sourceProfile)
         {
@@ -263,7 +259,6 @@ namespace SaveRestoreGUI
             {
                 try
                 {
-                    // Recherche le fichier NetworkDrives.txt si une sauvegarde préalable existe
                     var networkDrivesFile = Path.Combine(sourceProfile, "..", "NetworkDrives.txt");
                     networkDrivesFile = Path.GetFullPath(networkDrivesFile);
 
@@ -284,7 +279,6 @@ namespace SaveRestoreGUI
                         }
                     }
 
-                    // Fallback : WMI sur le poste courant (lecteurs actuellement montés)
                     var mapped = new List<string>();
                     using var searcher = new System.Management.ManagementObjectSearcher(
                         "SELECT * FROM Win32_MappedLogicalDisk");
@@ -293,7 +287,7 @@ namespace SaveRestoreGUI
                         var letter       = drive["DeviceID"]?.ToString();
                         var providerName = drive["ProviderName"]?.ToString();
                         if (!string.IsNullOrEmpty(letter) && !string.IsNullOrEmpty(providerName))
-                            mapped.Add($"{letter} → {providerName}");
+                            mapped.Add($"{letter} \u2192 {providerName}");
                     }
 
                     if (mapped.Count > 0)
@@ -312,6 +306,202 @@ namespace SaveRestoreGUI
                     LogError(rtbMigrationLog, $"Erreur lecteurs réseau : {ex.Message}");
                 }
             });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  ONENOTE
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Migre la configuration OneNote depuis le profil USB :
+        /// <list type="number">
+        ///   <item>Copie le dossier AppData\Roaming\Microsoft\OneNote (cache + options).</item>
+        ///   <item>Importe les clés de registre OneNote depuis l'hive ntuser.dat du profil
+        ///         source via reg.exe /load + /export (si ntuser.dat accessible).</item>
+        /// </list>
+        /// </summary>
+        private async Task MigrateOneNoteAsync(string sourceProfile)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    // ── 1. Copie du dossier AppData\Roaming\Microsoft\OneNote ───────
+                    var oneNoteSrc = Path.Combine(
+                        sourceProfile, "AppData", "Roaming", "Microsoft", "OneNote");
+                    var oneNoteDest = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "Microsoft", "OneNote");
+
+                    if (Directory.Exists(oneNoteSrc))
+                    {
+                        CopyDirectoryRecursive(oneNoteSrc, oneNoteDest);
+                        LogSuccess(rtbMigrationLog, "OneNote : dossier de configuration migré.");
+                    }
+                    else
+                    {
+                        LogInfo(rtbMigrationLog, "OneNote : aucun dossier de configuration trouvé dans le profil source.");
+                    }
+
+                    // ── 2. Import des clés de registre depuis ntuser.dat ─────────
+                    var ntUserDat = Path.Combine(sourceProfile, "NTUSER.DAT");
+                    if (!File.Exists(ntUserDat))
+                    {
+                        LogInfo(rtbMigrationLog, "OneNote : ntuser.dat inaccessible — import registre ignoré.");
+                        return;
+                    }
+
+                    var tempHive    = $"HKLM\\SAVERESTORE_MIGRATE_{Guid.NewGuid():N}";
+                    var tempRegFile = Path.Combine(Path.GetTempPath(), $"onenote_migrate_{Guid.NewGuid():N}.reg");
+
+                    try
+                    {
+                        // Charger le hive temporaire
+                        RunRegExe($"load \"{tempHive}\" \"{ntUserDat}\"");
+
+                        // Exporter la branche OneNote
+                        var oneNoteHiveKey = $"{tempHive}\\Software\\Microsoft\\Office";
+                        RunRegExe($"export \"{oneNoteHiveKey}\" \"{tempRegFile}\" /y");
+
+                        if (File.Exists(tempRegFile))
+                        {
+                            // Filtrer pour ne garder que les clés OneNote, remplacer le chemin du hive
+                            var regContent = File.ReadAllText(tempRegFile);
+                            regContent = regContent.Replace(
+                                tempHive.Replace("\\", "\\\\"),
+                                "HKEY_CURRENT_USER",
+                                StringComparison.OrdinalIgnoreCase);
+
+                            var filteredLines = regContent
+                                .Split('\n')
+                                .Where(l => l.Contains("OneNote", StringComparison.OrdinalIgnoreCase)
+                                         || l.StartsWith("Windows Registry Editor", StringComparison.OrdinalIgnoreCase)
+                                         || string.IsNullOrWhiteSpace(l)
+                                         || l.StartsWith('['))
+                                .ToArray();
+
+                            var filteredPath = Path.Combine(Path.GetTempPath(), $"onenote_filtered_{Guid.NewGuid():N}.reg");
+                            File.WriteAllText(filteredPath, string.Join("\n", filteredLines));
+
+                            RunRegExe($"import \"{filteredPath}\"");
+                            File.Delete(filteredPath);
+
+                            LogSuccess(rtbMigrationLog, "OneNote : clés de registre importées.");
+                        }
+                        else
+                        {
+                            LogInfo(rtbMigrationLog, "OneNote : aucune clé de registre Office trouvée dans le hive.");
+                        }
+                    }
+                    finally
+                    {
+                        // Décharger le hive temporaire (toujours, même en cas d'erreur)
+                        RunRegExe($"unload \"{tempHive}\"");
+                        if (File.Exists(tempRegFile)) File.Delete(tempRegFile);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogError(rtbMigrationLog, $"OneNote : erreur migration — {ex.Message}");
+                }
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  IP DESKTOP SOFTPHONE (Alcatel-Lucent)
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Migre la configuration IP Desktop Softphone (Alcatel-Lucent) depuis le profil USB.
+        /// Copie les dossiers AppData\Roaming et AppData\Local d'Alcatel-Lucent.
+        /// </summary>
+        private async Task MigrateIpDesktopSoftphoneAsync(
+            string sourceProfile,
+            IProgress<int> progress,
+            List<string> errorList,
+            CancellationToken ct)
+        {
+            var sourceDirs = new[]
+            {
+                (
+                    Path.Combine(sourceProfile, "AppData", "Roaming", "Alcatel-Lucent", "IP Desktop Softphone"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Alcatel-Lucent", "IP Desktop Softphone")
+                ),
+                (
+                    Path.Combine(sourceProfile, "AppData", "Local", "Alcatel-Lucent", "IP Desktop Softphone"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Alcatel-Lucent", "IP Desktop Softphone")
+                )
+            };
+
+            bool anyFound = false;
+
+            foreach (var (src, dest) in sourceDirs)
+            {
+                if (!Directory.Exists(src)) continue;
+                anyFound = true;
+
+                Log(rtbMigrationLog, $"IP Desktop Softphone : migration de {Path.GetFileName(Path.GetDirectoryName(src) ?? src)}...");
+
+                var result = await FileService.CopyFolderAsync(src, dest, progress, null, ct);
+
+                foreach (var err in result.Errors)
+                {
+                    LogError(rtbMigrationLog, $"Erreur copie IP Softphone : {err}");
+                    errorList.Add($"IP Desktop Softphone : {err}");
+                }
+
+                LogSuccess(rtbMigrationLog,
+                    $"IP Desktop Softphone ({(src.Contains("Roaming") ? "Roaming" : "Local")}) : " +
+                    $"{result.Copied} fichier(s) migré(s) — {FileService.FormatSize(result.TotalBytes)}");
+            }
+
+            if (!anyFound)
+                LogInfo(rtbMigrationLog,
+                    "IP Desktop Softphone : aucun dossier de configuration trouvé dans le profil source.");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  HELPERS PRIVÉS (utilisés par plusieurs étapes)
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Copie récursive d'un dossier source vers destination.
+        /// Utilisé par les étapes qui n'ont pas besoin du rapport de progression granulaire.
+        /// </summary>
+        private static void CopyDirectoryRecursive(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+            foreach (var file in Directory.GetFiles(source))
+            {
+                var dest = Path.Combine(destination, Path.GetFileName(file));
+                File.Copy(file, dest, overwrite: true);
+            }
+            foreach (var dir in Directory.GetDirectories(source))
+            {
+                CopyDirectoryRecursive(
+                    dir,
+                    Path.Combine(destination, Path.GetFileName(dir)));
+            }
+        }
+
+        /// <summary>
+        /// Lance reg.exe avec les arguments spécifiés et attend la fin du processus.
+        /// Nécessite des droits administrateur pour reg load/unload.
+        /// </summary>
+        private static void RunRegExe(string arguments)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName               = "reg.exe",
+                Arguments              = arguments,
+                UseShellExecute        = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                CreateNoWindow         = true,
+                Verb                   = "runas"
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            proc?.WaitForExit();
         }
     }
 }
