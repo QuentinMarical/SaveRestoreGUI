@@ -74,6 +74,7 @@
     <Content Remove="MainForm_Migration.resx" />
     <Content Remove="MainForm_Restore.resx" />
   </ItemGroup>
+
   <ItemGroup>
     <Content Include="diskette.ico" />
   </ItemGroup>
@@ -81,5 +82,29 @@
   <ItemGroup>
     <PackageReference Include="System.Management" Version="10.0.9" />
   </ItemGroup>
+
+  <!--
+    Signature automatique du binaire après chaque build.
+    Nécessite que le certificat auto-signé "SaveRestoreGUI Code Signing" soit
+    présent dans Cert:\CurrentUser\My (créé une seule fois via le script PowerShell).
+    Si le certificat est absent, la build continue sans erreur (ContinueOnError).
+  -->
+  <Target Name="SignAfterBuild" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <Message Text="🔏 Signature de $(TargetFileName)..." Importance="high" />
+    <Exec
+      Command="powershell -NoProfile -NonInteractive -Command &quot;$cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.FriendlyName -eq 'SaveRestoreGUI Code Signing' } | Select-Object -First 1; if ($cert) { $result = Set-AuthenticodeSignature -FilePath '$(TargetPath)' -Certificate $cert -TimestampServer 'http://timestamp.digicert.com' -HashAlgorithm SHA256; if ($result.Status -eq 'Valid') { Write-Host '✅ Signature OK : $(TargetFileName)' } else { Write-Host ('⚠️  Signature : ' + $result.Status) } } else { Write-Host '⚠️  Certificat introuvable — build non signée. Exécutez le script de création du certificat.' }&quot;"
+      ContinueOnError="true" />
+  </Target>
+
+  <!--
+    Signature automatique du binaire après chaque publication (dotnet publish).
+    Signe le fichier final dans le dossier de publication.
+  -->
+  <Target Name="SignAfterPublish" AfterTargets="Publish" Condition="'$(OS)' == 'Windows_NT'">
+    <Message Text="🔏 Signature du binaire publié..." Importance="high" />
+    <Exec
+      Command="powershell -NoProfile -NonInteractive -Command &quot;$exe = '$(PublishDir)SaveRestoreGUI.exe'; if (Test-Path $exe) { $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.FriendlyName -eq 'SaveRestoreGUI Code Signing' } | Select-Object -First 1; if ($cert) { $result = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -TimestampServer 'http://timestamp.digicert.com' -HashAlgorithm SHA256; if ($result.Status -eq 'Valid') { Write-Host '✅ Publish signé : ' $exe } else { Write-Host ('⚠️  Signature publish : ' + $result.Status) } } else { Write-Host '⚠️  Certificat introuvable — publish non signé.' } } else { Write-Host '⚠️  Exe publié introuvable : ' $exe }&quot;"
+      ContinueOnError="true" />
+  </Target>
 
 </Project>
