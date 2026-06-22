@@ -272,6 +272,7 @@ namespace SaveRestoreGUI
                 if (chkEdgeProfile.Checked) steps.Add(("Profil Edge", () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
                 if (chkWallpaper.Checked) steps.Add(("Fond d'écran", () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
                 if (chkNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
+                if (chkIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
             }
 
             if (includePublic && chkPublic.Checked) steps.Add(("Dossier Public", () => CopyStep(
@@ -605,6 +606,38 @@ namespace SaveRestoreGUI
                     LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}");
                 }
             });
+        }
+
+        /// <summary>
+        /// Sauvegarde la configuration IP Desktop Softphone (Alcatel-Lucent / ALE International).
+        /// Recherche dans AppData\Roaming et AppData\Local pour les deux noms d'éditeur connus.
+        /// </summary>
+        private async Task BackupIpDesktopSoftphoneAsync(string backupRoot, RichTextBox rtb,
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
+        {
+            var candidates = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "Alcatel-Lucent", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Alcatel-Lucent", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "ALE International", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "ALE International", "IP Desktop Softphone"),
+            };
+
+            bool found = false;
+            foreach (var src in candidates.Where(Directory.Exists))
+            {
+                var vendorName = Path.GetFileName(Path.GetDirectoryName(src)!);
+                var destDir = Path.Combine(backupRoot, "IpDesktopSoftphone", vendorName);
+                await CopyStep(src, destDir, $"IP Desktop Softphone ({vendorName})", rtb, progress, errorList, ct);
+                found = true;
+            }
+
+            if (!found)
+                LogInfo(rtb, "IP Desktop Softphone : aucune configuration trouvée.");
         }
 
         private void DetectAndLogOldProfiles(RichTextBox rtb)
