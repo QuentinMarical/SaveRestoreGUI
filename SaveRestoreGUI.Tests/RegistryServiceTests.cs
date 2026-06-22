@@ -1,146 +1,108 @@
-using System.IO;
+using Microsoft.Win32;
 using SaveRestoreGUI.Services;
 using Xunit;
 
 namespace SaveRestoreGUI.Tests;
 
-/// <summary>
-/// Tests unitaires pour RegistryService.ImportRegFile.
-/// Utilise des fichiers .reg temporaires valides/invalides afin de couvrir
-/// le chemin heureux, les callbacks de log, les fichiers manquants et les
-/// fichiers avec mauvais en-tête.
-/// </summary>
 public class RegistryServiceTests
 {
-    // ── Helpers ─────────────────────────────────────────────────────────────────
+    private const string TestKeyPath = @"SOFTWARE\SaveRestoreGUI_Tests";
 
-    /// <summary>Crée un .reg minimal valide dans un dossier temporaire.</summary>
-    private static string CreateValidRegFile()
+    private static void CleanupTestKey()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid():N}.reg");
-        // En-tête officiel Windows Registry Editor Version 5.00
-        // Clé HKCU\Software sous-clé inoffensive pour les tests
-        File.WriteAllText(path,
-            "Windows Registry Editor Version 5.00\r\n" +
-            "\r\n" +
-            "[HKEY_CURRENT_USER\\Software\\SaveRestoreGUI_Test]\r\n" +
-            "\"TestValue\"=\"ok\"\r\n");
-        return path;
+        try { Registry.CurrentUser.DeleteSubKeyTree(TestKeyPath, throwOnMissingSubKey: false); }
+        catch { /* ignore */ }
     }
 
-    private static string CreateInvalidRegFile()
+    [Fact] public void ReadString_ExistingValue_ReturnsValue()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"bad_{Guid.NewGuid():N}.reg");
-        File.WriteAllText(path, "This is not a valid .reg file header");
-        return path;
-    }
-
-    // ── ImportRegFile ─────────────────────────────────────────────────────────
-
-    [Fact]
-    public void ImportRegFile_FileNotFound_LogsError()
-    {
-        var missing = Path.Combine(Path.GetTempPath(), "__missing__.reg");
-        var errors  = new List<string>();
-
-        RegistryService.ImportRegFile(missing, null, err => errors.Add(err));
-
-        Assert.Single(errors);
-        Assert.Contains(missing, errors[0], StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void ImportRegFile_FileNotFound_NoExceptionThrown()
-    {
-        var missing = Path.Combine(Path.GetTempPath(), "__missing2__.reg");
-        // Ne doit pas lever d'exception, juste appeler le callback d'erreur
-        var ex = Record.Exception(() =>
-            RegistryService.ImportRegFile(missing, null, _ => { }));
-        Assert.Null(ex);
-    }
-
-    [Fact]
-    public void ImportRegFile_InvalidHeader_LogsError()
-    {
-        var path   = CreateInvalidRegFile();
-        var errors = new List<string>();
+        CleanupTestKey();
+        using var key = Registry.CurrentUser.CreateSubKey(TestKeyPath);
+        key.SetValue("TestVal", "hello");
         try
         {
-            RegistryService.ImportRegFile(path, null, err => errors.Add(err));
-            Assert.NotEmpty(errors);
+            var result = RegistryService.ReadString(Registry.CurrentUser, TestKeyPath, "TestVal");
+            Assert.Equal("hello", result);
         }
-        finally { File.Delete(path); }
+        finally { CleanupTestKey(); }
     }
 
-    [Fact]
-    public void ImportRegFile_NullPath_LogsError()
+    [Fact] public void ReadString_MissingValue_ReturnsNull()
     {
-        var errors = new List<string>();
-        RegistryService.ImportRegFile(null!, null, err => errors.Add(err));
-        Assert.Single(errors);
-    }
-
-    [Fact]
-    public void ImportRegFile_EmptyPath_LogsError()
-    {
-        var errors = new List<string>();
-        RegistryService.ImportRegFile("", null, err => errors.Add(err));
-        Assert.Single(errors);
-    }
-
-    [Fact]
-    public void ImportRegFile_ValidFile_CallsSuccessCallback()
-    {
-        // Note : ce test exécute réellement reg.exe et écrit dans HKCU.
-        // Il est skippé si les droits sont insuffisants (CI sans registry).
-        var path    = CreateValidRegFile();
-        var success = new List<string>();
-        var errors  = new List<string>();
+        CleanupTestKey();
         try
         {
-            RegistryService.ImportRegFile(path, msg => success.Add(msg), err => errors.Add(err));
-
-            // Si l'import a réussi : au moins un message de succès, aucune erreur
-            if (success.Count > 0)
-                Assert.Empty(errors);
-            // Si l'import a échoué (droits CI) : au moins une erreur loguée
-            else
-                Assert.NotEmpty(errors);
+            var result = RegistryService.ReadString(Registry.CurrentUser, TestKeyPath, "NoSuchValue");
+            Assert.Null(result);
         }
-        finally
-        {
-            File.Delete(path);
-            // Nettoyage de la clé de test dans le registre (best-effort)
-            try
-            {
-                Microsoft.Win32.Registry.CurrentUser
-                    .DeleteSubKeyTree("Software\\SaveRestoreGUI_Test", throwOnMissingSubKey: false);
-            }
-            catch { /* ignoré */ }
-        }
+        finally { CleanupTestKey(); }
     }
 
-    [Fact]
-    public void ImportRegFile_ValidFile_NoExceptionThrown()
+    [Fact] public void WriteString_ThenRead_RoundTrip()
     {
-        var path = CreateValidRegFile();
+        CleanupTestKey();
+        try
+        {
+            RegistryService.WriteString(Registry.CurrentUser, TestKeyPath, "RoundTrip", "data123");
+            var result = RegistryService.ReadString(Registry.CurrentUser, TestKeyPath, "RoundTrip");
+            Assert.Equal("data123", result);
+        }
+        finally { CleanupTestKey(); }
+    }
+
+    [Fact] public void DeleteValue_RemovesIt()
+    {
+        CleanupTestKey();
+        using var key = Registry.CurrentUser.CreateSubKey(TestKeyPath);
+        key.SetValue("ToDelete", "bye");
+        try
+        {
+            RegistryService.DeleteValue(Registry.CurrentUser, TestKeyPath, "ToDelete");
+            var result = RegistryService.ReadString(Registry.CurrentUser, TestKeyPath, "ToDelete");
+            Assert.Null(result);
+        }
+        finally { CleanupTestKey(); }
+    }
+
+    [Fact] public void DeleteValue_MissingValue_DoesNotThrow()
+    {
+        CleanupTestKey();
         try
         {
             var ex = Record.Exception(() =>
-                RegistryService.ImportRegFile(path, null, null));
+                RegistryService.DeleteValue(Registry.CurrentUser, TestKeyPath, "Ghost"));
             Assert.Null(ex);
         }
-        finally { File.Delete(path); }
+        finally { CleanupTestKey(); }
     }
 
-    // ── Callback null-safety ────────────────────────────────────────────────
-
-    [Fact]
-    public void ImportRegFile_NullCallbacks_DoesNotThrow()
+    [Fact] public void KeyExists_ExistingKey_ReturnsTrue()
     {
-        var missing = Path.Combine(Path.GetTempPath(), "__cb_null__.reg");
-        var ex = Record.Exception(() =>
-            RegistryService.ImportRegFile(missing, null, null));
-        Assert.Null(ex);
+        CleanupTestKey();
+        Registry.CurrentUser.CreateSubKey(TestKeyPath).Dispose();
+        try
+        {
+            Assert.True(RegistryService.KeyExists(Registry.CurrentUser, TestKeyPath));
+        }
+        finally { CleanupTestKey(); }
+    }
+
+    [Fact] public void KeyExists_MissingKey_ReturnsFalse()
+    {
+        CleanupTestKey();
+        Assert.False(RegistryService.KeyExists(Registry.CurrentUser, TestKeyPath));
+    }
+
+    [Fact] public void WriteString_OverwritesExistingValue()
+    {
+        CleanupTestKey();
+        try
+        {
+            RegistryService.WriteString(Registry.CurrentUser, TestKeyPath, "Key", "first");
+            RegistryService.WriteString(Registry.CurrentUser, TestKeyPath, "Key", "second");
+            var result = RegistryService.ReadString(Registry.CurrentUser, TestKeyPath, "Key");
+            Assert.Equal("second", result);
+        }
+        finally { CleanupTestKey(); }
     }
 }
