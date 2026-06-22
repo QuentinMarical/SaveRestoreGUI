@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using SaveRestoreGUI.UI;
 
@@ -11,7 +12,10 @@ namespace SaveRestoreGUI
     public partial class MainForm : Form
     {
         private CancellationTokenSource? _cancellationTokenSource;
+
+        // ── Log fichier — accès protégé par _logLock (plusieurs tâches async en parallèle) ──
         private string? _logFilePath;
+        private readonly object _logLock = new();
 
         public MainForm()
         {
@@ -23,6 +27,13 @@ namespace SaveRestoreGUI
             UpdateOldProfileOptionState();
             LoadUSBDrives();
             ShowPage(0);
+
+            // Version dynamique lue depuis l'assembly (pilotée par <Version> dans le .csproj)
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            var versionStr = version != null
+                ? $"{version.Major}.{version.Minor}.{version.Build}"
+                : "?";
+            this.Text = $"SaveRestoreGUI v{versionStr}";
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -165,9 +176,19 @@ namespace SaveRestoreGUI
             rtb.AppendText(fullMessage);
             rtb.ScrollToCaret();
 
-            if (!string.IsNullOrEmpty(_logFilePath))
+            // Écriture fichier protégée par lock — plusieurs tâches async peuvent logguer simultanément
+            string? logPath;
+            lock (_logLock) { logPath = _logFilePath; }
+
+            if (!string.IsNullOrEmpty(logPath))
             {
-                try { File.AppendAllText(_logFilePath, fullMessage, Encoding.UTF8); }
+                try
+                {
+                    lock (_logLock)
+                    {
+                        File.AppendAllText(logPath, fullMessage, Encoding.UTF8);
+                    }
+                }
                 catch { }
             }
 
@@ -227,6 +248,7 @@ namespace SaveRestoreGUI
             lstProfiles.Enabled  = enabled;
             btnRefreshUSB.Enabled = enabled;
 
+            // Les boutons Cancel sont activés PENDANT l'opération (enabled=false = opération en cours)
             btnCancelBackup.Enabled    = !enabled;
             btnCancelRestore.Enabled   = !enabled;
             btnCancelMigration.Enabled = !enabled;
