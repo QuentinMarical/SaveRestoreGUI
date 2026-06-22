@@ -5,7 +5,7 @@ namespace SaveRestoreGUI
 {
     public partial class MainForm
     {
-        // ── État BitLocker d'un lecteur ────────────────────────────────────────────
+        // ── État BitLocker d'un lecteur ──────────────────────────────────────────
         private enum BitLockerState
         {
             Unknown,
@@ -29,9 +29,9 @@ namespace SaveRestoreGUI
                 var sizeStr = Size > 0 ? FileService.FormatSize(Size) : "Inconnu";
                 var bde = BitLocker switch
                 {
-                    BitLockerState.Locked => " \U0001f512 BitLocker verrouillé",
+                    BitLockerState.Locked   => " \U0001f512 BitLocker verrouillé",
                     BitLockerState.Unlocked => " \U0001f513 BitLocker actif (déverrouillé)",
-                    _ => ""
+                    _                       => ""
                 };
                 return $"{Letter} — {Label} ({sizeStr}){bde}";
             }
@@ -47,14 +47,14 @@ namespace SaveRestoreGUI
                 => IsMatch ? $"★ {Name} (correspond à l'utilisateur actuel)" : Name;
         }
 
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  DÉTECTION DES LECTEURS
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Appel direct à kernel32 : retourne le type du point de montage même si le
         /// volume est inaccessible (BitLocker verrouillé, disque non prêt…).
-        /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
+        /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
         ///           3=Fixed, 4=Network, 5=CDROM, 6=RAMDisk
         /// </summary>
         [System.Runtime.InteropServices.DllImport("kernel32.dll",
@@ -92,7 +92,7 @@ namespace SaveRestoreGUI
                     ?.TrimEnd(Path.DirectorySeparatorChar)
                     .ToUpperInvariant();
 
-                var result = new List<USBDriveInfo>();
+                var result      = new List<USBDriveInfo>();
                 var seenLetters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 // ── Étape 1 : scan A–Z via GetDriveType (fonctionne même si IsReady = false)
@@ -101,7 +101,7 @@ namespace SaveRestoreGUI
                     if (c == 'A' || c == 'B') continue;   // disquettes
 
                     var letter = $"{c}:";
-                    var root = letter + "\\";
+                    var root   = letter + "\\";
 
                     if (letter.Equals(currentRoot, StringComparison.OrdinalIgnoreCase)) continue;
 
@@ -113,8 +113,7 @@ namespace SaveRestoreGUI
 
                     if (!accessible)
                     {
-                        // Volume monté mais inaccessible → très probablement BitLocker verrouillé.
-                        var bdeState = GetBitLockerStatePowerShell(root);
+                        var bdeState  = GetBitLockerStatePowerShell(root);
                         var finalState = bdeState == BitLockerState.Unknown
                             ? BitLockerState.Locked
                             : bdeState;
@@ -123,8 +122,8 @@ namespace SaveRestoreGUI
                         {
                             result.Add(new USBDriveInfo
                             {
-                                Letter = letter,
-                                Label = "Volume verrouillé",
+                                Letter    = letter,
+                                Label     = "Volume verrouillé",
                                 BitLocker = BitLockerState.Locked
                             });
                             seenLetters.Add(letter);
@@ -132,13 +131,12 @@ namespace SaveRestoreGUI
                         continue;
                     }
 
-                    // Volume accessible : ne retenir que ceux qui ont un dossier Users
-                    var usersPath = Path.Combine(root, "Users");
+                    var usersPath   = Path.Combine(root, "Users");
                     var windowsPath = Path.Combine(root, "Windows");
                     if (!Directory.Exists(usersPath)) continue;
 
                     string volLabel = "Sans nom";
-                    long volSize = 0;
+                    long   volSize  = 0;
                     try
                     {
                         var di = new DriveInfo(letter);
@@ -151,26 +149,25 @@ namespace SaveRestoreGUI
 
                     result.Add(new USBDriveInfo
                     {
-                        Letter = letter,
-                        Label = volLabel,
-                        Size = volSize,
-                        HasUsers = true,
+                        Letter     = letter,
+                        Label      = volLabel,
+                        Size       = volSize,
+                        HasUsers   = true,
                         HasWindows = Directory.Exists(windowsPath),
-                        UsersPath = usersPath,
-                        BitLocker = state
+                        UsersPath  = usersPath,
+                        BitLocker  = state
                     });
                     seenLetters.Add(letter);
                 }
 
-                // ── Étape 2 : fallback PowerShell global — volumes BitLocker que
-                //    GetDriveType ne voit pas du tout (cas rares, volumes non montés)
+                // ── Étape 2 : fallback PowerShell global
                 foreach (var ltr in GetLockedBitLockerLetters(currentRoot ?? "C:"))
                 {
                     if (seenLetters.Contains(ltr)) continue;
                     result.Add(new USBDriveInfo
                     {
-                        Letter = ltr,
-                        Label = "Volume verrouillé",
+                        Letter    = ltr,
+                        Label     = "Volume verrouillé",
                         BitLocker = BitLockerState.Locked
                     });
                 }
@@ -187,11 +184,11 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur détection disque : {ex.Message}");
+                LogError(rtbMigrationLog, $"Erreur détection disque : {ex.Message}");
             }
         }
 
-        // ── Helpers PowerShell BitLocker ────────────────────────────────────────────
+        // ── Helpers PowerShell BitLocker ─────────────────────────────────────────────
         private static BitLockerState GetBitLockerStatePowerShell(string drivePath)
         {
             try
@@ -217,9 +214,6 @@ namespace SaveRestoreGUI
             catch { return BitLockerState.Unknown; }
         }
 
-        /// <summary>
-        /// Retourne les lettres de lecteur verrouillés par BitLocker (fallback global).
-        /// </summary>
         private static List<string> GetLockedBitLockerLetters(string excludeRoot)
         {
             var letters = new List<string>();
@@ -232,7 +226,7 @@ namespace SaveRestoreGUI
 
                 foreach (var line in RunPowerShellInline(script).Split('\n'))
                 {
-                    var mp = line.Trim().TrimEnd('\\');
+                    var mp   = line.Trim().TrimEnd('\\');
                     if (string.IsNullOrWhiteSpace(mp)) continue;
                     var root = mp.ToUpperInvariant();
                     if (root.Equals(excludeRoot, StringComparison.OrdinalIgnoreCase)) continue;
@@ -244,9 +238,6 @@ namespace SaveRestoreGUI
             return letters;
         }
 
-        /// <summary>
-        /// Ouvre la page de gestion BitLocker du Panneau de configuration.
-        /// </summary>
         private static void OpenBitLockerControlPanel()
         {
             try
@@ -299,9 +290,9 @@ namespace SaveRestoreGUI
             return output;
         }
 
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  ÉVÉNEMENTS UI
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         private void BtnRefreshUSB_Click(object? sender, EventArgs e)
         {
             LoadUSBDrives();
@@ -343,8 +334,8 @@ namespace SaveRestoreGUI
             {
                 BitLockerState.Locked       => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",             Color.OrangeRed),
                 BitLockerState.Unlocked     => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)",   Color.DarkOrange),
-                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",                   Color.SeaGreen),
-                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",         SystemColors.GrayText)
+                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",                    Color.SeaGreen),
+                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",           SystemColors.GrayText)
             };
         }
 
@@ -353,7 +344,7 @@ namespace SaveRestoreGUI
             lstProfiles.Items.Clear();
             try
             {
-                var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
+                var excluded        = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
                 var currentUsername = Environment.UserName;
 
                 if (!Directory.Exists(drive.UsersPath)) return;
@@ -378,15 +369,12 @@ namespace SaveRestoreGUI
 
                 foreach (var p in profiles) lstProfiles.Items.Add(p);
 
-                // Sélection automatique : préférer le profil NOM (sans domaine) s'il existe,
-                // sinon le premier correspondant.
                 var currentUsername2 = Environment.UserName;
-                var exactMatch = profiles.FirstOrDefault(p =>
+                var exactMatch  = profiles.FirstOrDefault(p =>
                     p.Name.Equals(currentUsername2, StringComparison.OrdinalIgnoreCase));
                 var domainMatch = profiles.FirstOrDefault(p =>
                     p.Name.StartsWith(currentUsername2 + ".", StringComparison.OrdinalIgnoreCase));
 
-                // Si les deux existent, on sélectionne NOM (sera migré en second, après NOM.DOMAINE)
                 if (exactMatch != null)
                     lstProfiles.SelectedItem = exactMatch;
                 else if (domainMatch != null)
@@ -398,7 +386,6 @@ namespace SaveRestoreGUI
                     else if (lstProfiles.Items.Count > 0) lstProfiles.SelectedIndex = 0;
                 }
 
-                // Indication visuelle si double profil détecté
                 if (exactMatch != null && domainMatch != null && chkOldProfile.Checked)
                     lblMigrationInfo.Text =
                         $"{profiles.Count} profil(s) trouvé(s).\n" +
@@ -409,14 +396,14 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur chargement profils : {ex.Message}");
+                LogError(rtbMigrationLog, $"Erreur chargement profils : {ex.Message}");
                 lblMigrationInfo.Text = "Erreur lors du chargement des profils.";
             }
         }
 
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
         //  CONSTRUCTION DE LA LISTE DES ÉTAPES DE MIGRATION
-        // ───────────────────────────────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
         /// Construit les étapes de migration pour un profil source donné.
@@ -493,11 +480,17 @@ namespace SaveRestoreGUI
             if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook (PST)",
                 () => MigrateOutlookAsync(sourceProfile, ct)));
 
+            if (chkMigrateOneNote.Checked) steps.Add(("Clés registre OneNote",
+                () => MigrateOneNoteAsync(sourceProfile)));
+
             if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran",
                 () => MigrateWallpaperAsync(sourceProfile)));
 
             if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau",
                 () => MigrateNetworkDrivesAsync(sourceProfile)));
+
+            if (chkMigrateIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone",
+                () => MigrateIpDesktopSoftphoneAsync(sourceProfile, progress, errorList, ct)));
 
             if (includePublic && chkMigratePublic.Checked) steps.Add(("Dossier Public", () => MigrateFolderStep(
                 Path.Combine(selectedDrive.Letter + "\\", "Users", "Public"),
@@ -507,7 +500,7 @@ namespace SaveRestoreGUI
             return steps;
         }
 
-        // ── Bouton Démarrer la migration ──────────────────────────────────────────────
+        // ── Bouton Démarrer la migration ─────────────────────────────────────────────────
         private async void BtnStartMigration_Click(object? sender, EventArgs e)
         {
             if (lstProfiles.SelectedItem is not UserProfileItem selectedProfile)
@@ -541,9 +534,6 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            // ── Détection double profil NOM.DOMAINE + NOM ─────────────────────────────
-            // Si "Détecter Ancien profil" est coché et que les deux variantes existent,
-            // on effectue d'abord la copie du profil NOM.DOMAINE, puis celle du profil NOM.
             var currentUsername = Environment.UserName;
             UserProfileItem? domainProfile = null;
             UserProfileItem? cleanProfile  = null;
@@ -561,15 +551,14 @@ namespace SaveRestoreGUI
 
             bool doubleMigration = domainProfile != null && cleanProfile != null;
 
-            // Message de confirmation adapté
             string confirmMsg = doubleMigration
                 ? $"Double profil détecté :\n" +
                   $"  1. {domainProfile!.Name}  (ancien profil domaine)\n" +
                   $"  2. {cleanProfile!.Name}  (profil actuel)\n\n" +
                   $"La migration copiera d'abord « {domainProfile.Name} » puis « {cleanProfile.Name} ».\n" +
                   $"Les données du profil actuel écraseront celles de l'ancien profil en cas de conflit.\n\n" +
-                  $"Source : {selectedDrive.Letter}\nConfirmer ?"
-                : $"Démarrer la migration du profil « {selectedProfile.Name} » depuis {selectedDrive.Letter} ?\n\n" +
+                  $"Source : {selectedDrive.Letter}\nConfirmer ?"
+                : $"Démarrer la migration du profil « {selectedProfile.Name} » depuis {selectedDrive.Letter} ?\n\n" +
                   "Les fichiers plus récents sur le disque source écraseront ceux de la destination.";
 
             var confirm = MessageBox.Show(
@@ -582,7 +571,7 @@ namespace SaveRestoreGUI
 
             rtbMigrationLog.Clear();
             _cancellationTokenSource = new CancellationTokenSource();
-            var ct = _cancellationTokenSource.Token;
+            var ct        = _cancellationTokenSource.Token;
             var errorList = new List<string>();
 
             SetControlsEnabled(false);
@@ -598,7 +587,7 @@ namespace SaveRestoreGUI
 
                 if (doubleMigration)
                 {
-                    // ── Passe 1 : NOM.DOMAINE ────────────────────────────────────────
+                    // ── Passe 1 : NOM.DOMAINE ──────────────────────────────────────────
                     LogTitle(rtbMigrationLog, $"Passe 1 — Ancien profil domaine : {domainProfile!.Name}");
                     LogInfo(rtbMigrationLog, $"Source  : {domainProfile.Path}");
 
@@ -611,7 +600,7 @@ namespace SaveRestoreGUI
                     {
                         ct.ThrowIfCancellationRequested();
                         step1++;
-                        UpdateStatus($"[Passe 1/{2}] Migration {name} ({step1}/{total1})");
+                        UpdateStatus($"[Passe 1/2] Migration {name} ({step1}/{total1})");
                         await action();
                     }
 
@@ -630,7 +619,7 @@ namespace SaveRestoreGUI
                     {
                         ct.ThrowIfCancellationRequested();
                         step2++;
-                        UpdateStatus($"[Passe 2/{2}] Migration {name} ({step2}/{total2})");
+                        UpdateStatus($"[Passe 2/2] Migration {name} ({step2}/{total2})");
                         await action();
                     }
 
@@ -638,7 +627,7 @@ namespace SaveRestoreGUI
                 }
                 else
                 {
-                    // ── Migration simple (un seul profil) ────────────────────────────
+                    // ── Migration simple (un seul profil) ─────────────────────────────
                     LogInfo(rtbMigrationLog, $"Source  : {selectedProfile.Path}");
 
                     var steps = BuildMigrationSteps(
@@ -706,7 +695,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────────
+        // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────────────────
         private async void BtnBitLocker_Click(object? sender, EventArgs e)
         {
             if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
@@ -735,10 +724,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Attend que le disque soit déverrouillé (polling toutes les 2 s, max 5 min)
-        /// puis recharge automatiquement la liste des profils.
-        /// </summary>
         private async Task HandleBitLockerUnlockAsync(USBDriveInfo drive)
         {
             const int pollIntervalMs = 2000;
