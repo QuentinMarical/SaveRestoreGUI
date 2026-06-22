@@ -6,7 +6,7 @@ namespace SaveRestoreGUI
     /// <summary>
     /// Fenêtre principale — refonte graphique V5 :
     /// navigation latérale moderne, cartes arrondies, thème clair/sombre dynamique.
-    /// Structure : Sidebar (gauche) + zone de contenu (pages empilées) + barre d'état.
+    /// Structure : Sidebar (gauche) + zone de contenu (pages empilées) + barre d'état.
     /// </summary>
     public partial class MainForm : Form
     {
@@ -21,6 +21,7 @@ namespace SaveRestoreGUI
             this.Resize += (_, _) => SyncPageSizes();
             ApplyTheme();
             UpdateOldProfileOptionState();
+            ApplyOneDriveDefaults();
             LoadUSBDrives();
             ShowPage(0);
         }
@@ -132,6 +133,76 @@ namespace SaveRestoreGUI
                         break;
                 }
             }
+        }
+
+        // ───────────────────────────── OneDrive ─────────────────────────────
+
+        /// <summary>
+        /// Décoche automatiquement les cases Documents / Bureau / Images
+        /// lorsque ces dossiers sont synchronisés par OneDrive (i.e. leur chemin
+        /// réel pointe à l'intérieur du dossier OneDrive de l'utilisateur).
+        /// L'utilisateur peut toujours les recocher manuellement s'il le souhaite.
+        /// Un tooltip explicatif est attaché à chaque case décochée.
+        /// </summary>
+        private void ApplyOneDriveDefaults()
+        {
+            // Détection du dossier racine OneDrive (variable d'environnement standard)
+            var oneDriveRoot = Environment.GetEnvironmentVariable("OneDrive")
+                            ?? Environment.GetEnvironmentVariable("OneDriveConsumer")
+                            ?? Environment.GetEnvironmentVariable("OneDriveCommercial");
+
+            if (string.IsNullOrEmpty(oneDriveRoot) || !Directory.Exists(oneDriveRoot))
+                return; // OneDrive non configuré — on ne touche à rien
+
+            oneDriveRoot = Path.GetFullPath(oneDriveRoot);
+
+            var toolTip = new ToolTip
+            {
+                AutoPopDelay = 8000,
+                InitialDelay = 400,
+                ReshowDelay  = 500,
+                ShowAlways   = true
+            };
+
+            // Documents
+            var docsPath = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+            if (IsInsideOneDrive(docsPath, oneDriveRoot))
+            {
+                chkDocuments.Checked = false;
+                toolTip.SetToolTip(chkDocuments,
+                    "☁️ Synchronisé par OneDrive — la sauvegarde est optionnelle.\n"
+                    + $"Chemin : {docsPath}");
+            }
+
+            // Bureau
+            var desktopPath = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+            if (IsInsideOneDrive(desktopPath, oneDriveRoot))
+            {
+                chkDesktop.Checked = false;
+                toolTip.SetToolTip(chkDesktop,
+                    "☁️ Synchronisé par OneDrive — la sauvegarde est optionnelle.\n"
+                    + $"Chemin : {desktopPath}");
+            }
+
+            // Images
+            var picturesPath = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+            if (IsInsideOneDrive(picturesPath, oneDriveRoot))
+            {
+                chkPictures.Checked = false;
+                toolTip.SetToolTip(chkPictures,
+                    "☁️ Synchronisé par OneDrive — la sauvegarde est optionnelle.\n"
+                    + $"Chemin : {picturesPath}");
+            }
+        }
+
+        /// <summary>
+        /// Retourne <c>true</c> si <paramref name="folderPath"/> est égal à
+        /// <paramref name="oneDriveRoot"/> ou se trouve à l'intérieur de ce dossier.
+        /// </summary>
+        private static bool IsInsideOneDrive(string folderPath, string oneDriveRoot)
+        {
+            // Normalisation : s'assurer que la comparaison fonctionne sur Windows (insensible à la casse)
+            return folderPath.StartsWith(oneDriveRoot, StringComparison.OrdinalIgnoreCase);
         }
 
         // ───────────────────────────── Helpers UI ─────────────────────────────
