@@ -4,11 +4,7 @@ using SaveRestoreGUI.UI;
 namespace SaveRestoreGUI
 {
     /// <summary>
-    /// Logique de restauration — parité fonctionnelle complète avec Restauration.ps1 :
-    /// dossiers utilisateurs, import clés registre (OneNote/OpenNotebook/signatures),
-    /// AppData (Signatures/Templates/SAP), Outlook (PST + autocomplete + règles + boîtes partagées
-    /// avec copie presse-papiers), Edge (profil complet), Sticky Notes, lecteurs réseau,
-    /// fond d'écran, dossier Public, IP Desktop Softphone, lancement des applications.
+    /// Logique de restauration — parité fonctionnelle complète avec Restauration.ps1.
     /// </summary>
     public partial class MainForm
     {
@@ -19,10 +15,23 @@ namespace SaveRestoreGUI
                 Description = "Sélectionnez le dossier contenant la sauvegarde"
             };
 
-            if (dialog.ShowDialog() == DialogResult.OK)
+            if (dialog.ShowDialog() != DialogResult.OK) return;
+
+            var selected = dialog.SelectedPath;
+
+            // #6 — Validation : avertir si le dossier ne ressemble pas à une sauvegarde
+            if (!BackupValidator.IsValidBackupFolder(selected))
             {
-                txtRestorePath.Text = dialog.SelectedPath;
+                var warn = MessageBox.Show(
+                    $"Le dossier sélectionné ne semble pas contenir une sauvegarde SaveRestoreGUI :\n{selected}\n\nContinuer quand même ?",
+                    "Dossier douteux",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (warn != DialogResult.Yes) return;
             }
+
+            txtRestorePath.Text = selected;
         }
 
         private async void BtnStartRestore_Click(object? sender, EventArgs e)
@@ -44,7 +53,7 @@ namespace SaveRestoreGUI
             try
             {
                 var restoreRoot = txtRestorePath.Text;
-                _logFilePath = Path.Combine(restoreRoot, "Restauration.log");
+                lock (_logLock) { _logFilePath = Path.Combine(restoreRoot, "Restauration.log"); }
 
                 LogTitle(rtbRestoreLog, "Démarrage de la restauration");
                 LogInfo(rtbRestoreLog, $"Source : {restoreRoot}");
@@ -105,11 +114,11 @@ namespace SaveRestoreGUI
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
                     "Dossier Public", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreOutlook.Checked) steps.Add(("Données Outlook", () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreStickyNotes.Checked) steps.Add(("Sticky Notes", () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
-                if (chkRestoreNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
-                if (chkRestoreWallpaper.Checked) steps.Add(("Fond d'écran", () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkRestoreOutlook.Checked)    steps.Add(("Données Outlook",    () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkRestoreStickyNotes.Checked) steps.Add(("Sticky Notes",       () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge",        () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
+                if (chkRestoreNetworkDrives.Checked) steps.Add(("Lecteurs réseau",  () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
+                if (chkRestoreWallpaper.Checked)  steps.Add(("Fond d'écran",        () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
                 if (chkRestoreIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
 
                 int totalSteps = steps.Count;
@@ -164,7 +173,7 @@ namespace SaveRestoreGUI
             {
                 SetControlsEnabled(true);
                 HideProgress();
-                _logFilePath = null;
+                lock (_logLock) { _logFilePath = null; }
             }
         }
 
@@ -197,8 +206,8 @@ namespace SaveRestoreGUI
         }
 
         /// <summary>
-        /// Restauration Outlook complète : PST, autocomplete, profils (info), règles .rwz,
-        /// boîtes partagées (affichage + presse-papiers).
+        /// Restauration Outlook complète : PST, autocomplete, profils .reg (import auto),
+        /// règles .rwz, boîtes partagées (affichage + presse-papiers).
         /// </summary>
         private async Task RestoreOutlookDataAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
         {
@@ -209,6 +218,7 @@ namespace SaveRestoreGUI
                 return;
             }
 
+            // ── PST ──────────────────────────────────────────────────────────────────
             var pstFiles = Directory.GetFiles(outlookDataDir, "*.pst");
             if (pstFiles.Length > 0)
             {
@@ -224,27 +234,21 @@ namespace SaveRestoreGUI
                     try
                     {
                         await Task.Run(() => File.Copy(pst, destPath, true), ct);
-                        var size = new FileInfo(destPath).Length;
-                        LogSuccess(rtb, $"PST restauré : {Path.GetFileName(pst)} ({FileService.FormatSize(size)})");
+                        LogSuccess(rtb, $"PST restauré : {Path.GetFileName(pst)} ({FileService.FormatSize(new FileInfo(destPath).Length)})");
                     }
                     catch (OperationCanceledException) { throw; }
-                    catch (Exception ex)
-                    {
-                        LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}");
-                    }
+                    catch (Exception ex) { LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}"); }
                 }
 
-                LogInfo(rtb, $"Les fichiers PST ont été copiés dans : {mainOutlookDir}");
-                LogInfo(rtb, "Pour rattacher les archives dans Outlook :");
-                LogInfo(rtb, "  1. Ouvrir Outlook");
-                LogInfo(rtb, "  2. Fichier > Ouvrir et exporter > Ouvrir le fichier de données Outlook");
-                LogInfo(rtb, "  3. Sélectionner chaque fichier .pst");
+                LogInfo(rtb, $"PST copiés dans : {mainOutlookDir}");
+                LogInfo(rtb, "Pour rattacher les archives : Fichier > Ouvrir et exporter > Ouvrir le fichier de données Outlook");
             }
             else
             {
                 LogInfo(rtb, "Aucun fichier PST à restaurer.");
             }
 
+            // ── Autocomplete ──────────────────────────────────────────────────────────
             var roamCacheBackup = Path.Combine(outlookDataDir, "RoamCache");
             if (Directory.Exists(roamCacheBackup))
             {
@@ -263,10 +267,29 @@ namespace SaveRestoreGUI
                     LogSuccess(rtb, $"Cache d'autocomplétion restauré ({files.Length} fichiers)");
             }
 
+            // ── #3 : Import automatique des profils .reg ──────────────────────────────
             var regFiles = Directory.GetFiles(outlookDataDir, "Outlook_Profile_*.reg");
-            foreach (var reg in regFiles)
-                LogInfo(rtb, $"Profil Outlook trouvé : {Path.GetFileName(reg)} (import manuel recommandé)");
+            if (regFiles.Length > 0)
+            {
+                LogTitle(rtb, "Import des profils Outlook (.reg)");
+                foreach (var reg in regFiles)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        await Task.Run(() =>
+                            RegistryService.ImportRegFile(reg, msg => LogInfo(rtb, msg)), ct);
+                        LogSuccess(rtb, $"Profil importé : {Path.GetFileName(reg)}");
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        LogError(rtb, $"Erreur import {Path.GetFileName(reg)} : {ex.Message}");
+                    }
+                }
+            }
 
+            // ── Règles .rwz ──────────────────────────────────────────────────────────
             var rulesFiles = Directory.GetFiles(outlookDataDir, "*.rwz");
             if (rulesFiles.Length > 0)
             {
@@ -279,16 +302,14 @@ namespace SaveRestoreGUI
                     try
                     {
                         await Task.Run(() => File.Copy(rule, Path.Combine(outlookAppData, Path.GetFileName(rule)), true), ct);
-                        LogSuccess(rtb, $"Fichier de règles restauré : {Path.GetFileName(rule)}");
+                        LogSuccess(rtb, $"Règles restaurées : {Path.GetFileName(rule)}");
                     }
                     catch (OperationCanceledException) { throw; }
-                    catch (Exception ex)
-                    {
-                        LogError(rtb, $"Erreur règles {Path.GetFileName(rule)} : {ex.Message}");
-                    }
+                    catch (Exception ex) { LogError(rtb, $"Erreur règles {Path.GetFileName(rule)} : {ex.Message}"); }
                 }
             }
 
+            // ── Boîtes partagées ─────────────────────────────────────────────────────
             var sharedMailboxFile = Path.Combine(outlookDataDir, "SharedMailboxes.txt");
             if (File.Exists(sharedMailboxFile))
             {
@@ -301,14 +322,13 @@ namespace SaveRestoreGUI
                     LogTitle(rtb, "Boîtes aux lettres partagées à reconfigurer");
                     LogInfo(rtb, "Les boîtes suivantes étaient configurées sur l'ancien poste :");
                     foreach (var mailbox in sharedMailboxes)
-                        Log(rtb, $"   → {mailbox}", Color.FromArgb(139, 233, 253));
+                        Log(rtb, $"   \u2192 {mailbox}", Color.FromArgb(139, 233, 253));
 
                     LogInfo(rtb, "");
                     LogInfo(rtb, "COMMENT AJOUTER UNE BOÎTE PARTAGÉE DANS OUTLOOK :");
                     LogInfo(rtb, "  1. Fichier > Paramètres du compte > Paramètres du compte...");
                     LogInfo(rtb, "  2. Sélectionner votre compte > Modifier > Paramètres supplémentaires");
                     LogInfo(rtb, "  3. Onglet Avancé > Ajouter... > Entrer le nom de la boîte");
-                    LogInfo(rtb, "OU via outlook.office.com : clic droit sur Dossiers > Ajouter un dossier partagé");
 
                     if (OutlookService.CopyToClipboard(sharedMailboxes))
                         LogSuccess(rtb, "Liste copiée dans le presse-papiers ! (Ctrl+V pour coller)");
@@ -325,7 +345,6 @@ namespace SaveRestoreGUI
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
                 Directory.CreateDirectory(stickyDest);
-
                 await Task.Run(() => File.Copy(stickyBackup, Path.Combine(stickyDest, "plum.sqlite"), true), ct);
                 LogSuccess(rtb, "Sticky Notes restaurés");
             }
@@ -335,10 +354,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Profil Edge complet : restaure le dossier «EdgeProfile» vers User Data\Default.
-        /// ⚠️ Edge doit être fermé pendant la restauration.
-        /// </summary>
         private async Task RestoreEdgeProfileAsync(string restoreRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -352,29 +367,48 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            await RestoreStep(
-                Path.Combine(restoreRoot, "EdgeProfile"),
-                edgeDest,
-                "Profil Edge",
-                rtb, progress, errorList, ct);
+            await RestoreStep(Path.Combine(restoreRoot, "EdgeProfile"), edgeDest,
+                "Profil Edge", rtb, progress, errorList, ct);
         }
 
-        /// <summary>Affiche la liste des lecteurs réseau sauvegardés (récréation manuelle).</summary>
+        /// <summary>
+        /// #2 — Affiche les lecteurs réseau sauvegardés avec colonnes alignées (lettre / chemin UNC / libellé).
+        /// </summary>
         private async Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
         {
             var networkDrivesFile = Path.Combine(restoreRoot, "NetworkDrives.txt");
-            if (File.Exists(networkDrivesFile))
-            {
-                var lines = await File.ReadAllLinesAsync(networkDrivesFile);
-                LogInfo(rtb, "Lecteurs réseau de l'ancien poste :");
-                foreach (var line in lines.Where(l => !string.IsNullOrWhiteSpace(l)))
-                    Log(rtb, $"   {line}");
-                LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
-            }
-            else
+            if (!File.Exists(networkDrivesFile))
             {
                 LogInfo(rtb, "Pas de fichier de lecteurs réseau trouvé.");
+                return;
             }
+
+            var entries = NetworkDriveParser.ParseFile(networkDrivesFile);
+            if (entries.Count == 0)
+            {
+                LogInfo(rtb, "Aucun lecteur réseau dans la sauvegarde.");
+                return;
+            }
+
+            LogTitle(rtb, "Lecteurs réseau de l'ancien poste");
+
+            // Largeurs de colonnes pour un affichage tabulaire aligné
+            int wLetter = entries.Max(e => e.Letter.Length);
+            int wPath   = Math.Min(60, entries.Max(e => e.UncPath.Length));
+
+            Log(rtb, $"  {"Lettre".PadRight(wLetter + 2)}{"Chemin UNC".PadRight(wPath + 2)}Libellé",
+                Color.FromArgb(241, 250, 140));
+            Log(rtb, $"  {new string('─', wLetter + 2)}{new string('─', wPath + 2)}{new string('─', 20)}",
+                Color.FromArgb(241, 250, 140));
+
+            foreach (var e in entries)
+            {
+                Log(rtb,
+                    $"  {e.Letter.PadRight(wLetter + 2)}{e.UncPath.PadRight(wPath + 2)}{e.Label}",
+                    Color.FromArgb(139, 233, 253));
+            }
+
+            LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
         }
 
         private async Task RestoreWallpaperAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
@@ -386,7 +420,6 @@ namespace SaveRestoreGUI
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Microsoft", "Windows", "Themes");
                 Directory.CreateDirectory(wallpaperDest);
-
                 await Task.Run(() => File.Copy(wallpaperFiles[0], Path.Combine(wallpaperDest, "TranscodedWallpaper"), true), ct);
                 LogSuccess(rtb, "Fond d'écran restauré (visible après reconnexion)");
             }
@@ -396,11 +429,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Restaure la configuration IP Desktop Softphone (Alcatel-Lucent / ALE International)
-        /// depuis le dossier de sauvegarde IpDesktopSoftphone/ vers AppData\Roaming.
-        /// Reconstitue la structure vendeur d'origine (Alcatel-Lucent ou ALE International).
-        /// </summary>
         private async Task RestoreIpDesktopSoftphoneAsync(string restoreRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -411,8 +439,6 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            // Chaque sous-dossier correspond à un nom de vendeur
-            // (Alcatel-Lucent ou ALE International) sauvegardé dans BackupIpDesktopSoftphoneAsync.
             var vendorDirs = Directory.GetDirectories(backupDir);
             if (vendorDirs.Length == 0)
             {
@@ -423,15 +449,11 @@ namespace SaveRestoreGUI
             foreach (var vendorDir in vendorDirs)
             {
                 var vendorName = Path.GetFileName(vendorDir);
-
-                // Restauration vers AppData\Roaming\<vendeur>\IP Desktop Softphone
                 var destRoaming = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     vendorName, "IP Desktop Softphone");
-
                 await RestoreStep(vendorDir, destRoaming,
-                    $"IP Desktop Softphone ({vendorName})",
-                    rtb, progress, errorList, ct);
+                    $"IP Desktop Softphone ({vendorName})", rtb, progress, errorList, ct);
             }
         }
     }

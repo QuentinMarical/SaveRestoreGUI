@@ -4,11 +4,7 @@ using SaveRestoreGUI.UI;
 namespace SaveRestoreGUI
 {
     /// <summary>
-    /// Logique de sauvegarde — parité fonctionnelle complète avec Sauvegarde.ps1 :
-    /// dossiers utilisateurs, Outlook (PST + autocomplete + profils + règles + boîtes partagées),
-    /// signatures + clés MailSettings, OneNote (RecentNotebooks/User MRU/OpenNotebook),
-    /// Templates, SAP, Sticky Notes, Edge (profil complet), fond d'écran, lecteurs réseau,
-    /// dossier Public, IP Desktop Softphone, récapitulatif final.
+    /// Logique de sauvegarde — parité fonctionnelle complète avec Sauvegarde.ps1.
     /// </summary>
     public partial class MainForm
     {
@@ -21,9 +17,7 @@ namespace SaveRestoreGUI
             };
 
             if (dialog.ShowDialog() == DialogResult.OK)
-            {
                 txtBackupPath.Text = Path.Combine(dialog.SelectedPath, Environment.UserName);
-            }
         }
 
         private async void BtnStartBackup_Click(object? sender, EventArgs e)
@@ -33,6 +27,25 @@ namespace SaveRestoreGUI
                 MessageBox.Show("Veuillez sélectionner un dossier de destination.", "Erreur",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
+            }
+
+            // #5 — Calcul de taille estimée avant de démarrer
+            UpdateStatus("Calcul de la taille estimée...");
+            long estimatedSize = await Task.Run(() => EstimateBackupSize());
+
+            if (estimatedSize > 0)
+            {
+                var confirm = MessageBox.Show(
+                    $"Taille estimée de la sauvegarde : {FileService.FormatSize(estimatedSize)}\n\nContinuer ?",
+                    "Confirmer la sauvegarde",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (confirm != DialogResult.Yes)
+                {
+                    UpdateStatus("Prêt");
+                    return;
+                }
             }
 
             rtbBackupLog.Clear();
@@ -46,19 +59,20 @@ namespace SaveRestoreGUI
             {
                 var backupRoot = txtBackupPath.Text;
                 Directory.CreateDirectory(backupRoot);
-                _logFilePath = Path.Combine(backupRoot, "Sauvegarde.log");
+                lock (_logLock) { _logFilePath = Path.Combine(backupRoot, "Sauvegarde.log"); }
 
                 LogTitle(rtbBackupLog, "Démarrage de la sauvegarde");
                 LogInfo(rtbBackupLog, $"Utilisateur : {Environment.UserName}");
                 LogInfo(rtbBackupLog, $"Poste : {Environment.MachineName}");
                 LogInfo(rtbBackupLog, $"Destination : {backupRoot}");
+                if (estimatedSize > 0)
+                    LogInfo(rtbBackupLog, $"Taille estimée : {FileService.FormatSize(estimatedSize)}");
 
                 UpdateOldProfileOptionState();
                 if (chkOldProfile.Checked)
                     DetectAndLogOldProfiles(rtbBackupLog);
 
-                // ── Détection double profil NOM.DOMAINE + NOM ──────────────────────
-                var currentUsername = Environment.UserName;
+                var currentUsername   = Environment.UserName;
                 string? domainProfilePath = null;
                 string? cleanProfilePath  = null;
 
@@ -71,7 +85,6 @@ namespace SaveRestoreGUI
                     {
                         var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
 
-                        // NOM.DOMAINE : commence par NOM. mais n'est pas NOM exact
                         domainProfilePath = Directory.GetDirectories(usersDir)
                             .FirstOrDefault(d =>
                             {
@@ -81,10 +94,8 @@ namespace SaveRestoreGUI
                                     && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase);
                             });
 
-                        // NOM : correspondance exacte
                         var exactDir = Path.Combine(usersDir, currentUsername);
-                        if (Directory.Exists(exactDir))
-                            cleanProfilePath = exactDir;
+                        if (Directory.Exists(exactDir)) cleanProfilePath = exactDir;
                     }
                 }
 
@@ -92,15 +103,12 @@ namespace SaveRestoreGUI
 
                 if (doubleBackup)
                 {
-                    LogInfo(rtbBackupLog,
-                        $"⚠️ Double profil détecté : « {Path.GetFileName(domainProfilePath)} » + « {currentUsername} »");
-                    LogInfo(rtbBackupLog,
-                        "La sauvegarde copiera d'abord l'ancien profil domaine, puis le profil actuel (priorité au plus récent).");
+                    LogInfo(rtbBackupLog, $"\u26a0\ufe0f Double profil détecté : « {Path.GetFileName(domainProfilePath)} » + « {currentUsername} »");
+                    LogInfo(rtbBackupLog, "La sauvegarde copiera d'abord l'ancien profil domaine, puis le profil actuel.");
                 }
 
                 var progress = new Progress<int>(UpdateProgress);
 
-                // ── Passe 1 : NOM.DOMAINE (si double profil) ──────────────────────
                 if (doubleBackup)
                 {
                     LogTitle(rtbBackupLog, $"Passe 1 — Ancien profil domaine : {Path.GetFileName(domainProfilePath)}");
@@ -118,17 +126,13 @@ namespace SaveRestoreGUI
                     LogSuccess(rtbBackupLog, $"Passe 1 terminée — profil « {Path.GetFileName(domainProfilePath)} » sauvegardé.");
                 }
 
-                // ── Passe 2 (ou unique) : profil actuel ───────────────────────────
                 if (doubleBackup)
                     LogTitle(rtbBackupLog, $"Passe 2 — Profil actuel : {currentUsername}");
 
                 var steps = BuildBackupSteps(backupRoot, cleanProfilePath ?? string.Empty,
-                    progress, errorList, ct,
-                    includePublic: true, includeAppData: true);
+                    progress, errorList, ct, includePublic: true, includeAppData: true);
 
-                int totalSteps = steps.Count;
-                int currentStep = 0;
-
+                int totalSteps = steps.Count, currentStep = 0;
                 foreach (var (name, action) in steps)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -150,8 +154,7 @@ namespace SaveRestoreGUI
                 if (errorList.Count > 0)
                 {
                     LogTitle(rtbBackupLog, "Résumé des erreurs rencontrées");
-                    foreach (var err in errorList)
-                        LogWarning(rtbBackupLog, err);
+                    foreach (var err in errorList) LogWarning(rtbBackupLog, err);
                 }
 
                 LogTitle(rtbBackupLog, "Sauvegarde terminée");
@@ -178,24 +181,55 @@ namespace SaveRestoreGUI
             {
                 SetControlsEnabled(true);
                 HideProgress();
-                _logFilePath = null;
+                lock (_logLock) { _logFilePath = null; }
             }
+        }
+
+        /// <summary>
+        /// #5 — Calcule la taille estimée en additionnant les dossiers sélectionnés.
+        /// Exécuté sur le thread pool pour ne pas bloquer l'UI.
+        /// </summary>
+        private long EstimateBackupSize()
+        {
+            var userProfile    = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var appDataRoaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var appDataLocal   = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            long total = 0;
+
+            long SizeOf(string path)
+            {
+                if (!Directory.Exists(path)) return 0;
+                try
+                {
+                    return new DirectoryInfo(path)
+                        .EnumerateFiles("*", SearchOption.AllDirectories)
+                        .Sum(f => { try { return f.Length; } catch { return 0L; } });
+                }
+                catch { return 0; }
+            }
+
+            if (chkDocuments.Checked)    total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+            if (chkDesktop.Checked)      total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+            if (chkDownloads.Checked)    total += SizeOf(Path.Combine(userProfile, "Downloads"));
+            if (chkPictures.Checked)     total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+            if (chkMusic.Checked)        total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
+            if (chkVideos.Checked)       total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
+            if (chkSignatures.Checked)   total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Signatures"));
+            if (chkTemplates.Checked)    total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Templates"));
+            if (chkExcelMacros.Checked)  total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"));
+            if (chkSap.Checked)          total += SizeOf(Path.Combine(appDataRoaming, "SAP"));
+            if (chkEdgeProfile.Checked)  total += SizeOf(Path.Combine(appDataLocal,   "Microsoft", "Edge", "User Data", "Default"));
+            if (chkStickyNotes.Checked)  total += SizeOf(Path.Combine(appDataLocal,   "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
+            if (chkPublic.Checked)       total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments));
+
+            return total;
         }
 
         // ───────────────────────────────────────────────────────────────────────────────
         //  Construction des étapes de sauvegarde
         // ───────────────────────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Construit la liste des étapes de sauvegarde pour un profil source donné.
-        /// <para>
-        /// Quand <paramref name="sourceProfileOverride"/> est non-vide, les dossiers
-        /// utilisateurs sont lus depuis ce chemin (profil NOM.DOMAINE) au lieu du profil
-        /// Windows courant. Dans ce cas on copie uniquement les dossiers personnels ;
-        /// les données AppData (Outlook, Signatures…) ne sont incluses que pour le
-        /// profil actuel (<paramref name="includeAppData"/> = true).
-        /// </para>
-        /// </summary>
         private List<(string Name, Func<Task> Action)> BuildBackupSteps(
             string backupRoot,
             string sourceProfileOverride,
@@ -207,16 +241,11 @@ namespace SaveRestoreGUI
         {
             var steps = new List<(string Name, Func<Task> Action)>();
 
-            // Résolution des sources :
-            // - Si sourceProfileOverride est défini → on lit depuis ce profil externe.
-            // - Sinon → on utilise les chemins Windows standard (profil courant).
             bool useOverride = !string.IsNullOrEmpty(sourceProfileOverride)
                                && Directory.Exists(sourceProfileOverride);
 
             string Src(string relativePath) =>
-                useOverride
-                    ? Path.Combine(sourceProfileOverride, relativePath)
-                    : relativePath;   // relativePath est déjà un chemin complet
+                useOverride ? Path.Combine(sourceProfileOverride, relativePath) : relativePath;
 
             string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
@@ -244,34 +273,22 @@ namespace SaveRestoreGUI
                 useOverride ? Src("Videos") : Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
                 Path.Combine(backupRoot, "Videos"), "Vidéos", rtbBackupLog, progress, errorList, ct)));
 
-            // AppData-dependent items — uniquement pour le profil actuel (ou si pas d'override)
             if (includeAppData)
             {
                 var appDataRoaming = useOverride
                     ? Path.Combine(sourceProfileOverride, "AppData", "Roaming")
                     : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-                if (chkSignatures.Checked) steps.Add(("Signatures Outlook", () => BackupSignaturesAsync(
-                    backupRoot, rtbBackupLog, progress, errorList, ct)));
-
-                if (chkTemplates.Checked) steps.Add(("Modèles Office", () => CopyStep(
-                    Path.Combine(appDataRoaming, "Microsoft", "Templates"),
-                    Path.Combine(backupRoot, "Templates"), "Modèles Office", rtbBackupLog, progress, errorList, ct)));
-
-                if (chkExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", () => CopyStep(
-                    Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"),
-                    Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", rtbBackupLog, progress, errorList, ct)));
-
-                if (chkSap.Checked) steps.Add(("SAP GUI", () => CopyStep(
-                    Path.Combine(appDataRoaming, "SAP"),
-                    Path.Combine(backupRoot, "SAP"), "SAP GUI", rtbBackupLog, progress, errorList, ct)));
-
-                if (chkOutlook.Checked) steps.Add(("Données Outlook", () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
-                if (chkOneNote.Checked) steps.Add(("OneNote (registre)", () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
-                if (chkStickyNotes.Checked) steps.Add(("Sticky Notes", () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
-                if (chkEdgeProfile.Checked) steps.Add(("Profil Edge", () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
-                if (chkWallpaper.Checked) steps.Add(("Fond d'écran", () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
-                if (chkNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
+                if (chkSignatures.Checked)  steps.Add(("Signatures Outlook",  () => BackupSignaturesAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
+                if (chkTemplates.Checked)   steps.Add(("Modèles Office",       () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),     Path.Combine(backupRoot, "Templates"),               "Modèles Office",       rtbBackupLog, progress, errorList, ct)));
+                if (chkExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)",() => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"), Path.Combine(backupRoot, "Excel", "XLSTART"),        "Macros Excel (XLSTART)",rtbBackupLog, progress, errorList, ct)));
+                if (chkSap.Checked)         steps.Add(("SAP GUI",              () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                          Path.Combine(backupRoot, "SAP"),                     "SAP GUI",               rtbBackupLog, progress, errorList, ct)));
+                if (chkOutlook.Checked)     steps.Add(("Données Outlook",      () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
+                if (chkOneNote.Checked)     steps.Add(("OneNote (registre)",   () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
+                if (chkStickyNotes.Checked) steps.Add(("Sticky Notes",         () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
+                if (chkEdgeProfile.Checked) steps.Add(("Profil Edge",          () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
+                if (chkWallpaper.Checked)   steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
+                if (chkNetworkDrives.Checked)steps.Add(("Lecteurs réseau",     () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
                 if (chkIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
             }
 
@@ -320,7 +337,6 @@ namespace SaveRestoreGUI
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures");
             await CopyStep(signaturesPath, Path.Combine(backupRoot, "Signatures"), "Signatures Outlook",
                 rtb, progress, errorList, ct);
-
             await Task.Run(() => RegistryService.BackupOutlookSignatureSettings(backupRoot,
                 msg => LogInfo(rtb, msg)), ct);
         }
@@ -353,12 +369,11 @@ namespace SaveRestoreGUI
                     catch (OperationCanceledException) { throw; }
                     catch (Exception ex)
                     {
-                        LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message} (fichier peut-être ouvert dans Outlook)");
+                        LogError(rtb, $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}");
                     }
                 }
 
                 await File.WriteAllLinesAsync(Path.Combine(outlookDir, "PST_Paths.txt"), pstPaths, ct);
-                LogInfo(rtb, "Liste des chemins PST sauvegardée dans PST_Paths.txt");
             }
             else
             {
@@ -393,28 +408,24 @@ namespace SaveRestoreGUI
                 try
                 {
                     await Task.Run(() => File.Copy(rule, Path.Combine(outlookDir, Path.GetFileName(rule)), true), ct);
-                    LogSuccess(rtb, $"Fichier de règles sauvegardé : {Path.GetFileName(rule)}");
+                    LogSuccess(rtb, $"Règles sauvegardées : {Path.GetFileName(rule)}");
                 }
                 catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    LogError(rtb, $"Erreur règles {Path.GetFileName(rule)} : {ex.Message}");
-                }
+                catch (Exception ex) { LogError(rtb, $"Erreur règles {Path.GetFileName(rule)} : {ex.Message}"); }
             }
 
             Log(rtb, "Recherche des boîtes aux lettres partagées...");
             var sharedMailboxes = await Task.Run(OutlookService.FindSharedMailboxes, ct);
             if (sharedMailboxes.Count > 0)
             {
-                LogInfo(rtb, $"{sharedMailboxes.Count} boîte(s) partagée(s) détectée(s) :");
-                foreach (var mb in sharedMailboxes)
-                    Log(rtb, $"   → {mb}");
+                LogInfo(rtb, $"{sharedMailboxes.Count} boîte(s) partagée(s) détectée(s)");
+                foreach (var mb in sharedMailboxes) Log(rtb, $"   \u2192 {mb}");
                 await File.WriteAllLinesAsync(Path.Combine(outlookDir, "SharedMailboxes.txt"), sharedMailboxes, ct);
                 LogSuccess(rtb, "Liste sauvegardée dans SharedMailboxes.txt");
             }
             else
             {
-                LogInfo(rtb, "Aucun boîte aux lettres partagée détectée.");
+                LogInfo(rtb, "Aucune boîte aux lettres partagée détectée.");
             }
         }
 
@@ -436,8 +447,7 @@ namespace SaveRestoreGUI
 
             if (File.Exists(stickyPath))
             {
-                var destPath = Path.Combine(backupRoot, "StickyNotes.sqlite");
-                await Task.Run(() => File.Copy(stickyPath, destPath, true), ct);
+                await Task.Run(() => File.Copy(stickyPath, Path.Combine(backupRoot, "StickyNotes.sqlite"), true), ct);
                 LogSuccess(rtb, "Sticky Notes sauvegardés");
             }
             else
@@ -446,12 +456,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// Sauvegarde le profil Edge.
-        /// Si msedge.exe tourne au moment de la sauvegarde, les processus sont tués
-        /// (arbre complet) afin de libérer les fichiers du profil, la copie est réalisée,
-        /// puis Edge est relancé uniquement s'il était ouvert avant.
-        /// </summary>
         private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -459,45 +463,34 @@ namespace SaveRestoreGUI
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Edge", "User Data", "Default");
 
-            // ── 1. Détection Edge ────────────────────────────────────────────────────
             var edgeProcesses = System.Diagnostics.Process.GetProcessesByName("msedge");
             bool edgeWasRunning = edgeProcesses.Length > 0;
 
             if (edgeWasRunning)
             {
                 LogInfo(rtb, $"Edge détecté ({edgeProcesses.Length} processus) — fermeture avant copie...");
-
-                // ── 2. Kill de l'arbre complet ───────────────────────────────────────
                 await Task.Run(() =>
                 {
                     foreach (var proc in edgeProcesses)
                     {
-                        try { proc.Kill(entireProcessTree: true); }
-                        catch { /* déjà terminé */ }
+                        try { proc.Kill(entireProcessTree: true); } catch { }
                         finally { proc.Dispose(); }
                     }
                 }, ct);
 
-                // ── 3. Attente libération des fichiers (max 5 s) ────────────────────
                 var deadline = DateTime.UtcNow.AddSeconds(5);
                 while (DateTime.UtcNow < deadline)
                 {
                     ct.ThrowIfCancellationRequested();
                     await Task.Delay(300, ct);
-                    if (System.Diagnostics.Process.GetProcessesByName("msedge").Length == 0)
-                        break;
+                    if (System.Diagnostics.Process.GetProcessesByName("msedge").Length == 0) break;
                 }
-
                 LogInfo(rtb, "Edge fermé — démarrage de la copie du profil.");
             }
 
-            // ── 4. Copie du profil ───────────────────────────────────────────────────
-            await CopyStep(edgeDefault,
-                Path.Combine(backupRoot, "EdgeProfile"),
-                "Profil Edge",
+            await CopyStep(edgeDefault, Path.Combine(backupRoot, "EdgeProfile"), "Profil Edge",
                 rtb, progress, errorList, ct);
 
-            // ── 5. Relance Edge si besoin ────────────────────────────────────────────
             if (edgeWasRunning)
             {
                 await Task.Run(() =>
@@ -509,21 +502,12 @@ namespace SaveRestoreGUI
                         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                             "Microsoft", "Edge", "Application", "msedge.exe")
                     };
-
                     var edgeExe = candidates.FirstOrDefault(File.Exists);
                     if (edgeExe != null)
-                    {
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName        = edgeExe,
-                            UseShellExecute = true
-                        });
-                        LogInfo(rtb, "Edge relancé.");
-                    }
+                            { FileName = edgeExe, UseShellExecute = true });
                     else
-                    {
                         LogWarning(rtb, "Impossible de relancer Edge : exécutable introuvable.");
-                    }
                 }, CancellationToken.None);
             }
         }
@@ -536,18 +520,15 @@ namespace SaveRestoreGUI
                 {
                     string? wallpaperPath = null;
                     using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop"))
-                    {
                         wallpaperPath = key?.GetValue("Wallpaper") as string;
-                    }
 
                     if (!string.IsNullOrEmpty(wallpaperPath) && File.Exists(wallpaperPath))
                     {
-                        var ext = Path.GetExtension(wallpaperPath);
+                        var ext  = Path.GetExtension(wallpaperPath);
                         if (string.IsNullOrEmpty(ext)) ext = ".jpg";
                         var dest = Path.Combine(backupRoot, "Wallpaper" + ext);
                         File.Copy(wallpaperPath, dest, true);
-                        var size = new FileInfo(dest).Length;
-                        LogSuccess(rtb, $"Fond d'écran sauvegardé ({FileService.FormatSize(size)})");
+                        LogSuccess(rtb, $"Fond d'écran sauvegardé ({FileService.FormatSize(new FileInfo(dest).Length)})");
                         return;
                     }
 
@@ -559,15 +540,9 @@ namespace SaveRestoreGUI
                         File.Copy(transcoded, Path.Combine(backupRoot, "Wallpaper.jpg"), true);
                         LogSuccess(rtb, "Fond d'écran sauvegardé (TranscodedWallpaper)");
                     }
-                    else
-                    {
-                        LogInfo(rtb, "Aucun fond d'écran personnalisé trouvé.");
-                    }
+                    else LogInfo(rtb, "Aucun fond d'écran personnalisé trouvé.");
                 }
-                catch (Exception ex)
-                {
-                    LogError(rtb, $"Erreur fond d'écran : {ex.Message}");
-                }
+                catch (Exception ex) { LogError(rtb, $"Erreur fond d'écran : {ex.Message}"); }
             });
         }
 
@@ -582,12 +557,14 @@ namespace SaveRestoreGUI
                         "SELECT * FROM Win32_MappedLogicalDisk");
                     foreach (var drive in searcher.Get().Cast<System.Management.ManagementObject>())
                     {
-                        var driveLetter   = drive["DeviceID"]?.ToString();
-                        var providerName  = drive["ProviderName"]?.ToString();
+                        var driveLetter  = drive["DeviceID"]?.ToString();
+                        var providerName = drive["ProviderName"]?.ToString();
+                        var label        = drive["VolumeName"]?.ToString() ?? "";
                         if (!string.IsNullOrEmpty(driveLetter) && !string.IsNullOrEmpty(providerName))
                         {
-                            lines.Add($"Lettre: {driveLetter} → Chemin: {providerName}");
-                            Log(rtb, $"Lecteur réseau détecté : {driveLetter} → {providerName}");
+                            // Format : LETTRE|CHEMIN_UNC|LIBELLE (parsable par NetworkDriveParser)
+                            lines.Add($"{driveLetter}|{providerName}|{label}");
+                            Log(rtb, $"Lecteur réseau : {driveLetter} \u2192 {providerName}{(string.IsNullOrEmpty(label) ? "" : $" ({label})")} ");
                         }
                     }
 
@@ -596,54 +573,39 @@ namespace SaveRestoreGUI
                         File.WriteAllLines(Path.Combine(backupRoot, "NetworkDrives.txt"), lines);
                         LogSuccess(rtb, $"Lecteurs réseau sauvegardés ({lines.Count})");
                     }
-                    else
-                    {
-                        LogInfo(rtb, "Aucun lecteur réseau mappé.");
-                    }
+                    else LogInfo(rtb, "Aucun lecteur réseau mappé.");
                 }
-                catch (Exception ex)
-                {
-                    LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}");
-                }
+                catch (Exception ex) { LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}"); }
             });
         }
 
-        /// <summary>
-        /// Sauvegarde la configuration IP Desktop Softphone (Alcatel-Lucent / ALE International).
-        /// Recherche dans AppData\Roaming et AppData\Local pour les deux noms d'éditeur connus.
-        /// </summary>
         private async Task BackupIpDesktopSoftphoneAsync(string backupRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
             var candidates = new[]
             {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "Alcatel-Lucent", "IP Desktop Softphone"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Alcatel-Lucent", "IP Desktop Softphone"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "ALE International", "IP Desktop Softphone"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "ALE International", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),  "Alcatel-Lucent", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Alcatel-Lucent", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),  "ALE International", "IP Desktop Softphone"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ALE International", "IP Desktop Softphone"),
             };
 
             bool found = false;
             foreach (var src in candidates.Where(Directory.Exists))
             {
                 var vendorName = Path.GetFileName(Path.GetDirectoryName(src)!);
-                var destDir = Path.Combine(backupRoot, "IpDesktopSoftphone", vendorName);
-                await CopyStep(src, destDir, $"IP Desktop Softphone ({vendorName})", rtb, progress, errorList, ct);
+                await CopyStep(src, Path.Combine(backupRoot, "IpDesktopSoftphone", vendorName),
+                    $"IP Desktop Softphone ({vendorName})", rtb, progress, errorList, ct);
                 found = true;
             }
 
-            if (!found)
-                LogInfo(rtb, "IP Desktop Softphone : aucune configuration trouvée.");
+            if (!found) LogInfo(rtb, "IP Desktop Softphone : aucune configuration trouvée.");
         }
 
         private void DetectAndLogOldProfiles(RichTextBox rtb)
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var usersDir = Path.GetDirectoryName(userProfile);
+            var usersDir    = Path.GetDirectoryName(userProfile);
             var currentUser = Environment.UserName;
             if (usersDir == null) return;
 
@@ -659,14 +621,10 @@ namespace SaveRestoreGUI
                 .ToList();
 
             if (oldProfiles.Count > 0)
-            {
                 foreach (var profile in oldProfiles)
                     LogInfo(rtb, $"Ancien profil détecté : {Path.GetFileName(profile)}");
-            }
             else
-            {
                 LogInfo(rtb, "Aucun ancien profil utilisateur détecté.");
-            }
         }
     }
 }
