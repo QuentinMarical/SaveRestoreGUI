@@ -128,6 +128,12 @@ namespace SaveRestoreGUI
                     var launchSap = Directory.Exists(Path.Combine(restoreRoot, "SAP"));
                     await Task.Run(() => AppLauncherService.LaunchApplications(launchSap,
                         msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
+
+                    // Ouvre la popup OneDrive "Gérer la sauvegarde" pour activer
+                    // la synchronisation Bureau / Documents / Images sur le nouveau poste.
+                    LogTitle(rtbRestoreLog, "Synchronisation OneDrive");
+                    await Task.Run(() => AppLauncherService.OpenOneDriveBackupSettings(
+                        msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
                 }
 
                 if (errorList.Count > 0)

@@ -178,18 +178,130 @@ namespace SaveRestoreGUI.Services
     }
 
     /// <summary>
-    /// Service de lancement d'applications post-restauration (Outlook, OneNote, Edge, SAP).
+    /// Service de lancement d'applications post-restauration (Outlook, OneNote, Edge, SAP,
+    /// navigateurs alternatifs) et d'activation de la synchronisation OneDrive.
     /// Équivalent de la section "LANCEMENT DES APPLICATIONS" de Restauration.ps1.
     /// </summary>
     public static class AppLauncherService
     {
+        // ─── Navigateurs alternatifs (ordre de priorité : premier trouvé est lancé) ───
+        private static readonly (string ProcessOrPath, string DisplayName)[] AlternateBrowsers =
+        {
+            // LibreWolf — installé dans %LOCALAPPDATA%\Programs\LibreWolf ou %ProgramFiles%\LibreWolf
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Programs", "LibreWolf", "librewolf.exe"),
+             "LibreWolf"),
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "LibreWolf", "librewolf.exe"),
+             "LibreWolf"),
+
+            // Pale Moon
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Pale Moon", "palemoon.exe"),
+             "Pale Moon"),
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                "Pale Moon", "palemoon.exe"),
+             "Pale Moon"),
+
+            // Tor Browser — installé dans le profil utilisateur par défaut
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                "Tor Browser", "Browser", "firefox.exe"),
+             "Tor Browser"),
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Desktop", "Tor Browser", "Browser", "firefox.exe"),
+             "Tor Browser"),
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads", "tor-browser", "Browser", "firefox.exe"),
+             "Tor Browser"),
+
+            // DuckDuckGo Browser
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DuckDuckGo", "DuckDuckGo.exe"),
+             "DuckDuckGo Browser"),
+            (Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "DuckDuckGo", "DuckDuckGo.exe"),
+             "DuckDuckGo Browser"),
+        };
+
         public static void LaunchApplications(bool launchSap, Action<string> log)
         {
             TryLaunch("OUTLOOK", "Outlook", log);
             TryLaunch("ONENOTE", "OneNote", log);
             TryLaunch("msedge", "Edge", log);
+
+            // Navigateurs alternatifs : on lance ceux qui sont installés
+            var launched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (path, name) in AlternateBrowsers)
+            {
+                if (launched.Contains(name)) continue;   // déjà lancé (ex. LibreWolf trouvé en premier chemin)
+                if (!File.Exists(path)) continue;
+                try
+                {
+                    Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+                    log($"{name} démarré.");
+                    launched.Add(name);
+                }
+                catch
+                {
+                    log($"Impossible de démarrer {name}.");
+                    launched.Add(name);   // on n'essaie pas le chemin suivant si le premier a planté
+                }
+            }
+
             if (launchSap)
                 TryLaunch("saplogon", "SAP GUI", log);
+        }
+
+        /// <summary>
+        /// Ouvre la popup OneDrive "Gérer la sauvegarde" pour inviter l'utilisateur
+        /// à activer la synchronisation Bureau / Documents / Images.
+        /// Utilise le protocole URI onedrive: supporté depuis Windows 10.
+        /// </summary>
+        public static void OpenOneDriveBackupSettings(Action<string> log)
+        {
+            // Méthode 1 : URI onedrive:?fref=pcb (ouvre l'onglet "Gérer la sauvegarde")
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName       = "onedrive:",
+                    Arguments      = "?fref=pcb",
+                    UseShellExecute = true
+                });
+                log("OneDrive : popup \"Gérer la sauvegarde\" ouverte.");
+                return;
+            }
+            catch { }
+
+            // Méthode 2 : lancer OneDrive.exe avec l'argument /configure_backup
+            var oneDrivePaths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "OneDrive", "OneDrive.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Microsoft OneDrive", "OneDrive.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "Microsoft OneDrive", "OneDrive.exe"),
+            };
+
+            foreach (var exe in oneDrivePaths)
+            {
+                if (!File.Exists(exe)) continue;
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName        = exe,
+                        Arguments       = "/configure_backup",
+                        UseShellExecute = true
+                    });
+                    log("OneDrive : popup \"Gérer la sauvegarde\" ouverte via OneDrive.exe.");
+                    return;
+                }
+                catch { }
+            }
+
+            log("OneDrive : impossible d'ouvrir la popup de sauvegarde (OneDrive non installé ?).");
         }
 
         private static void TryLaunch(string processName, string displayName, Action<string> log)
