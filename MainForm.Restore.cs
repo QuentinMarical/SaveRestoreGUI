@@ -125,8 +125,7 @@ namespace SaveRestoreGUI
                 if (chkLaunchApps.Checked)
                 {
                     LogTitle(rtbRestoreLog, "Lancement des applications");
-                    var launchSap = Directory.Exists(Path.Combine(restoreRoot, "SAP"));
-                    await Task.Run(() => AppLauncherService.LaunchApplications(launchSap,
+                    await Task.Run(() => AppLauncherService.LaunchApplications(
                         msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
 
                     // Ouvre la popup OneDrive "Gérer la sauvegarde" pour activer
