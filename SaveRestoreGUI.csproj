@@ -6,16 +6,21 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>diskette.ico</ApplicationIcon>
+  </PropertyGroup>
 
-    <!-- Publication autonome - pas besoin d'installer .NET -->
+  <!--
+    Propriétés de publication autonome activées UNIQUEMENT lors du dotnet publish.
+    Appel : dotnet publish /p:Publishing=true
+    Cela évite que SelfContained=true et RuntimeIdentifier contaminent
+    le projet de tests via ProjectReference lors d'un simple dotnet build.
+  -->
+  <PropertyGroup Condition="'$(Publishing)' == 'true'">
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-
-    <!-- Fichier unique + compression pour réduire la taille -->
     <PublishSingleFile>true</PublishSingleFile>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <ApplicationIcon>diskette.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
