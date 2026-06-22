@@ -110,6 +110,7 @@ namespace SaveRestoreGUI
                 if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
                 if (chkRestoreNetworkDrives.Checked) steps.Add(("Lecteurs réseau", () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
                 if (chkRestoreWallpaper.Checked) steps.Add(("Fond d'écran", () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkRestoreIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -128,8 +129,6 @@ namespace SaveRestoreGUI
                     await Task.Run(() => AppLauncherService.LaunchApplications(
                         msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
 
-                    // Ouvre la popup OneDrive "Gérer la sauvegarde" pour activer
-                    // la synchronisation Bureau / Documents / Images sur le nouveau poste.
                     LogTitle(rtbRestoreLog, "Synchronisation OneDrive");
                     await Task.Run(() => AppLauncherService.OpenOneDriveBackupSettings(
                         msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
@@ -305,7 +304,7 @@ namespace SaveRestoreGUI
                         Log(rtb, $"   → {mailbox}", Color.FromArgb(139, 233, 253));
 
                     LogInfo(rtb, "");
-                    LogInfo(rtb, "COMMENT AJOUTER UNE BOÎTTE PARTAGÉE DANS OUTLOOK :");
+                    LogInfo(rtb, "COMMENT AJOUTER UNE BOÎTE PARTAGÉE DANS OUTLOOK :");
                     LogInfo(rtb, "  1. Fichier > Paramètres du compte > Paramètres du compte...");
                     LogInfo(rtb, "  2. Sélectionner votre compte > Modifier > Paramètres supplémentaires");
                     LogInfo(rtb, "  3. Onglet Avancé > Ajouter... > Entrer le nom de la boîte");
@@ -360,7 +359,7 @@ namespace SaveRestoreGUI
                 rtb, progress, errorList, ct);
         }
 
-        /// <summary>Affiche la liste des lecteurs réseau sauvegardés (recréation manuelle).</summary>
+        /// <summary>Affiche la liste des lecteurs réseau sauvegardés (récréation manuelle).</summary>
         private async Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
         {
             var networkDrivesFile = Path.Combine(restoreRoot, "NetworkDrives.txt");
@@ -394,6 +393,45 @@ namespace SaveRestoreGUI
             else
             {
                 LogInfo(rtb, "Pas de fond d'écran à restaurer.");
+            }
+        }
+
+        /// <summary>
+        /// Restaure la configuration IP Desktop Softphone (Alcatel-Lucent / ALE International)
+        /// depuis le dossier de sauvegarde IpDesktopSoftphone/ vers AppData\Roaming.
+        /// Reconstitue la structure vendeur d'origine (Alcatel-Lucent ou ALE International).
+        /// </summary>
+        private async Task RestoreIpDesktopSoftphoneAsync(string restoreRoot, RichTextBox rtb,
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
+        {
+            var backupDir = Path.Combine(restoreRoot, "IpDesktopSoftphone");
+            if (!Directory.Exists(backupDir))
+            {
+                LogInfo(rtb, "IP Desktop Softphone : aucune sauvegarde trouvée.");
+                return;
+            }
+
+            // Chaque sous-dossier correspond à un nom de vendeur
+            // (Alcatel-Lucent ou ALE International) sauvegardé dans BackupIpDesktopSoftphoneAsync.
+            var vendorDirs = Directory.GetDirectories(backupDir);
+            if (vendorDirs.Length == 0)
+            {
+                LogInfo(rtb, "IP Desktop Softphone : dossier de sauvegarde vide.");
+                return;
+            }
+
+            foreach (var vendorDir in vendorDirs)
+            {
+                var vendorName = Path.GetFileName(vendorDir);
+
+                // Restauration vers AppData\Roaming\<vendeur>\IP Desktop Softphone
+                var destRoaming = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    vendorName, "IP Desktop Softphone");
+
+                await RestoreStep(vendorDir, destRoaming,
+                    $"IP Desktop Softphone ({vendorName})",
+                    rtb, progress, errorList, ct);
             }
         }
     }
