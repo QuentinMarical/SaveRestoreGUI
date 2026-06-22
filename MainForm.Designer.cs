@@ -263,7 +263,6 @@ namespace SaveRestoreGUI
             chkSap                 = MakeCheck("\U0001f4bc SAP GUI", true);
             chkPublic              = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
             chkIpDesktopSoftphone  = MakeCheck("\U0001f4de IP Desktop Softphone", false);
-            chkIpDesktopSoftphone.Enabled = false;
 
             btnSelectAll   = new ModernButton { Text = "Tout cocher",   Role = ButtonRole.Secondary, Size = new Size(120, 34) };
             btnDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary, Size = new Size(130, 34) };
@@ -342,7 +341,6 @@ namespace SaveRestoreGUI
             chkRestorePublic             = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
             chkLaunchApps                = MakeCheck("\U0001f680 Lancer les applications", true);
             chkRestoreIpDesktopSoftphone = MakeCheck("\U0001f4de IP Desktop Softphone", false);
-            chkRestoreIpDesktopSoftphone.Enabled = false;
 
             btnRestoreSelectAll   = new ModernButton { Text = "Tout cocher",   Role = ButtonRole.Secondary, Size = new Size(120, 34) };
             btnRestoreDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary, Size = new Size(130, 34) };
@@ -465,25 +463,24 @@ namespace SaveRestoreGUI
                 BackColor = Color.Transparent
             };
 
-            chkMigrateDocuments         = MakeCheck("\U0001f4c4 Documents", true);
-            chkMigrateDesktop           = MakeCheck("\U0001f5a5\ufe0f Bureau", true);
-            chkMigrateDownloads         = MakeCheck("\u2b07\ufe0f Téléchargements", true);
-            chkMigratePictures          = MakeCheck("\U0001f5bc\ufe0f Images", true);
-            chkMigrateMusic             = MakeCheck("\U0001f3b5 Musique", true);
-            chkMigrateVideos            = MakeCheck("\U0001f3ac Vidéos", true);
-            chkMigrateOutlook           = MakeCheck("\U0001f4e7 Outlook (PST)", true);
-            chkMigrateSignatures        = MakeCheck("\u270d\ufe0f Signatures Outlook", true);
-            chkMigrateExcelMacros       = MakeCheck("\U0001f4ca Macros Excel (XLSTART)", true);
-            chkMigrateStickyNotes       = MakeCheck("\U0001f4cc Sticky Notes", true);
-            chkMigrateEdgeProfile       = MakeCheck("\U0001f310 Profil Edge", true);
-            chkMigrateWallpaper         = MakeCheck("\U0001f5bc\ufe0f Fond d'écran", true);
-            chkMigrateNetworkDrives     = MakeCheck("\U0001f517 Lecteurs réseau", true);
-            chkMigrateOneNote           = MakeCheck("\U0001f4d3 OneNote (registre)", true);
-            chkMigrateTemplates         = MakeCheck("\U0001f4cb Modèles Office", true);
-            chkMigrateSap               = MakeCheck("\U0001f4bc SAP GUI", true);
-            chkMigratePublic            = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
+            chkMigrateDocuments          = MakeCheck("\U0001f4c4 Documents", true);
+            chkMigrateDesktop            = MakeCheck("\U0001f5a5\ufe0f Bureau", true);
+            chkMigrateDownloads          = MakeCheck("\u2b07\ufe0f Téléchargements", true);
+            chkMigratePictures           = MakeCheck("\U0001f5bc\ufe0f Images", true);
+            chkMigrateMusic              = MakeCheck("\U0001f3b5 Musique", true);
+            chkMigrateVideos             = MakeCheck("\U0001f3ac Vidéos", true);
+            chkMigrateOutlook            = MakeCheck("\U0001f4e7 Outlook (PST)", true);
+            chkMigrateSignatures         = MakeCheck("\u270d\ufe0f Signatures Outlook", true);
+            chkMigrateExcelMacros        = MakeCheck("\U0001f4ca Macros Excel (XLSTART)", true);
+            chkMigrateStickyNotes        = MakeCheck("\U0001f4cc Sticky Notes", true);
+            chkMigrateEdgeProfile        = MakeCheck("\U0001f310 Profil Edge", true);
+            chkMigrateWallpaper          = MakeCheck("\U0001f5bc\ufe0f Fond d'écran", true);
+            chkMigrateNetworkDrives      = MakeCheck("\U0001f517 Lecteurs réseau", true);
+            chkMigrateOneNote            = MakeCheck("\U0001f4d3 OneNote (registre)", true);
+            chkMigrateTemplates          = MakeCheck("\U0001f4cb Modèles Office", true);
+            chkMigrateSap                = MakeCheck("\U0001f4bc SAP GUI", true);
+            chkMigratePublic             = MakeCheck("\U0001f4c1 Dossier Public (%public%)", true);
             chkMigrateIpDesktopSoftphone = MakeCheck("\U0001f4de IP Desktop Softphone", false);
-            chkMigrateIpDesktopSoftphone.Enabled = false;
 
             btnMigrateSelectAll   = new ModernButton { Text = "Tout cocher",   Role = ButtonRole.Secondary, Size = new Size(120, 34) };
             btnMigrateDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary, Size = new Size(130, 34) };
