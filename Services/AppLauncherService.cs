@@ -11,7 +11,27 @@ namespace SaveRestoreGUI.Services
     {
         // ══════════════════════════════════════════════════════════════════
         //  Détection — navigateurs
+        //  Ordre de priorité : Edge > Chrome > Firefox > Brave > Opera > Opera GX
         // ══════════════════════════════════════════════════════════════════
+
+        // ── Microsoft Edge ───────────────────────────────────────────────
+
+        public static bool IsEdgeInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "Microsoft", "Edge", "Application", "msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Microsoft", "Edge", "Application", "msedge.exe"),
+                // Edge est préinstallé dans System32 sur Windows 11
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+                    "msedge.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Microsoft Edge");
+        }
+
+        // ── Google Chrome ────────────────────────────────────────────────
 
         public static bool IsChromeInstalled()
         {
@@ -27,6 +47,8 @@ namespace SaveRestoreGUI.Services
             return paths.Any(File.Exists) || IsInstalledViaRegistry("Google Chrome");
         }
 
+        // ── Mozilla Firefox ──────────────────────────────────────────────
+
         public static bool IsFirefoxInstalled()
         {
             string[] paths =
@@ -38,6 +60,8 @@ namespace SaveRestoreGUI.Services
             };
             return paths.Any(File.Exists) || IsInstalledViaRegistry("Mozilla Firefox");
         }
+
+        // ── Brave ────────────────────────────────────────────────────────
 
         public static bool IsBraveInstalled()
         {
@@ -51,6 +75,8 @@ namespace SaveRestoreGUI.Services
             return paths.Any(File.Exists);
         }
 
+        // ── Opera ────────────────────────────────────────────────────────
+
         public static bool IsOperaInstalled()
         {
             string[] paths =
@@ -60,8 +86,24 @@ namespace SaveRestoreGUI.Services
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "Opera", "opera.exe")
             };
-            return paths.Any(File.Exists) || IsInstalledViaRegistry("Opera");
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Opera Stable");
         }
+
+        // ── Opera GX ─────────────────────────────────────────────────────
+
+        public static bool IsOperaGxInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Programs", "Opera GX", "opera.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Opera GX", "opera.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Opera GX");
+        }
+
+        // ── OneDrive ─────────────────────────────────────────────────────
 
         public static bool IsOneDriveInstalled()
         {
@@ -74,6 +116,12 @@ namespace SaveRestoreGUI.Services
         // ══════════════════════════════════════════════════════════════════
         //  Chemins de profil — navigateurs
         // ══════════════════════════════════════════════════════════════════
+
+        /// <summary>Dossier Default du profil Edge local.</summary>
+        public static string GetEdgeProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Edge", "User Data", "Default");
 
         /// <summary>Dossier Default du profil Chrome local.</summary>
         public static string GetChromeProfilePath()
@@ -93,9 +141,35 @@ namespace SaveRestoreGUI.Services
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "BraveSoftware", "Brave-Browser", "User Data", "Default");
 
+        /// <summary>Dossier Default du profil Opera local (roaming).</summary>
+        public static string GetOperaProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Opera Software", "Opera Stable");
+
+        /// <summary>Dossier Default du profil Opera GX local (roaming).</summary>
+        public static string GetOperaGxProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Opera Software", "Opera GX Stable");
+
         // ══════════════════════════════════════════════════════════════════
         //  Exécutables
         // ══════════════════════════════════════════════════════════════════
+
+        public static string? FindEdgeExe()
+        {
+            string[] candidates =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "Microsoft", "Edge", "Application", "msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Microsoft", "Edge", "Application", "msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
+                    "msedge.exe")
+            };
+            return candidates.FirstOrDefault(File.Exists);
+        }
 
         public static string? FindChromeExe()
         {
@@ -147,6 +221,18 @@ namespace SaveRestoreGUI.Services
             return candidates.FirstOrDefault(File.Exists);
         }
 
+        public static string? FindOperaGxExe()
+        {
+            string[] candidates =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Programs", "Opera GX", "opera.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Opera GX", "opera.exe")
+            };
+            return candidates.FirstOrDefault(File.Exists);
+        }
+
         // ══════════════════════════════════════════════════════════════════
         //  Lancement des applications post-restauration
         // ══════════════════════════════════════════════════════════════════
@@ -187,6 +273,10 @@ namespace SaveRestoreGUI.Services
             }
         }
 
+        /// <summary>Lance Edge si installé (navigateur principal).</summary>
+        public static void LaunchEdge(Action<string> log)
+            => LaunchExe("Edge", FindEdgeExe(), log);
+
         /// <summary>Lance Chrome si installé.</summary>
         public static void LaunchChrome(Action<string> log)
             => LaunchExe("Chrome", FindChromeExe(), log);
@@ -202,6 +292,10 @@ namespace SaveRestoreGUI.Services
         /// <summary>Lance Opera si installé.</summary>
         public static void LaunchOpera(Action<string> log)
             => LaunchExe("Opera", FindOperaExe(), log);
+
+        /// <summary>Lance Opera GX si installé.</summary>
+        public static void LaunchOperaGx(Action<string> log)
+            => LaunchExe("Opera GX", FindOperaGxExe(), log);
 
         /// <summary>
         /// Ouvre la popup OneDrive «\u00a0Gérer la sauvegarde\u00a0» pour activer la synchro
@@ -234,6 +328,26 @@ namespace SaveRestoreGUI.Services
                 log($"OneDrive : erreur — {ex.Message}");
             }
         }
+
+        // ══════════════════════════════════════════════════════════════════
+        //  Factory — liste pour BrowserPickerButton
+        // ══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Retourne la liste ordonnée des navigateurs (Edge en premier)
+        /// avec leur état d'installation, icône et chemin de profil.
+        /// À injecter dans BrowserPickerButton.SetBrowsers().
+        /// </summary>
+        public static IReadOnlyList<SaveRestoreGUI.UI.BrowserEntry> GetBrowserEntries()
+            =>
+            [
+                new("Edge",     "\U0001F1EA\U0001F1FA", IsEdgeInstalled(),     GetEdgeProfilePath(),    FindEdgeExe()),
+                new("Chrome",   "\U0001F535",           IsChromeInstalled(),   GetChromeProfilePath(),  FindChromeExe()),
+                new("Firefox",  "\U0001F98A",           IsFirefoxInstalled(),  GetFirefoxProfilesPath(), FindFirefoxExe()),
+                new("Brave",    "\U0001F981",           IsBraveInstalled(),    GetBraveProfilePath(),   FindBraveExe()),
+                new("Opera",    "\U0001F3AD",           IsOperaInstalled(),    GetOperaProfilePath(),   FindOperaExe()),
+                new("Opera GX", "\U0001F3AE",           IsOperaGxInstalled(),  GetOperaGxProfilePath(), FindOperaGxExe()),
+            ];
 
         // ══════════════════════════════════════════════════════════════════
         //  Helpers privés
