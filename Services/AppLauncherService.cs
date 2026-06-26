@@ -9,13 +9,11 @@ namespace SaveRestoreGUI.Services
     /// </summary>
     public static class AppLauncherService
     {
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
         //  Détection — navigateurs
-        //  Ordre de priorité : Edge > Chrome > Firefox > Brave > Opera > Opera GX
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
 
-        // ── Microsoft Edge ───────────────────────────────────────────────
-
+        // ── Microsoft Edge ────────────────────────────────────────────────
         public static bool IsEdgeInstalled()
         {
             string[] paths =
@@ -24,15 +22,13 @@ namespace SaveRestoreGUI.Services
                     "Microsoft", "Edge", "Application", "msedge.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "Microsoft", "Edge", "Application", "msedge.exe"),
-                // Edge est préinstallé dans System32 sur Windows 11
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
                     "msedge.exe")
             };
             return paths.Any(File.Exists) || IsInstalledViaRegistry("Microsoft Edge");
         }
 
-        // ── Google Chrome ────────────────────────────────────────────────
-
+        // ── Google Chrome ───────────────────────────────────────────────
         public static bool IsChromeInstalled()
         {
             string[] paths =
@@ -48,7 +44,6 @@ namespace SaveRestoreGUI.Services
         }
 
         // ── Mozilla Firefox ──────────────────────────────────────────────
-
         public static bool IsFirefoxInstalled()
         {
             string[] paths =
@@ -61,8 +56,7 @@ namespace SaveRestoreGUI.Services
             return paths.Any(File.Exists) || IsInstalledViaRegistry("Mozilla Firefox");
         }
 
-        // ── Brave ────────────────────────────────────────────────────────
-
+        // ── Brave ─────────────────────────────────────────────────────────
         public static bool IsBraveInstalled()
         {
             string[] paths =
@@ -75,8 +69,7 @@ namespace SaveRestoreGUI.Services
             return paths.Any(File.Exists);
         }
 
-        // ── Opera ────────────────────────────────────────────────────────
-
+        // ── Opera ─────────────────────────────────────────────────────────
         public static bool IsOperaInstalled()
         {
             string[] paths =
@@ -90,7 +83,6 @@ namespace SaveRestoreGUI.Services
         }
 
         // ── Opera GX ─────────────────────────────────────────────────────
-
         public static bool IsOperaGxInstalled()
         {
             string[] paths =
@@ -103,8 +95,106 @@ namespace SaveRestoreGUI.Services
             return paths.Any(File.Exists) || IsInstalledViaRegistry("Opera GX");
         }
 
-        // ── OneDrive ─────────────────────────────────────────────────────
+        // ── Vivaldi ────────────────────────────────────────────────────────
+        public static bool IsVivaldiInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Vivaldi", "Application", "vivaldi.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Vivaldi", "Application", "vivaldi.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Vivaldi");
+        }
 
+        // ── Arc (The Browser Company) ─────────────────────────────────────
+        public static bool IsArcInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Arc", "app-latest", "Arc.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Programs", "Arc", "Arc.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Arc");
+        }
+
+        // ── Perplexity Comet ──────────────────────────────────────────────
+        public static bool IsCometInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Perplexity", "Comet", "Comet.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Perplexity", "Comet", "Comet.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Comet");
+        }
+
+        // ── LibreWolf ──────────────────────────────────────────────────────
+        public static bool IsLibreWolfInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "LibreWolf", "librewolf.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "LibreWolf", "librewolf.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("LibreWolf");
+        }
+
+        // ── Pale Moon ──────────────────────────────────────────────────────
+        public static bool IsPaleMoonInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Pale Moon", "palemoon.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "Pale Moon", "palemoon.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Pale Moon");
+        }
+
+        // ── Tor Browser ────────────────────────────────────────────────────
+        public static bool IsTorBrowserInstalled()
+        {
+            // Tor Browser est souvent portable (pas dans Program Files ni registre)
+            // — on vérifie les emplacements les plus courants
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    "Tor Browser", "Browser", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Desktop", "Tor Browser", "Browser", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Tor Browser", "Browser", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "Tor Browser", "Browser", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Tor Browser", "Browser", "firefox.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("Tor Browser");
+        }
+
+        // ── DuckDuckGo Browser ─────────────────────────────────────────────
+        public static bool IsDuckDuckGoBrowserInstalled()
+        {
+            string[] paths =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "DuckDuckGo", "DuckDuckGo.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "DuckDuckGo", "DuckDuckGo.exe")
+            };
+            return paths.Any(File.Exists) || IsInstalledViaRegistry("DuckDuckGo");
+        }
+
+        // ── OneDrive ────────────────────────────────────────────────────────
         public static bool IsOneDriveInstalled()
         {
             var oneDriveExe = Path.Combine(
@@ -113,67 +203,96 @@ namespace SaveRestoreGUI.Services
             return File.Exists(oneDriveExe) || IsInstalledViaRegistry("OneDrive");
         }
 
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
         //  Chemins de profil — navigateurs
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
 
-        /// <summary>Dossier Default du profil Edge local.</summary>
         public static string GetEdgeProfilePath()
             => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Edge", "User Data", "Default");
+                "Microsoft", "Edge", "User Data");
 
-        /// <summary>Dossier Default du profil Chrome local.</summary>
         public static string GetChromeProfilePath()
             => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Google", "Chrome", "User Data", "Default");
+                "Google", "Chrome", "User Data");
 
-        /// <summary>Dossier racine des profils Firefox (contient les sous-dossiers *.default-release).</summary>
         public static string GetFirefoxProfilesPath()
             => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "Mozilla", "Firefox", "Profiles");
 
-        /// <summary>Dossier Default du profil Brave local.</summary>
         public static string GetBraveProfilePath()
             => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "BraveSoftware", "Brave-Browser", "User Data", "Default");
+                "BraveSoftware", "Brave-Browser", "User Data");
 
-        /// <summary>Dossier Default du profil Opera local (roaming).</summary>
         public static string GetOperaProfilePath()
             => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "Opera Software", "Opera Stable");
 
-        /// <summary>Dossier Default du profil Opera GX local (roaming).</summary>
         public static string GetOperaGxProfilePath()
             => Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "Opera Software", "Opera GX Stable");
 
-        // ══════════════════════════════════════════════════════════════════
+        public static string GetVivaldiProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Vivaldi", "User Data");
+
+        public static string GetArcProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Arc", "User Data");
+
+        public static string GetCometProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Perplexity", "Comet", "User Data");
+
+        public static string GetLibreWolfProfilesPath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "LibreWolf", "Profiles");
+
+        public static string GetPaleMoonProfilesPath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Moonchild Productions", "Pale Moon", "Profiles");
+
+        /// <summary>Tor Browser stocke le profil dans son dossier d'installation (portable).</summary>
+        public static string GetTorBrowserProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                "Tor Browser", "Browser", "TorBrowser", "Data", "Browser");
+
+        public static string GetDuckDuckGoProfilePath()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "DuckDuckGo", "User Data");
+
+        // ════════════════════════════════════════════════════════════════
         //  Exécutables
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
 
         public static string? FindEdgeExe()
         {
-            string[] candidates =
+            string[] c =
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                     "Microsoft", "Edge", "Application", "msedge.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "Microsoft", "Edge", "Application", "msedge.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
-                    "msedge.exe")
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "msedge.exe")
             };
-            return candidates.FirstOrDefault(File.Exists);
+            return c.FirstOrDefault(File.Exists);
         }
 
         public static string? FindChromeExe()
         {
-            string[] candidates =
+            string[] c =
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                     "Google", "Chrome", "Application", "chrome.exe"),
@@ -182,65 +301,147 @@ namespace SaveRestoreGUI.Services
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Google", "Chrome", "Application", "chrome.exe")
             };
-            return candidates.FirstOrDefault(File.Exists);
+            return c.FirstOrDefault(File.Exists);
         }
 
         public static string? FindFirefoxExe()
         {
-            string[] candidates =
+            string[] c =
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                     "Mozilla Firefox", "firefox.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "Mozilla Firefox", "firefox.exe")
             };
-            return candidates.FirstOrDefault(File.Exists);
+            return c.FirstOrDefault(File.Exists);
         }
 
         public static string? FindBraveExe()
         {
-            string[] candidates =
+            string[] c =
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "BraveSoftware", "Brave-Browser", "Application", "brave.exe")
             };
-            return candidates.FirstOrDefault(File.Exists);
+            return c.FirstOrDefault(File.Exists);
         }
 
         public static string? FindOperaExe()
         {
-            string[] candidates =
+            string[] c =
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Programs", "Opera", "opera.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "Opera", "opera.exe")
             };
-            return candidates.FirstOrDefault(File.Exists);
+            return c.FirstOrDefault(File.Exists);
         }
 
         public static string? FindOperaGxExe()
         {
-            string[] candidates =
+            string[] c =
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Programs", "Opera GX", "opera.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     "Opera GX", "opera.exe")
             };
-            return candidates.FirstOrDefault(File.Exists);
+            return c.FirstOrDefault(File.Exists);
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  Lancement des applications post-restauration
-        // ══════════════════════════════════════════════════════════════════
+        public static string? FindVivaldiExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Vivaldi", "Application", "vivaldi.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Vivaldi", "Application", "vivaldi.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
 
-        /// <summary>
-        /// Lance les applications standards (Teams, Outlook, etc.).
-        /// Appelé après restauration si chkLaunchApps est coché.
-        /// </summary>
+        public static string? FindArcExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Arc", "app-latest", "Arc.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Programs", "Arc", "Arc.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
+
+        public static string? FindCometExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Perplexity", "Comet", "Comet.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Perplexity", "Comet", "Comet.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
+
+        public static string? FindLibreWolfExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "LibreWolf", "librewolf.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "LibreWolf", "librewolf.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
+
+        public static string? FindPaleMoonExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Pale Moon", "palemoon.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "Pale Moon", "palemoon.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
+
+        public static string? FindTorBrowserExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    "Tor Browser", "Browser", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Desktop", "Tor Browser", "Browser", "firefox.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "Tor Browser", "Browser", "firefox.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
+
+        public static string? FindDuckDuckGoExe()
+        {
+            string[] c =
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "DuckDuckGo", "DuckDuckGo.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "DuckDuckGo", "DuckDuckGo.exe")
+            };
+            return c.FirstOrDefault(File.Exists);
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  Lancement des applications post-restauration
+        // ════════════════════════════════════════════════════════════════
+
         public static void LaunchApplications(Action<string> log)
         {
             var apps = new[]
@@ -258,118 +459,89 @@ namespace SaveRestoreGUI.Services
                         : relOrAbsPath;
 
                     if (string.IsNullOrEmpty(fullPath) || !File.Exists(fullPath))
-                    {
-                        log($"{name} : exécutable introuvable, lancement ignoré.");
-                        continue;
-                    }
+                    { log($"{name} : exécutable introuvable, lancement ignoré."); continue; }
 
                     Process.Start(new ProcessStartInfo { FileName = fullPath, UseShellExecute = true });
                     log($"{name} lancé.");
                 }
-                catch (Exception ex)
-                {
-                    log($"{name} : erreur de lancement — {ex.Message}");
-                }
+                catch (Exception ex) { log($"{name} : erreur de lancement — {ex.Message}"); }
             }
         }
 
-        /// <summary>Lance Edge si installé (navigateur principal).</summary>
-        public static void LaunchEdge(Action<string> log)
-            => LaunchExe("Edge", FindEdgeExe(), log);
+        public static void LaunchEdge(Action<string> log)     => LaunchExe("Edge",     FindEdgeExe(),     log);
+        public static void LaunchChrome(Action<string> log)   => LaunchExe("Chrome",   FindChromeExe(),   log);
+        public static void LaunchFirefox(Action<string> log)  => LaunchExe("Firefox",  FindFirefoxExe(),  log);
+        public static void LaunchBrave(Action<string> log)    => LaunchExe("Brave",    FindBraveExe(),    log);
+        public static void LaunchOpera(Action<string> log)    => LaunchExe("Opera",    FindOperaExe(),    log);
+        public static void LaunchOperaGx(Action<string> log)  => LaunchExe("Opera GX", FindOperaGxExe(), log);
+        public static void LaunchVivaldi(Action<string> log)  => LaunchExe("Vivaldi",  FindVivaldiExe(),  log);
+        public static void LaunchArc(Action<string> log)      => LaunchExe("Arc",      FindArcExe(),      log);
+        public static void LaunchComet(Action<string> log)    => LaunchExe("Comet",    FindCometExe(),    log);
+        public static void LaunchLibreWolf(Action<string> log) => LaunchExe("LibreWolf", FindLibreWolfExe(), log);
+        public static void LaunchPaleMoon(Action<string> log) => LaunchExe("Pale Moon", FindPaleMoonExe(), log);
+        public static void LaunchTorBrowser(Action<string> log) => LaunchExe("Tor Browser", FindTorBrowserExe(), log);
+        public static void LaunchDuckDuckGo(Action<string> log) => LaunchExe("DuckDuckGo", FindDuckDuckGoExe(), log);
 
-        /// <summary>Lance Chrome si installé.</summary>
-        public static void LaunchChrome(Action<string> log)
-            => LaunchExe("Chrome", FindChromeExe(), log);
-
-        /// <summary>Lance Firefox si installé.</summary>
-        public static void LaunchFirefox(Action<string> log)
-            => LaunchExe("Firefox", FindFirefoxExe(), log);
-
-        /// <summary>Lance Brave si installé.</summary>
-        public static void LaunchBrave(Action<string> log)
-            => LaunchExe("Brave", FindBraveExe(), log);
-
-        /// <summary>Lance Opera si installé.</summary>
-        public static void LaunchOpera(Action<string> log)
-            => LaunchExe("Opera", FindOperaExe(), log);
-
-        /// <summary>Lance Opera GX si installé.</summary>
-        public static void LaunchOperaGx(Action<string> log)
-            => LaunchExe("Opera GX", FindOperaGxExe(), log);
-
-        /// <summary>
-        /// Ouvre la popup OneDrive «\u00a0Gérer la sauvegarde\u00a0» pour activer la synchro
-        /// Bureau / Documents / Images sur le nouveau poste.
-        /// </summary>
         public static void OpenOneDriveBackupSettings(Action<string> log)
         {
             var oneDriveExe = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "OneDrive", "OneDrive.exe");
 
-            if (!File.Exists(oneDriveExe))
-            {
-                log("OneDrive : introuvable, étape ignorée.");
-                return;
-            }
+            if (!File.Exists(oneDriveExe)) { log("OneDrive : introuvable, étape ignorée."); return; }
 
             try
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName        = oneDriveExe,
-                    Arguments       = "/backuppc",
-                    UseShellExecute = true
+                    FileName = oneDriveExe, Arguments = "/backuppc", UseShellExecute = true
                 });
                 log("OneDrive — fenêtre 'Gérer la sauvegarde' ouverte.");
             }
-            catch (Exception ex)
-            {
-                log($"OneDrive : erreur — {ex.Message}");
-            }
+            catch (Exception ex) { log($"OneDrive : erreur — {ex.Message}"); }
         }
 
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
         //  Factory — liste pour BrowserPickerButton
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Retourne la liste ordonnée des navigateurs (Edge en premier)
+        /// Retourne la liste complète des navigateurs supportés (13 entrées)
         /// avec leur état d'installation, icône et chemin de profil.
         /// À injecter dans BrowserPickerButton.SetBrowsers().
         /// </summary>
         public static IReadOnlyList<SaveRestoreGUI.UI.BrowserEntry> GetBrowserEntries()
             =>
             [
-                new("Edge",     "\U0001F1EA\U0001F1FA", IsEdgeInstalled(),     GetEdgeProfilePath(),    FindEdgeExe()),
-                new("Chrome",   "\U0001F535",           IsChromeInstalled(),   GetChromeProfilePath(),  FindChromeExe()),
-                new("Firefox",  "\U0001F98A",           IsFirefoxInstalled(),  GetFirefoxProfilesPath(), FindFirefoxExe()),
-                new("Brave",    "\U0001F981",           IsBraveInstalled(),    GetBraveProfilePath(),   FindBraveExe()),
-                new("Opera",    "\U0001F3AD",           IsOperaInstalled(),    GetOperaProfilePath(),   FindOperaExe()),
-                new("Opera GX", "\U0001F3AE",           IsOperaGxInstalled(),  GetOperaGxProfilePath(), FindOperaGxExe()),
+                new("Microsoft Edge",       "🃪🇺", IsEdgeInstalled(),           GetEdgeProfilePath(),          FindEdgeExe()),
+                new("Google Chrome",        "🔵",       IsChromeInstalled(),         GetChromeProfilePath(),        FindChromeExe()),
+                new("Mozilla Firefox",      "𞦊",       IsFirefoxInstalled(),        GetFirefoxProfilesPath(),      FindFirefoxExe()),
+                new("Brave",                "🦁",       IsBraveInstalled(),          GetBraveProfilePath(),         FindBraveExe()),
+                new("Opera",               "🎭",       IsOperaInstalled(),          GetOperaProfilePath(),         FindOperaExe()),
+                new("Opera GX",            "🎮",       IsOperaGxInstalled(),        GetOperaGxProfilePath(),       FindOperaGxExe()),
+                new("Vivaldi",             "🎼",       IsVivaldiInstalled(),        GetVivaldiProfilePath(),       FindVivaldiExe()),
+                new("Arc",                 "🌈",       IsArcInstalled(),            GetArcProfilePath(),           FindArcExe()),
+                new("Perplexity Comet",    "🪐",       IsCometInstalled(),          GetCometProfilePath(),         FindCometExe()),
+                new("LibreWolf",           "🐺",       IsLibreWolfInstalled(),      GetLibreWolfProfilesPath(),    FindLibreWolfExe()),
+                new("Pale Moon",           "🌙",       IsPaleMoonInstalled(),       GetPaleMoonProfilesPath(),     FindPaleMoonExe()),
+                new("Tor Browser",         "🧕",       IsTorBrowserInstalled(),     GetTorBrowserProfilePath(),    FindTorBrowserExe()),
+                new("DuckDuckGo Browser",  "🦆",       IsDuckDuckGoBrowserInstalled(), GetDuckDuckGoProfilePath(), FindDuckDuckGoExe()),
             ];
 
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
         //  Helpers privés
-        // ══════════════════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════════════════
 
         private static void LaunchExe(string name, string? exePath, Action<string> log)
         {
             if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
-            {
-                log($"{name} : exécutable introuvable, lancement ignoré.");
-                return;
-            }
-
+            { log($"{name} : exécutable introuvable, lancement ignoré."); return; }
             try
             {
                 Process.Start(new ProcessStartInfo { FileName = exePath, UseShellExecute = true });
                 log($"{name} lancé.");
             }
-            catch (Exception ex)
-            {
-                log($"{name} : erreur de lancement — {ex.Message}");
-            }
+            catch (Exception ex) { log($"{name} : erreur de lancement — {ex.Message}"); }
         }
 
         private static bool IsInstalledViaRegistry(string displayNameContains)
@@ -379,14 +551,12 @@ namespace SaveRestoreGUI.Services
                 @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
                 @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
             };
-
             foreach (var keyPath in keys)
             {
                 try
                 {
                     using var root = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath);
                     if (root == null) continue;
-
                     foreach (var subName in root.GetSubKeyNames())
                     {
                         using var sub = root.OpenSubKey(subName);
@@ -397,13 +567,11 @@ namespace SaveRestoreGUI.Services
                 }
                 catch { /* registre inaccessible */ }
             }
-
             return false;
         }
 
         private static string FindOfficeRootOrEmpty()
         {
-            // Cherche le premier dossier Office dans Program Files (x86) puis Program Files
             foreach (var root in new[]
             {
                 Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
@@ -412,12 +580,10 @@ namespace SaveRestoreGUI.Services
             {
                 var officeRoot = Path.Combine(root, "Microsoft Office");
                 if (!Directory.Exists(officeRoot)) continue;
-
                 var outlookExe = Directory.GetFiles(officeRoot, "OUTLOOK.EXE", SearchOption.AllDirectories)
                                           .FirstOrDefault();
                 if (outlookExe != null) return outlookExe;
             }
-
             return string.Empty;
         }
     }

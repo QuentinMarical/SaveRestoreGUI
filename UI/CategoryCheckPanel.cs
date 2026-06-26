@@ -46,11 +46,11 @@ namespace SaveRestoreGUI.UI
     public class CategoryCheckPanel : Panel
     {
         // ── Constantes layout
-        private const int HeaderH   = 34;   // hauteur bandeau catégorie
-        private const int ItemH     = 34;   // hauteur d'une case
-        private const int CheckBoxW = 18;   // taille carré de la case
-        private const int HorizPad  = 10;   // marge gauche/droite
-        private const int ItemRadius = 6;   // arrondi case survolée
+        private const int HeaderH   = 34;
+        private const int ItemH     = 34;
+        private const int CheckBoxW = 18;
+        private const int HorizPad  = 10;
+        private const int ItemRadius = 6;
 
         private List<CheckCategory>      _categories  = new();
         private Dictionary<string, bool> _checked     = new();
@@ -109,19 +109,14 @@ namespace SaveRestoreGUI.UI
             g.Clear(p.Surface);
 
             int y = -_scrollOffset + 4;
-
             foreach (var cat in _categories)
             {
                 DrawCategoryHeader(g, p, cat, y);
                 y += HeaderH + 4;
-
                 if (cat.Expanded)
                 {
                     foreach (var item in cat.Items)
-                    {
-                        DrawItem(g, p, item, y);
-                        y += ItemH;
-                    }
+                    { DrawItem(g, p, item, y); y += ItemH; }
                     y += 6;
                 }
             }
@@ -130,27 +125,18 @@ namespace SaveRestoreGUI.UI
         private void DrawCategoryHeader(Graphics g, ThemePalette p, CheckCategory cat, int y)
         {
             if (y + HeaderH < 0 || y > Height) return;
-
             var rect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
-
-            // Fond légèrement teinté
             using var bgPath  = RoundRect(rect, 7);
             using var bgBrush = new SolidBrush(Color.FromArgb(22, p.Accent.R, p.Accent.G, p.Accent.B));
             g.FillPath(bgBrush, bgPath);
-
-            // Barre d'accent gauche
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
-
-            // Chevron
             string chevron = cat.Expanded ? "▾" : "▸";
             TextRenderer.DrawText(g, chevron,
                 new Font("Segoe UI", 9f, FontStyle.Bold),
                 new Rectangle(rect.Right - 22, y, 20, HeaderH),
                 p.TextSecondary,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-
-            // Icône + libellé
             TextRenderer.DrawText(g, $"{cat.Icon}  {cat.Label}",
                 new Font("Segoe UI", 9f, FontStyle.Bold),
                 new Rectangle(HorizPad + 10, y, Width - HorizPad * 2 - 28, HeaderH),
@@ -161,11 +147,9 @@ namespace SaveRestoreGUI.UI
         private void DrawItem(Graphics g, ThemePalette p, CheckItem item, int y)
         {
             if (y + ItemH < 0 || y > Height) return;
+            bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
+            bool hovered = _hoverItem == item.Key;
 
-            bool chk      = _checked.TryGetValue(item.Key, out var cv) && cv;
-            bool hovered  = _hoverItem == item.Key;
-
-            // Fond survol
             if (hovered)
             {
                 var bgRect = new Rectangle(HorizPad + 4, y + 2, Width - HorizPad * 2 - 8, ItemH - 4);
@@ -174,7 +158,6 @@ namespace SaveRestoreGUI.UI
                 g.FillPath(bgBrush, bgPath);
             }
 
-            // Case à cocher
             int cx      = HorizPad + 16;
             int cy      = y + (ItemH - CheckBoxW) / 2;
             var boxRect = new Rectangle(cx, cy, CheckBoxW, CheckBoxW);
@@ -199,7 +182,6 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(borderPen, boxPath);
             }
 
-            // Icône emoji style bureau Windows (24px)
             int iconX = cx + CheckBoxW + 8;
             using var emojiFont = new Font("Segoe UI Emoji", 13f);
             TextRenderer.DrawText(g, item.Icon, emojiFont,
@@ -207,7 +189,6 @@ namespace SaveRestoreGUI.UI
                 p.Text,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
-            // Libellé
             TextRenderer.DrawText(g, item.Text,
                 new Font("Segoe UI", 9.5f),
                 new Rectangle(iconX + 28, y, Width - iconX - 40, ItemH),
@@ -222,15 +203,9 @@ namespace SaveRestoreGUI.UI
             int y = -_scrollOffset + 4;
             foreach (var cat in _categories)
             {
-                // Clic bandeau → plier / déplier
                 if (new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH).Contains(e.Location))
-                {
-                    cat.Expanded = !cat.Expanded;
-                    Invalidate();
-                    return;
-                }
+                { cat.Expanded = !cat.Expanded; Invalidate(); return; }
                 y += HeaderH + 4;
-
                 if (cat.Expanded)
                 {
                     foreach (var item in cat.Items)
@@ -264,10 +239,7 @@ namespace SaveRestoreGUI.UI
                 if (cat.Expanded)
                 {
                     foreach (var item in cat.Items)
-                    {
-                        if (new Rectangle(0, y, Width, ItemH).Contains(pt)) return item.Key;
-                        y += ItemH;
-                    }
+                    { if (new Rectangle(0, y, Width, ItemH).Contains(pt)) return item.Key; y += ItemH; }
                     y += 6;
                 }
             }
@@ -292,11 +264,9 @@ namespace SaveRestoreGUI.UI
             return h;
         }
 
-        // ── Helpers ────────────────────────────────────────────────────────
-
         private static GraphicsPath RoundRect(Rectangle r, int radius)
         {
-            int d    = radius * 2;
+            int d = radius * 2;
             var path = new GraphicsPath();
             path.AddArc(r.X,         r.Y,          d, d, 180, 90);
             path.AddArc(r.Right - d, r.Y,          d, d, 270, 90);
@@ -313,11 +283,12 @@ namespace SaveRestoreGUI.UI
     public static class CheckCatalog
     {
         /// <summary>
-        /// Retourne les catégories standard.
-        /// • includeBrowserPicker = false  → le nœud "Profil navigateur" n'apparaît pas
-        ///   (il est géré séparément par BrowserPickerButton).
-        /// • includeOldProfile    = true   → ajoute "Détecter ancien profil" dans Système.
-        /// • includeLaunchApps    = true   → ajoute "Lancer les applications" dans Système.
+        /// Retourne les catégories standard avec la catégorie Navigateurs.
+        /// • includeOldProfile = true → ajoute "Détecter ancien profil" (Sauvegarde).
+        /// • includeLaunchApps = true → ajoute "Lancer les applications" (Restauration).
+        /// La catégorie Navigateurs est replide par défaut (les navigateurs sont
+        /// gérés individuellement via BrowserPickerButton ; cette catégorie couvre
+        /// la sauvegarde des données de profil brutes).
         /// </summary>
         public static CheckCategory[] Build(
             bool includeOldProfile = false,
@@ -326,13 +297,13 @@ namespace SaveRestoreGUI.UI
             // ── Catégorie 1 : Fichiers utilisateur
             var userFiles = new List<CheckItem>
             {
-                new("Desktop",       "Bureau",          "🖥️"),
-                new("Documents",     "Documents",       "📄"),
-                new("Pictures",      "Images",          "🖼️"),
-                new("Videos",        "Vidéos",          "🎬"),
-                new("Downloads",     "Téléchargements", "⬇️"),
-                new("Music",         "Musique",         "🎵"),
-                new("Public",        "Dossier Public (%public%)", "📁"),
+                new("Desktop",    "Bureau",             "🖥️"),
+                new("Documents",  "Documents",           "📄"),
+                new("Pictures",   "Images",              "🖼️"),
+                new("Videos",     "Vidéos",              "🎬"),
+                new("Downloads",  "Téléchargements",     "⬇️"),
+                new("Music",      "Musique",             "🎵"),
+                new("Public",     "Dossier Public (%public%)", "📁"),
             };
             if (includeOldProfile)
                 userFiles.Add(new("OldProfile", "Détecter ancien profil", "👤", false));
@@ -340,36 +311,60 @@ namespace SaveRestoreGUI.UI
             // ── Catégorie 2 : Bureautique
             var office = new CheckItem[]
             {
-                new("Outlook",      "PST Outlook",              "📧"),
-                new("Signatures",   "Signatures Outlook",       "✍️"),
-                new("OfficeTemplates", "Modèles Office",        "📋"),
-                new("OneNote",      "OneNote (registre)",       "📓"),
-                new("StickyNotes",  "Sticky Notes",             "📌"),
-                new("ExcelMacros",  "Macros Excel (XLSTART)",   "📊"),
+                new("Outlook",        "PST Outlook",              "📧"),
+                new("Signatures",     "Signatures Outlook",       "✍️"),
+                new("OfficeTemplates","Modèles Office",           "📋"),
+                new("OneNote",        "OneNote (registre)",       "📓"),
+                new("StickyNotes",    "Sticky Notes",             "📌"),
+                new("ExcelMacros",    "Macros Excel (XLSTART)",   "📊"),
             };
 
-            // ── Catégorie 3 : Système & Personnalisation
+            // ── Catégorie 3 : Navigateurs
+            var browsers = new List<CheckItem>
+            {
+                new("BrowserEdge",       "Microsoft Edge",       "🃪🇻"),
+                new("BrowserChrome",     "Google Chrome",        "🔵"),
+                new("BrowserFirefox",    "Mozilla Firefox",      "𞦊"),
+                new("BrowserBrave",      "Brave",                "🦁"),
+                new("BrowserOpera",      "Opera",                "🎭"),
+                new("BrowserOperaGX",    "Opera GX",             "🎮"),
+                new("BrowserVivaldi",    "Vivaldi",              "🎼"),
+                new("BrowserArc",        "Arc",                  "🌈"),
+                new("BrowserComet",      "Perplexity Comet",     "🪐", false),
+                new("BrowserLibreWolf",  "LibreWolf",            "🐺", false),
+                new("BrowserPaleMoon",   "Pale Moon",            "🌙", false),
+                new("BrowserTor",        "Tor Browser",          "🧕", false),
+                new("BrowserDDG",        "DuckDuckGo Browser",   "🦆", false),
+            };
+
+            // ── Catégorie 4 : Système & Personnalisation
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",      "Fond d'écran",         "🖼️"),
-                new("NetworkDrives",  "Lecteurs réseau",      "🔗"),
+                new("Wallpaper",     "Fond d'écran",    "🖼️"),
+                new("NetworkDrives", "Lecteurs réseau", "🔗"),
             };
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Lancer les applications", "🚀"));
 
-            // ── Catégorie 4 : Logiciels métier
+            // ── Catégorie 5 : Logiciels métier
             var business = new CheckItem[]
             {
-                new("Sap",              "SAP GUI",              "🗂️"),
-                new("IpSoftphone",      "IP Desktop Softphone", "📞", false),
+                new("Sap",         "SAP GUI",              "🗂️"),
+                new("IpSoftphone", "IP Desktop Softphone", "📞", false),
             };
+
+            // La catégorie Navigateurs est repliée par défaut (longue liste)
+            var browserCategory = new CheckCategory(
+                "Navigateurs", "🌐", browsers.ToArray())
+            { Expanded = false };
 
             return new[]
             {
-                new CheckCategory("Fichiers utilisateur", "📁", userFiles.ToArray()),
-                new CheckCategory("Bureautique",          "💼", office),
+                new CheckCategory("Fichiers utilisateur",       "📁", userFiles.ToArray()),
+                new CheckCategory("Bureautique",               "💼", office),
+                browserCategory,
                 new CheckCategory("Système & Personnalisation", "⚙️", systemItems.ToArray()),
-                new CheckCategory("Logiciels métier",    "🏢", business),
+                new CheckCategory("Logiciels métier",          "🏢", business),
             };
         }
     }
