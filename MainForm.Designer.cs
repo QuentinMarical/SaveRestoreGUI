@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using SaveRestoreGUI.UI;
@@ -66,6 +67,7 @@ namespace SaveRestoreGUI
         private ModernButton btnCancelBackup;
         private ModernButton btnExportBackupLog;
         private RichTextBox rtbBackupLog;
+        private BrowserPickerButton btnBrowserPickerBackup;
 
         // ─── Page Restauration ───
         private Panel pageRestore;
@@ -100,6 +102,7 @@ namespace SaveRestoreGUI
         private ModernButton btnCancelRestore;
         private ModernButton btnExportRestoreLog;
         private RichTextBox rtbRestoreLog;
+        private BrowserPickerButton btnBrowserPickerRestore;
 
         // ─── Page Migration ───
         private Panel pageMigration;
@@ -269,6 +272,7 @@ namespace SaveRestoreGUI
             btnSelectAll.Click   += (s, e) => SetAllChecks(cardBackupOptions, true);
             btnDeselectAll.Click += (s, e) => SetAllChecks(cardBackupOptions, false);
 
+            btnBrowserPickerBackup = new BrowserPickerButton();
             cardBackupOptions.Controls.Add(lblBackupOptionsTitle);
             cardBackupOptions.Controls.AddRange(new Control[]
             {
@@ -276,7 +280,8 @@ namespace SaveRestoreGUI
                 chkOutlook, chkSignatures, chkStickyNotes, chkEdgeProfile, chkWallpaper, chkNetworkDrives,
                 chkOldProfile, chkTemplates, chkOneNote, chkExcelMacros, chkSap,
                 chkPublic, chkIpDesktopSoftphone,
-                btnSelectAll, btnDeselectAll
+                btnSelectAll, btnDeselectAll,
+                btnBrowserPickerBackup
             });
 
             btnStartBackup      = new ModernButton { Text = "\u25b6 Démarrer la sauvegarde", Height = 44, Role = ButtonRole.Primary };
@@ -347,6 +352,7 @@ namespace SaveRestoreGUI
             btnRestoreSelectAll.Click   += (s, e) => SetAllChecks(cardRestoreOptions, true);
             btnRestoreDeselectAll.Click += (s, e) => SetAllChecks(cardRestoreOptions, false);
 
+            btnBrowserPickerRestore = new BrowserPickerButton();
             cardRestoreOptions.Controls.Add(lblRestoreOptionsTitle);
             cardRestoreOptions.Controls.AddRange(new Control[]
             {
@@ -354,7 +360,8 @@ namespace SaveRestoreGUI
                 chkRestoreOutlook, chkRestoreSignatures, chkRestoreStickyNotes, chkRestoreEdgeProfile, chkRestoreWallpaper, chkRestoreNetworkDrives,
                 chkRestoreOneNote, chkRestoreExcelMacros, chkRestoreTemplates, chkRestoreSap,
                 chkRestorePublic, chkLaunchApps, chkRestoreIpDesktopSoftphone,
-                btnRestoreSelectAll, btnRestoreDeselectAll
+                btnRestoreSelectAll, btnRestoreDeselectAll,
+                btnBrowserPickerRestore
             });
 
             btnStartRestore      = new ModernButton { Text = "\u25b6 Démarrer la restauration", Height = 44, Role = ButtonRole.Primary };
