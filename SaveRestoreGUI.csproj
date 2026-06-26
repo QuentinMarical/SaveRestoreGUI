@@ -26,6 +26,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      Le glob SDK inclut par défaut tous les **/*.cs de manière récursive.
+      On exclut explicitement le dossier Tests pour éviter que les fichiers
+      xUnit soient compilés dans ce projet (CS0246 + CS0579).
+    -->
+    <Compile Remove="SaveRestoreGUI.Tests\**" />
+    <EmbeddedResource Remove="SaveRestoreGUI.Tests\**" />
+    <None Remove="SaveRestoreGUI.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Seul MainForm.cs est le Form racine — les autres sont des partial classes -->
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
