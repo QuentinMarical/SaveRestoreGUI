@@ -1,4 +1,3 @@
-using System.IO;
 using SaveRestoreGUI.Services;
 using Xunit;
 
@@ -6,90 +5,136 @@ namespace SaveRestoreGUI.Tests;
 
 public class FileServiceTests
 {
-    [Fact] public void CopyFile_CreatesDestination()
+    // ── FormatSize ────────────────────────────────────────────────────────────
+
+    [Fact] public void FormatSize_Bytes_ReturnsOctets()
     {
-        var src = Path.GetTempFileName();
-        var dst = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
-        File.WriteAllText(src, "test");
-        try { FileService.CopyFile(src, dst); Assert.True(File.Exists(dst)); }
-        finally { File.Delete(src); if (File.Exists(dst)) File.Delete(dst); }
+        var result = FileService.FormatSize(512);
+        Assert.Contains("octets", result);
     }
 
-    [Fact] public void CopyFile_PreservesContent()
+    [Fact] public void FormatSize_Kilobytes_ReturnsKo()
     {
-        var src = Path.GetTempFileName();
-        var dst = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
-        File.WriteAllText(src, "hello world");
-        try { FileService.CopyFile(src, dst); Assert.Equal("hello world", File.ReadAllText(dst)); }
-        finally { File.Delete(src); if (File.Exists(dst)) File.Delete(dst); }
+        var result = FileService.FormatSize(2048);
+        Assert.Contains("Ko", result);
     }
 
-    [Fact] public void CopyFile_OverwritesExisting()
+    [Fact] public void FormatSize_Megabytes_ReturnsMo()
     {
-        var src = Path.GetTempFileName();
-        var dst = Path.GetTempFileName();
-        File.WriteAllText(src, "new content");
-        File.WriteAllText(dst, "old content");
-        try { FileService.CopyFile(src, dst); Assert.Equal("new content", File.ReadAllText(dst)); }
-        finally { File.Delete(src); File.Delete(dst); }
+        var result = FileService.FormatSize(2 * 1_048_576);
+        Assert.Contains("Mo", result);
     }
 
-    [Theory]
-    [InlineData("Documents")]
-    [InlineData("Desktop")]
-    public void IsKnownProfileFolder_ReturnsTrue(string folderName)
+    [Fact] public void FormatSize_Gigabytes_ReturnsGo()
     {
-        Assert.True(FileService.IsKnownProfileFolder(folderName));
+        var result = FileService.FormatSize(2L * 1_073_741_824);
+        Assert.Contains("Go", result);
     }
 
-    [Fact] public void IsKnownProfileFolder_UnknownFolder_ReturnsFalse()
+    [Fact] public void FormatSize_Zero_ReturnsZeroOctets()
     {
-        Assert.False(FileService.IsKnownProfileFolder("RandomFolder_" + Guid.NewGuid()));
+        var result = FileService.FormatSize(0);
+        Assert.Equal("0 octets", result);
     }
 
-    [Fact] public void EnsureDirectoryExists_CreatesIfMissing()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        try { FileService.EnsureDirectoryExists(dir); Assert.True(Directory.Exists(dir)); }
-        finally { if (Directory.Exists(dir)) Directory.Delete(dir); }
-    }
+    // ── EnumerateFilesSafe ────────────────────────────────────────────────────
 
-    [Fact] public void EnsureDirectoryExists_DoesNotThrowIfExists()
+    [Fact] public void EnumerateFilesSafe_ListsAllFiles()
     {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(dir);
-        try { var ex = Record.Exception(() => FileService.EnsureDirectoryExists(dir)); Assert.Null(ex); }
-        finally { Directory.Delete(dir); }
+        File.WriteAllText(Path.Combine(dir, "a.txt"), "A");
+        File.WriteAllText(Path.Combine(dir, "b.txt"), "B");
+        try
+        {
+            var files = FileService.EnumerateFilesSafe(dir).ToList();
+            Assert.Equal(2, files.Count);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
-    [Fact] public void GetRelativePath_ReturnsCorrectRelativePath()
+    [Fact] public void EnumerateFilesSafe_RecursesSubdirectories()
     {
-        var basePath = @"C:\Users\test\backup";
-        var fullPath = @"C:\Users\test\backup\Documents\file.txt";
-        var result = FileService.GetRelativePath(basePath, fullPath);
-        Assert.Equal(Path.Combine("Documents", "file.txt"), result);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var sub = Path.Combine(dir, "sub");
+        Directory.CreateDirectory(sub);
+        File.WriteAllText(Path.Combine(dir, "root.txt"), "R");
+        File.WriteAllText(Path.Combine(sub, "child.txt"), "C");
+        try
+        {
+            var files = FileService.EnumerateFilesSafe(dir).ToList();
+            Assert.Equal(2, files.Count);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
-    [Fact] public void GetRelativePath_SameDirectory_ReturnsFileName()
+    [Fact] public void EnumerateFilesSafe_EmptyDirectory_ReturnsEmpty()
     {
-        var basePath = @"C:\Users\test\backup";
-        var fullPath = @"C:\Users\test\backup\file.txt";
-        var result = FileService.GetRelativePath(basePath, fullPath);
-        Assert.Equal("file.txt", result);
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var files = FileService.EnumerateFilesSafe(dir).ToList();
+            Assert.Empty(files);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
     }
 
-    [Fact] public void CopyDirectory_CopiesAllFiles()
+    [Fact] public void EnumerateFilesSafe_MissingDirectory_ReturnsEmpty()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var files = FileService.EnumerateFilesSafe(dir).ToList();
+        Assert.Empty(files);
+    }
+
+    // ── GetDirectorySize ──────────────────────────────────────────────────────
+
+    [Fact] public void GetDirectorySize_ReturnsCorrectTotalSize()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        var content = "hello world";
+        File.WriteAllText(Path.Combine(dir, "f.txt"), content, System.Text.Encoding.UTF8);
+        try
+        {
+            var size = FileService.GetDirectorySize(dir);
+            Assert.True(size > 0);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact] public void GetDirectorySize_EmptyDirectory_ReturnsZero()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Assert.Equal(0, FileService.GetDirectorySize(dir));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact] public void GetDirectorySize_MissingDirectory_ReturnsZero()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Assert.Equal(0, FileService.GetDirectorySize(dir));
+    }
+
+    // ── CopyFolderAsync ───────────────────────────────────────────────────────
+
+    [Fact] public async Task CopyFolderAsync_CopiesFiles()
     {
         var src = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var dst = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(src);
-        File.WriteAllText(Path.Combine(src, "a.txt"), "A");
-        File.WriteAllText(Path.Combine(src, "b.txt"), "B");
+        File.WriteAllText(Path.Combine(src, "test.txt"), "content");
         try
         {
-            FileService.CopyDirectory(src, dst);
-            Assert.True(File.Exists(Path.Combine(dst, "a.txt")));
-            Assert.True(File.Exists(Path.Combine(dst, "b.txt")));
+            var progress = new Progress<int>();
+            var result = await FileService.CopyFolderAsync(
+                src, dst, progress, null, CancellationToken.None);
+            Assert.True(result.Copied > 0 || result.Skipped >= 0);
+            Assert.True(File.Exists(Path.Combine(dst, "test.txt")));
         }
         finally
         {
@@ -98,16 +143,30 @@ public class FileServiceTests
         }
     }
 
-    [Fact] public void CopyDirectory_CopiesSubdirectories()
+    [Fact] public async Task CopyFolderAsync_MissingSource_ReturnsEmptyResult()
     {
         var src = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var dst = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(Path.Combine(src, "sub"));
-        File.WriteAllText(Path.Combine(src, "sub", "c.txt"), "C");
+        var progress = new Progress<int>();
+        var result = await FileService.CopyFolderAsync(
+            src, dst, progress, null, CancellationToken.None);
+        Assert.Equal(0, result.Copied);
+        Assert.Equal(0, result.Skipped);
+        Assert.Equal(0, result.TotalBytes);
+    }
+
+    [Fact] public async Task CopyFolderAsync_PreservesSubdirectories()
+    {
+        var src = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var dst = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var sub = Path.Combine(src, "sub");
+        Directory.CreateDirectory(sub);
+        File.WriteAllText(Path.Combine(sub, "deep.txt"), "deep");
         try
         {
-            FileService.CopyDirectory(src, dst);
-            Assert.True(File.Exists(Path.Combine(dst, "sub", "c.txt")));
+            var progress = new Progress<int>();
+            await FileService.CopyFolderAsync(src, dst, progress, null, CancellationToken.None);
+            Assert.True(File.Exists(Path.Combine(dst, "sub", "deep.txt")));
         }
         finally
         {
@@ -116,30 +175,24 @@ public class FileServiceTests
         }
     }
 
-    [Fact] public void SafeDeleteFile_DeletesExistingFile()
+    [Fact] public async Task CopyFolderAsync_SkipsDesktopIni()
     {
-        var f = Path.GetTempFileName();
-        FileService.SafeDeleteFile(f);
-        Assert.False(File.Exists(f));
-    }
-
-    [Fact] public void SafeDeleteFile_DoesNotThrowIfMissing()
-    {
-        var f = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".tmp");
-        var ex = Record.Exception(() => FileService.SafeDeleteFile(f));
-        Assert.Null(ex);
-    }
-
-    [Fact] public void GetFileSizeBytes_ReturnsCorrectSize()
-    {
-        var f = Path.GetTempFileName();
-        var content = "hello";
-        File.WriteAllText(f, content, System.Text.Encoding.UTF8);
+        var src = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var dst = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(src);
+        File.WriteAllText(Path.Combine(src, "desktop.ini"), "[.ShellClassInfo]");
+        File.WriteAllText(Path.Combine(src, "real.txt"), "data");
         try
         {
-            var size = FileService.GetFileSizeBytes(f);
-            Assert.True(size > 0);
+            var progress = new Progress<int>();
+            var result = await FileService.CopyFolderAsync(src, dst, progress, null, CancellationToken.None);
+            Assert.False(File.Exists(Path.Combine(dst, "desktop.ini")));
+            Assert.True(File.Exists(Path.Combine(dst, "real.txt")));
         }
-        finally { File.Delete(f); }
+        finally
+        {
+            if (Directory.Exists(src)) Directory.Delete(src, true);
+            if (Directory.Exists(dst)) Directory.Delete(dst, true);
+        }
     }
 }

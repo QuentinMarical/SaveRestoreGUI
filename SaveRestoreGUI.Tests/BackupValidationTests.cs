@@ -42,4 +42,36 @@ public class BackupValidationTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    [Fact]
+    public void IsValidBackupFolder_NonExistentPath_ReturnsFalse()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Assert.False(BackupValidator.IsValidBackupFolder(dir));
+    }
+
+    [Fact]
+    public void IsValidBackupFolder_WithDesktop_ReturnsTrue()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(Path.Combine(dir, "Desktop"));
+        try
+        {
+            Assert.True(BackupValidator.IsValidBackupFolder(dir));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void IsValidBackupFolder_WithBackupInfoJson_ReturnsTrue()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "BackupInfo.json"), "{}");
+        try
+        {
+            Assert.True(BackupValidator.IsValidBackupFolder(dir));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }
