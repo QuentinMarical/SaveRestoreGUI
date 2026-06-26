@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using SaveRestoreGUI.UI;
+using SaveRestoreGUI.Services;
 
 namespace SaveRestoreGUI
 {
@@ -17,11 +18,18 @@ namespace SaveRestoreGUI
         private string? _logFilePath;
         private readonly object _logLock = new();
 
+        // ── Sélection navigateurs (BrowserPickerButton) ──
+        private BrowserPickerButton? _browserPicker;
+
         public MainForm()
         {
             InitializeComponent();
             ThemeManager.ThemeChanged += OnThemeChanged;
-            this.Load += (_, _) => SyncPageSizes();
+            this.Load += (_, _) =>
+            {
+                SyncPageSizes();
+                InitializeBrowserPicker();
+            };
             this.Resize += (_, _) => SyncPageSizes();
             ApplyTheme();
             UpdateOldProfileOptionState();
@@ -34,6 +42,34 @@ namespace SaveRestoreGUI
                 ? $"{version.Major}.{version.Minor}.{version.Build}"
                 : "?";
             this.Text = $"SaveRestoreGUI v{versionStr}";
+        }
+
+        private void InitializeBrowserPicker()
+        {
+            // Crée le bouton s'il n'existe pas encore
+            _browserPicker ??= new BrowserPickerButton
+            {
+                Name = "btnBrowserPicker",
+                TabStop = true
+            };
+
+            // Injection de la liste ordonnée des navigateurs détectés
+            var entries = AppLauncherService.GetBrowserEntries();
+            _browserPicker.SetBrowsers(entries);
+
+            // Placement au bas des cartes options Backup/Restore (au-dessus de la barre d'actions)
+            // Page Sauvegarde
+            if (!pageBackup.Controls.Contains(_browserPicker))
+                pageBackup.Controls.Add(_browserPicker);
+
+            // Page Restauration : on crée un clone léger pour éviter de partager le même contrôle
+            var restorePicker = new BrowserPickerButton
+            {
+                Name = "btnBrowserPickerRestore",
+                TabStop = true
+            };
+            restorePicker.SetBrowsers(entries);
+            pageRestore.Controls.Add(restorePicker);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
