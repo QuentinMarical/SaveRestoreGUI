@@ -183,18 +183,6 @@ namespace SaveRestoreGUI
 
         // ───────────────────────────── Helpers UI ─────────────────────────────
 
-        private static ModernCheckBox MakeCheck(string text, bool isChecked)
-            => new() { Text = text, Checked = isChecked, AutoSize = true };
-
-        private static void SetAllChecks(Control container, bool value)
-        {
-            foreach (Control ctrl in container.Controls)
-            {
-                if (ctrl is ModernCheckBox chk && chk.Enabled)
-                    chk.Checked = value;
-            }
-        }
-
         private void Log(RichTextBox rtb, string message, Color? color = null, bool toast = false, ToastKind kind = ToastKind.Info)
         {
             if (InvokeRequired)
@@ -311,8 +299,7 @@ namespace SaveRestoreGUI
             var currentUser = Environment.UserName;
             if (usersDir == null)
             {
-                chkOldProfile.Checked = false;
-                chkOldProfile.Enabled = false;
+                chkPanelBackup.SetChecked("OldProfile", false);
                 return;
             }
 
@@ -331,9 +318,10 @@ namespace SaveRestoreGUI
                         && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase));
             }
 
-            chkOldProfile.Enabled = hasOldProfile;
+            // CategoryCheckPanel n'a pas de notion "Enabled" par case : si aucun ancien
+            // profil n'est détecté, on force simplement la case à false.
             if (!hasOldProfile)
-                chkOldProfile.Checked = false;
+                chkPanelBackup.SetChecked("OldProfile", false);
         }
 
         private void CancelCurrentOperation(RichTextBox rtb)
