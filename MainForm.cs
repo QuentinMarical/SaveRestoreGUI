@@ -153,6 +153,8 @@ namespace SaveRestoreGUI
             lblPageSubtitle.ForeColor = p.TextSecondary;
             statusLabel.ForeColor     = p.TextSecondary;
 
+            lblProgressPercent.ForeColor = p.TextSecondary;
+
             btnToggleTheme.Text = ThemeManager.IsDark ? "\U0001f319 Thème sombre" : "\u2600\ufe0f Thème clair";
 
             ApplyThemeRecursive(pageBackup, p);
@@ -242,12 +244,22 @@ namespace SaveRestoreGUI
         private void UpdateProgress(int percent)
         {
             if (InvokeRequired) { Invoke(() => UpdateProgress(percent)); return; }
+            int clamped = Math.Min(100, Math.Max(0, percent));
             progressBar.Visible = true;
-            progressBar.Value   = Math.Min(100, Math.Max(0, percent));
+            progressBar.Value   = clamped;
+            lblProgressPercent.Visible = true;
+            lblProgressPercent.Text    = $"{clamped}%";
+            ApplyResponsiveLayout();
         }
 
         private void HideProgress()
-        { if (InvokeRequired) { Invoke(HideProgress); return; } progressBar.Visible = false; progressBar.Value = 0; }
+        {
+            if (InvokeRequired) { Invoke(HideProgress); return; }
+            progressBar.Visible        = false;
+            progressBar.Value          = 0;
+            lblProgressPercent.Visible = false;
+            lblProgressPercent.Text    = string.Empty;
+        }
 
         private void SetControlsEnabled(bool enabled)
         {

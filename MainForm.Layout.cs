@@ -36,6 +36,7 @@ namespace SaveRestoreGUI
         private const int LogMarginBot  = 12;
         private const int LogToggleH    = 28;
         private const int LogToggleGapY = 6;
+        private const int LogProgressH  = 20;
 
         // ── Migration
         private const int MigCmbY        = 40;
@@ -82,10 +83,22 @@ namespace SaveRestoreGUI
             btnToggleBackupLog.Text = _backupLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
 
             int logY = toggleY + LogToggleH + LogToggleGapY;
-            if (_backupLogCollapsed)
-                rtbBackupLog.SetBounds(Margin, logY, cw, LogCollapsedHeight);
-            else
-                rtbBackupLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
+            int logH = _backupLogCollapsed
+                ? LogCollapsedHeight
+                : Math.Max(LogMinH, H - logY - LogMarginBot - LogProgressH - 4);
+            rtbBackupLog.SetBounds(Margin, logY, cw, logH);
+
+            int progressY = logY + logH + 4;
+            progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
+            lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
+
+            if (progressBar.Parent != pageBackup)
+            {
+                progressBar.Parent?.Controls.Remove(progressBar);
+                lblProgressPercent.Parent?.Controls.Remove(lblProgressPercent);
+                pageBackup.Controls.Add(progressBar);
+                pageBackup.Controls.Add(lblProgressPercent);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -113,10 +126,22 @@ namespace SaveRestoreGUI
             btnToggleRestoreLog.Text = _restoreLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
 
             int logY = toggleY + LogToggleH + LogToggleGapY;
-            if (_restoreLogCollapsed)
-                rtbRestoreLog.SetBounds(Margin, logY, cw, LogCollapsedHeight);
-            else
-                rtbRestoreLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
+            int logH = _restoreLogCollapsed
+                ? LogCollapsedHeight
+                : Math.Max(LogMinH, H - logY - LogMarginBot - LogProgressH - 4);
+            rtbRestoreLog.SetBounds(Margin, logY, cw, logH);
+
+            int progressY = logY + logH + 4;
+            progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
+            lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
+
+            if (progressBar.Parent != pageRestore)
+            {
+                progressBar.Parent?.Controls.Remove(progressBar);
+                lblProgressPercent.Parent?.Controls.Remove(lblProgressPercent);
+                pageRestore.Controls.Add(progressBar);
+                pageRestore.Controls.Add(lblProgressPercent);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -154,10 +179,22 @@ namespace SaveRestoreGUI
             btnToggleMigrationLog.Text = _migrationLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
 
             int logY = toggleY + LogToggleH + LogToggleGapY;
-            if (_migrationLogCollapsed)
-                rtbMigrationLog.SetBounds(Margin, logY, cw, LogCollapsedHeight);
-            else
-                rtbMigrationLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
+            int logH = _migrationLogCollapsed
+                ? LogCollapsedHeight
+                : Math.Max(LogMinH, H - logY - LogMarginBot - LogProgressH - 4);
+            rtbMigrationLog.SetBounds(Margin, logY, cw, logH);
+
+            int progressY = logY + logH + 4;
+            progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
+            lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
+
+            if (progressBar.Parent != pageMigration)
+            {
+                progressBar.Parent?.Controls.Remove(progressBar);
+                lblProgressPercent.Parent?.Controls.Remove(lblProgressPercent);
+                pageMigration.Controls.Add(progressBar);
+                pageMigration.Controls.Add(lblProgressPercent);
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
