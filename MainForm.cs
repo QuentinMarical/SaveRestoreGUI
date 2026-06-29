@@ -18,9 +18,6 @@ namespace SaveRestoreGUI
         private string? _logFilePath;
         private readonly object _logLock = new();
 
-        // ── Sélection navigateurs (BrowserPickerButton) ──
-        private BrowserPickerButton? _browserPicker;
-
         public MainForm()
         {
             InitializeComponent();
@@ -28,7 +25,7 @@ namespace SaveRestoreGUI
             this.Load += (_, _) =>
             {
                 SyncPageSizes();
-                InitializeBrowserPicker();
+                InitializeBrowserPickers();
             };
             this.Resize += (_, _) => SyncPageSizes();
             ApplyTheme();
@@ -44,32 +41,16 @@ namespace SaveRestoreGUI
             this.Text = $"SaveRestoreGUI v{versionStr}";
         }
 
-        private void InitializeBrowserPicker()
+        /// <summary>
+        /// Injecte la liste des navigateurs détectés dans les BrowserPickerButton
+        /// déjà créés par le Designer (btnBrowserPickerBackup / btnBrowserPickerRestore).
+        /// N'ajoute aucun contrôle supplémentaire.
+        /// </summary>
+        private void InitializeBrowserPickers()
         {
-            // Crée le bouton s'il n'existe pas encore
-            _browserPicker ??= new BrowserPickerButton
-            {
-                Name = "btnBrowserPicker",
-                TabStop = true
-            };
-
-            // Injection de la liste ordonnée des navigateurs détectés
             var entries = AppLauncherService.GetBrowserEntries();
-            _browserPicker.SetBrowsers(entries);
-
-            // Placement au bas des cartes options Backup/Restore (au-dessus de la barre d'actions)
-            // Page Sauvegarde
-            if (!pageBackup.Controls.Contains(_browserPicker))
-                pageBackup.Controls.Add(_browserPicker);
-
-            // Page Restauration : on crée un clone léger pour éviter de partager le même contrôle
-            var restorePicker = new BrowserPickerButton
-            {
-                Name = "btnBrowserPickerRestore",
-                TabStop = true
-            };
-            restorePicker.SetBrowsers(entries);
-            pageRestore.Controls.Add(restorePicker);
+            btnBrowserPickerBackup.SetBrowsers(entries);
+            btnBrowserPickerRestore.SetBrowsers(entries);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -262,14 +243,14 @@ namespace SaveRestoreGUI
             {
                 UpdateOldProfileOptionState();
             }
-            btnSelectAll.Enabled         = enabled;
-            btnDeselectAll.Enabled       = enabled;
-            btnRestoreSelectAll.Enabled  = enabled;
+            btnSelectAll.Enabled          = enabled;
+            btnDeselectAll.Enabled        = enabled;
+            btnRestoreSelectAll.Enabled   = enabled;
             btnRestoreDeselectAll.Enabled = enabled;
             btnMigrateSelectAll.Enabled   = enabled;
             btnMigrateDeselectAll.Enabled = enabled;
-            cmbUSBDrives.Enabled = enabled;
-            lstProfiles.Enabled  = enabled;
+            cmbUSBDrives.Enabled  = enabled;
+            lstProfiles.Enabled   = enabled;
             btnRefreshUSB.Enabled = enabled;
 
             // Les boutons Cancel sont activés PENDANT l'opération (enabled=false = opération en cours)

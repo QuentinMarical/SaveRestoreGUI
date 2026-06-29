@@ -18,14 +18,18 @@ namespace SaveRestoreGUI
 
         // ── Carte du haut
         private const int TopCardH     = 90;
-        private const int MigTopCardH  = 340;  // carte source Migration
+        private const int MigTopCardH  = 340;
 
         // ── Carte options (CategoryCheckPanel)
-        private const int ChkPanelH    = 320;  // hauteur fixe du CategoryCheckPanel
+        private const int ChkPanelH    = 320;
         private const int BtnGapY      = 14;
         private const int CardPadBot   = 16;
         private const int ChkStartY    = 44;
         private const int ChkColGap    = 12;
+
+        // ── BrowserPickerButton
+        private const int BrowserPickerH = 28;
+        private const int BrowserPickerGapY = 8;
 
         // ── Barre d'actions
         private const int ActionH      = 44;
@@ -38,25 +42,17 @@ namespace SaveRestoreGUI
         private const int LogMarginBot = 12;
 
         // ── Migration : zones internes de la carte source
-        //  Y=12  : lblUSBDrives
-        //  Y=40  : cmbUSBDrives + btnRefreshUSB
-        //  Y=78  : btnUnlockBitLocker (visible si disque verrouillé)
-        //  Y=120 : lblProfiles
-        //  Y=142 : lstProfiles (H=128 → fin à 270)
-        //  Y=278 : lblBitLockerStatus (pleine largeur)
-        //  Y=318 : lblMigrationInfo
-        //  carte = 340 px
-        private const int MigCmbY           = 40;
-        private const int MigCmbH           = 30;
-        private const int MigBitlocY        = 78;
-        private const int MigBitlocH        = 34;
-        private const int MigLblProfY       = 120;
-        private const int MigListY          = 142;
-        private const int MigListH          = 128;
-        private const int MigBitLockerSY    = 278;
-        private const int MigBitLockerSH    = 32;
-        private const int MigInfoY          = 318;
-        private const int MigInfoH          = 16;
+        private const int MigCmbY        = 40;
+        private const int MigCmbH        = 30;
+        private const int MigBitlocY     = 78;
+        private const int MigBitlocH     = 34;
+        private const int MigLblProfY    = 120;
+        private const int MigListY       = 142;
+        private const int MigListH       = 128;
+        private const int MigBitLockerSY = 278;
+        private const int MigBitLockerSH = 32;
+        private const int MigInfoY       = 318;
+        private const int MigInfoH       = 16;
 
         public void ApplyResponsiveLayout()
         {
@@ -78,8 +74,8 @@ namespace SaveRestoreGUI
             cardBackupDest.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
 
-            int optY  = Margin + TopCardH + CardGap;
-            int optH  = LayoutPanelOptionsCard(cw, chkPanelBackup, btnSelectAll, btnDeselectAll);
+            int optY = Margin + TopCardH + CardGap;
+            int optH = LayoutPanelOptionsCard(cw, chkPanelBackup, btnBrowserPickerBackup, btnSelectAll, btnDeselectAll);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -102,8 +98,8 @@ namespace SaveRestoreGUI
             cardRestoreSource.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
 
-            int optY  = Margin + TopCardH + CardGap;
-            int optH  = LayoutPanelOptionsCard(cw, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
+            int optY = Margin + TopCardH + CardGap;
+            int optH = LayoutPanelOptionsCard(cw, chkPanelRestore, btnBrowserPickerRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -125,32 +121,21 @@ namespace SaveRestoreGUI
 
             cardMigrationSource.SetBounds(Margin, Margin, cw, MigTopCardH);
 
-            // ComboBox + refresh
             int refreshW = btnRefreshUSB.Width > 0 ? btnRefreshUSB.Width : 40;
             int cmbW     = cw - InnerPad * 2 - refreshW - ChkColGap;
             cmbUSBDrives.SetBounds(InnerPad, MigCmbY, cmbW, MigCmbH);
             btnRefreshUSB.SetBounds(InnerPad + cmbW + ChkColGap, MigCmbY, refreshW, MigCmbH + 2);
 
-            // Bouton déverrouillage BitLocker
             btnUnlockBitLocker.SetBounds(InnerPad, MigBitlocY, cw - InnerPad * 2, MigBitlocH);
 
-            // Label + ListBox profils
             lblProfiles.SetBounds(InnerPad, MigLblProfY, cw - InnerPad * 2, 20);
             lstProfiles.SetBounds(InnerPad, MigListY,    cw - InnerPad * 2, MigListH);
 
-            // Label statut BitLocker (pleine largeur, btnBitLocker supprimé)
-            lblBitLockerStatus.SetBounds(
-                InnerPad,
-                MigBitLockerSY,
-                cw - InnerPad * 2,
-                MigBitLockerSH);
-
-            // Label info (bas de carte)
+            lblBitLockerStatus.SetBounds(InnerPad, MigBitLockerSY, cw - InnerPad * 2, MigBitLockerSH);
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
-            // Carte options
-            int optY  = Margin + MigTopCardH + CardGap;
-            int optH  = LayoutPanelOptionsCard(cw, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll);
+            int optY = Margin + MigTopCardH + CardGap;
+            int optH = LayoutPanelOptionsCard(cw, chkPanelMigration, null, btnMigrateSelectAll, btnMigrateDeselectAll);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -174,22 +159,31 @@ namespace SaveRestoreGUI
         }
 
         /// <summary>
-        /// Positionne un CategoryCheckPanel dans sa carte options,
-        /// puis les boutons Tout cocher / Tout décocher en dessous.
+        /// Positionne le CategoryCheckPanel, le BrowserPickerButton optionnel,
+        /// puis les boutons Tout cocher / Tout décocher dans la carte options.
         /// Retourne la hauteur totale calculée de la carte.
         /// </summary>
         private static int LayoutPanelOptionsCard(
             int cardWidth,
             CategoryCheckPanel panel,
+            BrowserPickerButton? browserPicker,
             Button btnAll,
             Button btnNone)
         {
             int innerW = cardWidth - InnerPad * 2;
 
-            // Le panel commence sous le titre de la carte, à ChkStartY
             panel.SetBounds(InnerPad, ChkStartY, innerW, ChkPanelH);
 
-            int btnY  = ChkStartY + ChkPanelH + BtnGapY;
+            int nextY = ChkStartY + ChkPanelH;
+
+            if (browserPicker != null)
+            {
+                nextY += BrowserPickerGapY;
+                browserPicker.SetBounds(InnerPad, nextY, 220, BrowserPickerH);
+                nextY += BrowserPickerH;
+            }
+
+            int btnY  = nextY + BtnGapY;
             int bAllW = btnAll  != null && btnAll.Width  > 0 ? btnAll.Width  : 120;
             int bAllH = btnAll  != null && btnAll.Height > 0 ? btnAll.Height : 34;
             int bNoW  = btnNone != null && btnNone.Width > 0 ? btnNone.Width : 130;
