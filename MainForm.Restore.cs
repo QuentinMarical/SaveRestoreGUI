@@ -63,63 +63,63 @@ namespace SaveRestoreGUI
 
                 var steps = new List<(string Name, Func<Task> Action)>();
 
-                if (chkRestoreDocuments.Checked) steps.Add(("Documents", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Documents")) steps.Add(("Documents", () => RestoreStep(
                     Path.Combine(restoreRoot, "Documents"), Path.Combine(userProfile, "Documents"),
                     "Documents", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreDesktop.Checked) steps.Add(("Bureau", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Desktop")) steps.Add(("Bureau", () => RestoreStep(
                     Path.Combine(restoreRoot, "Desktop"), Path.Combine(userProfile, "Desktop"),
                     "Bureau", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreDownloads.Checked) steps.Add(("Téléchargements", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Downloads")) steps.Add(("Téléchargements", () => RestoreStep(
                     Path.Combine(restoreRoot, "Downloads"), Path.Combine(userProfile, "Downloads"),
                     "Téléchargements", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestorePictures.Checked) steps.Add(("Images", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Pictures")) steps.Add(("Images", () => RestoreStep(
                     Path.Combine(restoreRoot, "Pictures"), Path.Combine(userProfile, "Pictures"),
                     "Images", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreMusic.Checked) steps.Add(("Musique", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Music")) steps.Add(("Musique", () => RestoreStep(
                     Path.Combine(restoreRoot, "Music"), Path.Combine(userProfile, "Music"),
                     "Musique", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreVideos.Checked) steps.Add(("Vidéos", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Videos")) steps.Add(("Vidéos", () => RestoreStep(
                     Path.Combine(restoreRoot, "Videos"), Path.Combine(userProfile, "Videos"),
                     "Vidéos", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreOneNote.Checked) steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, rtbRestoreLog)));
+                if (chkPanelRestore.IsChecked("OneNote")) steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, rtbRestoreLog)));
 
-                if (chkRestoreSignatures.Checked) steps.Add(("Signatures Outlook", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Signatures")) steps.Add(("Signatures Outlook", () => RestoreStep(
                     Path.Combine(restoreRoot, "Signatures"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),
                     "Signatures Outlook", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreTemplates.Checked) steps.Add(("Modèles Office", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office", () => RestoreStep(
                     Path.Combine(restoreRoot, "Templates"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
                     "Modèles Office", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("ExcelMacros")) steps.Add(("Macros Excel (XLSTART)", () => RestoreStep(
                     Path.Combine(restoreRoot, "Excel", "XLSTART"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
                     "Macros Excel (XLSTART)", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreSap.Checked) steps.Add(("SAP GUI", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Sap")) steps.Add(("SAP GUI", () => RestoreStep(
                     Path.Combine(restoreRoot, "SAP"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
                     "SAP GUI", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestorePublic.Checked) steps.Add(("Dossier Public", () => RestoreStep(
+                if (chkPanelRestore.IsChecked("Public")) steps.Add(("Dossier Public", () => RestoreStep(
                     Path.Combine(restoreRoot, "Public"),
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
                     "Dossier Public", rtbRestoreLog, progress, errorList, ct)));
 
-                if (chkRestoreOutlook.Checked)    steps.Add(("Données Outlook",    () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreStickyNotes.Checked) steps.Add(("Sticky Notes",       () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreEdgeProfile.Checked) steps.Add(("Profil Edge",        () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
-                if (chkRestoreNetworkDrives.Checked) steps.Add(("Lecteurs réseau",  () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
-                if (chkRestoreWallpaper.Checked)  steps.Add(("Fond d'écran",        () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkRestoreIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
+                if (chkPanelRestore.IsChecked("Outlook"))    steps.Add(("Données Outlook",    () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkPanelRestore.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",       () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (btnBrowserPickerRestore.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",        () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
+                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",  () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
+                if (chkPanelRestore.IsChecked("Wallpaper"))  steps.Add(("Fond d'écran",        () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
+                if (chkPanelRestore.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -132,7 +132,7 @@ namespace SaveRestoreGUI
                     await action();
                 }
 
-                if (chkLaunchApps.Checked)
+                if (chkPanelRestore.IsChecked("LaunchApps"))
                 {
                     LogTitle(rtbRestoreLog, "Lancement des applications");
                     await Task.Run(() => AppLauncherService.LaunchApplications(
