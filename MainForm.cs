@@ -17,7 +17,7 @@ namespace SaveRestoreGUI
         private readonly object _logLock = new();
 
         // Résultats passés par Program.cs (pré-calculés pendant le splash)
-        private readonly IReadOnlyList<AppLauncherService.BrowserEntry> _browserEntries;
+        private readonly IReadOnlyList<BrowserEntry> _browserEntries;   // SaveRestoreGUI.UI.BrowserEntry
         private readonly AutoDetectResult _autoDetect;
 
         // État repliage des logs (true = replié)
@@ -27,7 +27,7 @@ namespace SaveRestoreGUI
         private const int LogCollapsedH = 32;
 
         public MainForm(
-            IReadOnlyList<AppLauncherService.BrowserEntry> browserEntries,
+            IReadOnlyList<BrowserEntry> browserEntries,
             AutoDetectResult autoDetect)
         {
             _browserEntries = browserEntries;
@@ -133,7 +133,7 @@ namespace SaveRestoreGUI
         internal bool MigrationLogCollapsed => _migrationLogCollapsed;
         internal static int LogCollapsedHeight => LogCollapsedH;
 
-        // ───────────────────────────── Thème ─────────────────────────────
+        // ───────────────────────────── Thème ─────────────────────────────────
 
         private void OnThemeChanged() => ApplyTheme();
 
@@ -203,7 +203,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ───────────────────────────── Helpers UI ─────────────────────────────
+        // ───────────────────────────── Helpers UI ────────────────────────────
 
         private void Log(RichTextBox rtb, string message, Color? color = null, bool toast = false, ToastKind kind = ToastKind.Info)
         {
