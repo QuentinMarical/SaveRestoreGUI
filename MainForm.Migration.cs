@@ -386,7 +386,7 @@ namespace SaveRestoreGUI
                     else if (lstProfiles.Items.Count > 0) lstProfiles.SelectedIndex = 0;
                 }
 
-                if (exactMatch != null && domainMatch != null && chkOldProfile.Checked)
+                if (exactMatch != null && domainMatch != null && chkPanelMigration.IsChecked("OldProfile"))
                     lblMigrationInfo.Text =
                         $"{profiles.Count} profil(s) trouvé(s).\n" +
                         $"⚠️ Double profil détecté ({domainMatch.Name} + {exactMatch.Name}).\n" +
@@ -419,80 +419,80 @@ namespace SaveRestoreGUI
         {
             var steps = new List<(string Name, Func<Task> Action)>();
 
-            if (chkMigrateDocuments.Checked) steps.Add(("Documents", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Documents")) steps.Add(("Documents", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "Documents"),
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "Documents", progress, errorList, ct)));
 
-            if (chkMigrateDesktop.Checked) steps.Add(("Bureau", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Desktop")) steps.Add(("Bureau", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "Desktop"),
                 Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
                 "Bureau", progress, errorList, ct)));
 
-            if (chkMigrateDownloads.Checked) steps.Add(("Téléchargements", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Downloads")) steps.Add(("Téléchargements", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "Downloads"),
                 Path.Combine(destProfile, "Downloads"),
                 "Téléchargements", progress, errorList, ct)));
 
-            if (chkMigratePictures.Checked) steps.Add(("Images", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Pictures")) steps.Add(("Images", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "Pictures"),
                 Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
                 "Images", progress, errorList, ct)));
 
-            if (chkMigrateMusic.Checked) steps.Add(("Musique", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Music")) steps.Add(("Musique", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "Music"),
                 Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
                 "Musique", progress, errorList, ct)));
 
-            if (chkMigrateVideos.Checked) steps.Add(("Vidéos", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Videos")) steps.Add(("Vidéos", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "Videos"),
                 Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
                 "Vidéos", progress, errorList, ct)));
 
-            if (chkMigrateSignatures.Checked) steps.Add(("Signatures Outlook", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Signatures")) steps.Add(("Signatures Outlook", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Signatures"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),
                 "Signatures Outlook", progress, errorList, ct)));
 
-            if (chkMigrateTemplates.Checked) steps.Add(("Modèles Office", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Templates"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
                 "Modèles Office", progress, errorList, ct)));
 
-            if (chkMigrateExcelMacros.Checked) steps.Add(("Macros Excel (XLSTART)", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("ExcelMacros")) steps.Add(("Macros Excel (XLSTART)", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Excel", "XLSTART"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
                 "Macros Excel (XLSTART)", progress, errorList, ct)));
 
-            if (chkMigrateSap.Checked) steps.Add(("SAP GUI", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("Sap")) steps.Add(("SAP GUI", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "AppData", "Roaming", "SAP"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
                 "SAP GUI", progress, errorList, ct)));
 
-            if (chkMigrateEdgeProfile.Checked) steps.Add(("Profil Edge", () => MigrateFolderStep(
+            if (chkPanelMigration.IsChecked("BrowserEdge")) steps.Add(("Profil Edge", () => MigrateFolderStep(
                 Path.Combine(sourceProfile, "AppData", "Local", "Microsoft", "Edge", "User Data", "Default"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "Edge", "User Data", "Default"),
                 "Profil Edge", progress, errorList, ct)));
 
-            if (chkMigrateStickyNotes.Checked) steps.Add(("Sticky Notes",
+            if (chkPanelMigration.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",
                 () => MigrateStickyNotesAsync(sourceProfile, ct)));
 
-            if (chkMigrateOutlook.Checked) steps.Add(("Données Outlook (PST)",
+            if (chkPanelMigration.IsChecked("Outlook")) steps.Add(("Données Outlook (PST)",
                 () => MigrateOutlookAsync(sourceProfile, ct)));
 
-            if (chkMigrateOneNote.Checked) steps.Add(("Clés registre OneNote",
+            if (chkPanelMigration.IsChecked("OneNote")) steps.Add(("Clés registre OneNote",
                 () => MigrateOneNoteAsync(sourceProfile)));
 
-            if (chkMigrateWallpaper.Checked) steps.Add(("Fond d'écran",
+            if (chkPanelMigration.IsChecked("Wallpaper")) steps.Add(("Fond d'écran",
                 () => MigrateWallpaperAsync(sourceProfile)));
 
-            if (chkMigrateNetworkDrives.Checked) steps.Add(("Lecteurs réseau",
+            if (chkPanelMigration.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",
                 () => MigrateNetworkDrivesAsync(sourceProfile)));
 
-            if (chkMigrateIpDesktopSoftphone.Checked) steps.Add(("IP Desktop Softphone",
+            if (chkPanelMigration.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone",
                 () => MigrateIpDesktopSoftphoneAsync(sourceProfile, progress, errorList, ct)));
 
-            if (includePublic && chkMigratePublic.Checked) steps.Add(("Dossier Public", () => MigrateFolderStep(
+            if (includePublic && chkPanelMigration.IsChecked("Public")) steps.Add(("Dossier Public", () => MigrateFolderStep(
                 Path.Combine(selectedDrive.Letter + "\\", "Users", "Public"),
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
                 "Dossier Public", progress, errorList, ct)));
@@ -538,7 +538,7 @@ namespace SaveRestoreGUI
             UserProfileItem? domainProfile = null;
             UserProfileItem? cleanProfile  = null;
 
-            if (chkOldProfile.Checked && selectedDrive.HasUsers)
+            if (chkPanelMigration.IsChecked("OldProfile") && selectedDrive.HasUsers)
             {
                 var allProfiles = lstProfiles.Items.Cast<UserProfileItem>().ToList();
 
