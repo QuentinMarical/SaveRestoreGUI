@@ -33,6 +33,7 @@ namespace SaveRestoreGUI
         private ModernButton btnToggleTheme;
         private Label statusLabel;
         private ModernProgressBar progressBar;
+        private Label lblProgressPercent;
 
         // ─── Page Sauvegarde ───
         private Panel pageBackup;
@@ -140,12 +141,21 @@ namespace SaveRestoreGUI
             lblPageSubtitle.SetBounds(28, 44, 700, 20);
             headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle });
 
-            // ── Status bar
+            // ── Status bar (sans progressBar)
             statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 32 };
             statusLabel = new Label { Text = "Prêt", AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
             statusLabel.Padding = new Padding(12, 0, 0, 0);
-            progressBar = new ModernProgressBar { Dock = DockStyle.Right, Width = 200, Visible = false };
-            statusPanel.Controls.AddRange(new Control[] { statusLabel, progressBar });
+            statusPanel.Controls.Add(statusLabel);
+
+            // progressBar et lblProgressPercent sont positionnés manuellement dans les pages
+            progressBar = new ModernProgressBar { Visible = false };
+            lblProgressPercent = new Label
+            {
+                Text = "",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleRight,
+                Visible = false
+            };
 
             // ── Content panel
             contentPanel = new Panel { Dock = DockStyle.Fill };
