@@ -20,14 +20,12 @@ namespace SaveRestoreGUI
         private const int TopCardH     = 90;
         private const int MigTopCardH  = 340;  // carte source Migration
 
-        // ── Carte options (checkboxes)
-        private const int ChkLabelY    = 12;
-        private const int ChkStartY    = 44;
-        private const int ChkMinH      = 22;   // hauteur minimale par case
-        private const int ChkRowGap    = 6;    // espacement vertical entre cases
-        private const int ChkColGap    = 12;
+        // ── Carte options (CategoryCheckPanel)
+        private const int ChkPanelH    = 320;  // hauteur fixe du CategoryCheckPanel
         private const int BtnGapY      = 14;
         private const int CardPadBot   = 16;
+        private const int ChkStartY    = 44;
+        private const int ChkColGap    = 12;
 
         // ── Barre d'actions
         private const int ActionH      = 44;
@@ -80,15 +78,8 @@ namespace SaveRestoreGUI
             cardBackupDest.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
 
-            int optY = Margin + TopCardH + CardGap;
-            var cols = new ModernCheckBox[][]
-            {
-                new[] { chkDocuments,     chkDesktop,        chkDownloads,      chkPictures,           chkMusic          },
-                new[] { chkVideos,        chkOutlook,        chkSignatures,     chkStickyNotes,        chkEdgeProfile    },
-                new[] { chkWallpaper,     chkNetworkDrives,  chkTemplates,      chkOneNote,            chkExcelMacros    },
-                new[] { chkSap,           chkOldProfile,     chkPublic,         chkIpDesktopSoftphone }
-            };
-            int optH = LayoutOptionsCard(cw, cols, btnSelectAll, btnDeselectAll);
+            int optY  = Margin + TopCardH + CardGap;
+            int optH  = LayoutPanelOptionsCard(cw, chkPanelBackup, btnSelectAll, btnDeselectAll);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -111,15 +102,8 @@ namespace SaveRestoreGUI
             cardRestoreSource.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
 
-            int optY = Margin + TopCardH + CardGap;
-            var cols = new ModernCheckBox[][]
-            {
-                new[] { chkRestoreDocuments,  chkRestoreDesktop,       chkRestoreDownloads,   chkRestorePictures,      chkRestoreMusic       },
-                new[] { chkRestoreVideos,     chkRestoreOutlook,       chkRestoreSignatures,  chkRestoreStickyNotes,   chkRestoreEdgeProfile },
-                new[] { chkRestoreWallpaper,  chkRestoreNetworkDrives, chkRestoreTemplates,   chkRestoreOneNote,       chkRestoreExcelMacros },
-                new[] { chkRestoreSap,        chkRestorePublic,        chkLaunchApps,         chkRestoreIpDesktopSoftphone }
-            };
-            int optH = LayoutOptionsCard(cw, cols, btnRestoreSelectAll, btnRestoreDeselectAll);
+            int optY  = Margin + TopCardH + CardGap;
+            int optH  = LayoutPanelOptionsCard(cw, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -165,15 +149,8 @@ namespace SaveRestoreGUI
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
             // Carte options
-            int optY = Margin + MigTopCardH + CardGap;
-            var cols = new ModernCheckBox[][]
-            {
-                new[] { chkMigrateDocuments,   chkMigrateDesktop,      chkMigrateDownloads,     chkMigratePictures,    chkMigrateMusic          },
-                new[] { chkMigrateVideos,      chkMigrateOutlook,      chkMigrateSignatures,    chkMigrateExcelMacros, chkMigrateStickyNotes    },
-                new[] { chkMigrateEdgeProfile, chkMigrateWallpaper,    chkMigrateNetworkDrives, chkMigrateOneNote,     chkMigrateTemplates      },
-                new[] { chkMigrateSap,         chkMigratePublic,       chkMigrateIpDesktopSoftphone }
-            };
-            int optH = LayoutOptionsCard(cw, cols, btnMigrateSelectAll, btnMigrateDeselectAll);
+            int optY  = Margin + MigTopCardH + CardGap;
+            int optH  = LayoutPanelOptionsCard(cw, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -197,81 +174,31 @@ namespace SaveRestoreGUI
         }
 
         /// <summary>
-        /// Positionne les colonnes de checkboxes et les boutons Tout/Décocher.
-        /// La hauteur de chaque case est calculée dynamiquement d'après le texte
-        /// et la police réelle → les libellés longs ne sont plus coupés.
+        /// Positionne un CategoryCheckPanel dans sa carte options,
+        /// puis les boutons Tout cocher / Tout décocher en dessous.
         /// Retourne la hauteur totale calculée de la carte.
         /// </summary>
-        private static int LayoutOptionsCard(
+        private static int LayoutPanelOptionsCard(
             int cardWidth,
-            ModernCheckBox[][] cols,
+            CategoryCheckPanel panel,
             Button btnAll,
             Button btnNone)
         {
-            int colCount = cols.Length;
-            int availW   = cardWidth - InnerPad * 2;
-            int colW     = Math.Max(160, (availW - (colCount - 1) * ChkColGap) / colCount);
-            int totalW   = colCount * colW + (colCount - 1) * ChkColGap;
-            int startX   = InnerPad + Math.Max(0, (availW - totalW) / 2);
+            int innerW = cardWidth - InnerPad * 2;
 
-            // Calcule la hauteur réelle de chaque case selon son texte et sa police.
-            // On mesure avec un padding horizontal de 20 px (case + espace texte).
-            static int MeasureChkHeight(ModernCheckBox chk, int width)
-            {
-                var font    = chk.Font ?? SystemFonts.DefaultFont;
-                var maxSize = new Size(Math.Max(1, width - 20), 0);
-                var size    = TextRenderer.MeasureText(
-                    chk.Text,
-                    font,
-                    maxSize,
-                    TextFormatFlags.WordBreak | TextFormatFlags.NoPadding);
-                return Math.Max(ChkMinH, size.Height + 4);  // +4 px de respiration
-            }
+            // Le panel commence sous le titre de la carte, à ChkStartY
+            panel.SetBounds(InnerPad, ChkStartY, innerW, ChkPanelH);
 
-            // Applique AutoSize=false + alignement TopLeft sur toutes les cases
-            // pour que le texte multi-ligne s'affiche correctement.
-            foreach (var col in cols)
-                foreach (var chk in col)
-                {
-                    chk.AutoSize     = false;
-                    chk.CheckAlign   = ContentAlignment.TopLeft;
-                    chk.TextAlign    = ContentAlignment.TopLeft;
-                    chk.UseMnemonic  = false;
-                }
+            int btnY  = ChkStartY + ChkPanelH + BtnGapY;
+            int bAllW = btnAll  != null && btnAll.Width  > 0 ? btnAll.Width  : 120;
+            int bAllH = btnAll  != null && btnAll.Height > 0 ? btnAll.Height : 34;
+            int bNoW  = btnNone != null && btnNone.Width > 0 ? btnNone.Width : 130;
+            int bNoH  = btnNone != null && btnNone.Height > 0 ? btnNone.Height : 34;
 
-            int globalMaxBottom = ChkStartY;
+            btnAll?.SetBounds(InnerPad, btnY, bAllW, bAllH);
+            btnNone?.SetBounds(InnerPad + bAllW + 8, btnY, bNoW, bNoH);
 
-            for (int c = 0; c < colCount; c++)
-            {
-                int x       = startX + c * (colW + ChkColGap);
-                int yOffset = ChkStartY;
-
-                for (int r = 0; r < cols[c].Length; r++)
-                {
-                    var chk = cols[c][r];
-                    int h   = MeasureChkHeight(chk, colW);
-                    chk.SetBounds(x, yOffset, colW, h);
-                    yOffset += h + ChkRowGap;
-                }
-
-                globalMaxBottom = Math.Max(globalMaxBottom, yOffset - ChkRowGap);
-            }
-
-            int lastChkBottom = globalMaxBottom;
-
-            if (btnAll != null && btnNone != null)
-            {
-                int btnY  = lastChkBottom + BtnGapY;
-                int bAllW = btnAll.Width  > 0 ? btnAll.Width  : 120;
-                int bAllH = btnAll.Height > 0 ? btnAll.Height : 34;
-                int bNoW  = btnNone.Width > 0 ? btnNone.Width : 130;
-                int bNoH  = btnNone.Height > 0 ? btnNone.Height : 34;
-                btnAll.SetBounds(InnerPad, btnY, bAllW, bAllH);
-                btnNone.SetBounds(InnerPad + bAllW + 8, btnY, bNoW, bNoH);
-                return btnY + Math.Max(bAllH, bNoH) + CardPadBot;
-            }
-
-            return lastChkBottom + CardPadBot;
+            return btnY + Math.Max(bAllH, bNoH) + CardPadBot;
         }
 
         private static void LayoutActionBar(
