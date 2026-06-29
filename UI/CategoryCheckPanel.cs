@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
+using SaveRestoreGUI.Services;
 
 namespace SaveRestoreGUI.UI
 {
@@ -12,14 +13,10 @@ namespace SaveRestoreGUI.UI
     // ─────────────────────────────────────────────────────────────────────────
     public class CheckItem
     {
-        /// <summary>Clé unique (nom de propriété logique, ex. "Documents").</summary>
-        public string Key  { get; }
-        /// <summary>Libellé affiché.</summary>
-        public string Text { get; }
-        /// <summary>Icône emoji affiché à gauche (style icône bureau).</summary>
-        public string Icon { get; }
-        /// <summary>Coché par défaut ?</summary>
-        public bool DefaultChecked { get; }
+        public string Key            { get; }
+        public string Text           { get; }
+        public string Icon           { get; }
+        public bool   DefaultChecked { get; }
 
         public CheckItem(string key, string text, string icon, bool defaultChecked = true)
         { Key = key; Text = text; Icon = icon; DefaultChecked = defaultChecked; }
@@ -40,21 +37,19 @@ namespace SaveRestoreGUI.UI
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CategoryCheckPanel  – liste de catégories repliables avec cases à cocher
-    // rendu style icônes Bureau / Explorateur Windows
+    // CategoryCheckPanel
     // ─────────────────────────────────────────────────────────────────────────
     public class CategoryCheckPanel : Panel
     {
-        // ── Constantes layout
-        private const int HeaderH   = 34;
-        private const int ItemH     = 34;
-        private const int CheckBoxW = 18;
-        private const int HorizPad  = 10;
+        private const int HeaderH    = 34;
+        private const int ItemH      = 34;
+        private const int CheckBoxW  = 18;
+        private const int HorizPad   = 10;
         private const int ItemRadius = 6;
 
-        private List<CheckCategory>      _categories  = new();
-        private Dictionary<string, bool> _checked     = new();
-        private string?                  _hoverItem   = null;
+        private List<CheckCategory>      _categories   = new();
+        private Dictionary<string, bool> _checked      = new();
+        private string?                  _hoverItem    = null;
         private int                      _scrollOffset = 0;
 
         public event EventHandler? CheckedChanged;
@@ -69,7 +64,7 @@ namespace SaveRestoreGUI.UI
             MouseWheel += OnMouseWheel;
             MouseClick += OnMouseClick;
             MouseMove  += OnMouseMove;
-            MouseLeave += (_, __) => { _hoverItem = null; Invalidate(); };
+            MouseLeave += (_, _) => { _hoverItem = null; Invalidate(); };
         }
 
         // ── API publique ───────────────────────────────────────────────────
@@ -89,7 +84,9 @@ namespace SaveRestoreGUI.UI
             => _checked.TryGetValue(key, out var v) && v;
 
         public void SetChecked(string key, bool value)
-        { if (_checked.ContainsKey(key)) { _checked[key] = value; Invalidate(); } }
+        {
+            if (_checked.ContainsKey(key)) { _checked[key] = value; Invalidate(); }
+        }
 
         public void SetAll(bool value)
         {
@@ -97,6 +94,23 @@ namespace SaveRestoreGUI.UI
                 _checked[k] = value;
             Invalidate();
             CheckedChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Applique les résultats de l'auto-détection :
+        /// - Décoche Desktop/Documents/Pictures si synchronisés sur OneDrive
+        /// - Coche/décoche les logiciels selon leur présence
+        /// </summary>
+        public void ApplyAutoDetect(AutoDetectResult r)
+        {
+            if (r.DesktopOnOneDrive)   SetChecked("Desktop",    false);
+            if (r.DocumentsOnOneDrive) SetChecked("Documents",  false);
+            if (r.PicturesOnOneDrive)  SetChecked("Pictures",   false);
+
+            SetChecked("Sap",         r.SapDetected);
+            SetChecked("IpSoftphone", r.IpSoftphoneDetected);
+            SetChecked("Outlook",     r.OutlookDetected);
+            SetChecked("StickyNotes", r.StickyNotesDetected);
         }
 
         // ── Rendu ─────────────────────────────────────────────────────────
@@ -278,17 +292,14 @@ namespace SaveRestoreGUI.UI
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Catalogue partagé des catégories + items (Sauvegarde / Restauration / Migration)
+    // Catalogue partagé des catégories
     // ─────────────────────────────────────────────────────────────────────────
     public static class CheckCatalog
     {
         /// <summary>
-        /// Retourne les catégories standard avec la catégorie Navigateurs.
-        /// • includeOldProfile = true → ajoute "Détecter ancien profil" (Sauvegarde).
-        /// • includeLaunchApps = true → ajoute "Lancer les applications" (Restauration).
-        /// La catégorie Navigateurs est replide par défaut (les navigateurs sont
-        /// gérés individuellement via BrowserPickerButton ; cette catégorie couvre
-        /// la sauvegarde des données de profil brutes).
+        /// Retourne les catégories standard.
+        /// La catégorie Navigateurs a été supprimée : les navigateurs sont gérés
+        /// exclusivement via le BrowserPickerButton (liste déroulante).
         /// </summary>
         public static CheckCategory[] Build(
             bool includeOldProfile = false,
@@ -297,12 +308,12 @@ namespace SaveRestoreGUI.UI
             // ── Catégorie 1 : Fichiers utilisateur
             var userFiles = new List<CheckItem>
             {
-                new("Desktop",    "Bureau",             "🖥️"),
-                new("Documents",  "Documents",           "📄"),
-                new("Pictures",   "Images",              "🖼️"),
-                new("Videos",     "Vidéos",              "🎬"),
-                new("Downloads",  "Téléchargements",     "⬇️"),
-                new("Music",      "Musique",             "🎵"),
+                new("Desktop",    "Bureau",                    "🖥️"),
+                new("Documents",  "Documents",                 "📄"),
+                new("Pictures",   "Images",                   "🖼️"),
+                new("Videos",     "Vidéos",                   "🎬"),
+                new("Downloads",  "Téléchargements",           "⬇️"),
+                new("Music",      "Musique",                   "🎵"),
                 new("Public",     "Dossier Public (%public%)", "📁"),
             };
             if (includeOldProfile)
@@ -311,33 +322,15 @@ namespace SaveRestoreGUI.UI
             // ── Catégorie 2 : Bureautique
             var office = new CheckItem[]
             {
-                new("Outlook",        "PST Outlook",              "📧"),
-                new("Signatures",     "Signatures Outlook",       "✍️"),
-                new("OfficeTemplates","Modèles Office",           "📋"),
-                new("OneNote",        "OneNote (registre)",       "📓"),
-                new("StickyNotes",    "Sticky Notes",             "📌"),
-                new("ExcelMacros",    "Macros Excel (XLSTART)",   "📊"),
+                new("Outlook",         "PST Outlook",            "📧"),
+                new("Signatures",      "Signatures Outlook",     "✍️"),
+                new("OfficeTemplates", "Modèles Office",         "📋"),
+                new("OneNote",         "OneNote (registre)",     "📓"),
+                new("StickyNotes",     "Sticky Notes",           "📌"),
+                new("ExcelMacros",     "Macros Excel (XLSTART)", "📊"),
             };
 
-            // ── Catégorie 3 : Navigateurs
-            var browsers = new List<CheckItem>
-            {
-                new("BrowserEdge",       "Microsoft Edge",       "🃪🇻"),
-                new("BrowserChrome",     "Google Chrome",        "🔵"),
-                new("BrowserFirefox",    "Mozilla Firefox",      "𞦊"),
-                new("BrowserBrave",      "Brave",                "🦁"),
-                new("BrowserOpera",      "Opera",                "🎭"),
-                new("BrowserOperaGX",    "Opera GX",             "🎮"),
-                new("BrowserVivaldi",    "Vivaldi",              "🎼"),
-                new("BrowserArc",        "Arc",                  "🌈"),
-                new("BrowserComet",      "Perplexity Comet",     "🪐", false),
-                new("BrowserLibreWolf",  "LibreWolf",            "🐺", false),
-                new("BrowserPaleMoon",   "Pale Moon",            "🌙", false),
-                new("BrowserTor",        "Tor Browser",          "🧕", false),
-                new("BrowserDDG",        "DuckDuckGo Browser",   "🦆", false),
-            };
-
-            // ── Catégorie 4 : Système & Personnalisation
+            // ── Catégorie 3 : Système & Personnalisation
             var systemItems = new List<CheckItem>
             {
                 new("Wallpaper",     "Fond d'écran",    "🖼️"),
@@ -346,23 +339,17 @@ namespace SaveRestoreGUI.UI
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Lancer les applications", "🚀"));
 
-            // ── Catégorie 5 : Logiciels métier
+            // ── Catégorie 4 : Logiciels métier
             var business = new CheckItem[]
             {
-                new("Sap",         "SAP GUI",              "🗂️"),
-                new("IpSoftphone", "IP Desktop Softphone", "📞", false),
+                new("Sap",         "SAP GUI",              "🗂️",  false),
+                new("IpSoftphone", "IP Desktop Softphone", "📞",  false),
             };
-
-            // La catégorie Navigateurs est repliée par défaut (longue liste)
-            var browserCategory = new CheckCategory(
-                "Navigateurs", "🌐", browsers.ToArray())
-            { Expanded = false };
 
             return new[]
             {
                 new CheckCategory("Fichiers utilisateur",       "📁", userFiles.ToArray()),
                 new CheckCategory("Bureautique",               "💼", office),
-                browserCategory,
                 new CheckCategory("Système & Personnalisation", "⚙️", systemItems.ToArray()),
                 new CheckCategory("Logiciels métier",          "🏢", business),
             };

@@ -1,39 +1,54 @@
 using System.Reflection;
 using System.Text;
-using SaveRestoreGUI.UI;
 using SaveRestoreGUI.Services;
+using SaveRestoreGUI.UI;
 
 namespace SaveRestoreGUI
 {
     /// <summary>
-    /// Fenêtre principale — refonte graphique V5 :
-    /// navigation latérale moderne, cartes arrondies, thème clair/sombre dynamique.
-    /// Structure : Sidebar (gauche) + zone de contenu (pages empilées) + barre d'état.
+    /// Fenêtre principale — reçoit les résultats pré-calculés par Program.cs
+    /// (navigateurs détectés, auto-détection OneDrive/logiciels).
     /// </summary>
     public partial class MainForm : Form
     {
         private CancellationTokenSource? _cancellationTokenSource;
 
-        // ── Log fichier — accès protégé par _logLock (plusieurs tâches async en parallèle) ──
         private string? _logFilePath;
         private readonly object _logLock = new();
 
-        public MainForm()
+        // Résultats passés par Program.cs (pré-calculés pendant le splash)
+        private readonly IReadOnlyList<AppLauncherService.BrowserEntry> _browserEntries;
+        private readonly AutoDetectResult _autoDetect;
+
+        // État repliage des logs (true = replié)
+        private bool _backupLogCollapsed  = false;
+        private bool _restoreLogCollapsed = false;
+        private bool _migrationLogCollapsed = false;
+        private const int LogCollapsedH = 32;
+
+        public MainForm(
+            IReadOnlyList<AppLauncherService.BrowserEntry> browserEntries,
+            AutoDetectResult autoDetect)
         {
+            _browserEntries = browserEntries;
+            _autoDetect     = autoDetect;
+
             InitializeComponent();
             ThemeManager.ThemeChanged += OnThemeChanged;
+
             this.Load += (_, _) =>
             {
                 SyncPageSizes();
                 InitializeBrowserPickers();
+                ApplyAutoDetect();
             };
             this.Resize += (_, _) => SyncPageSizes();
+
             ApplyTheme();
             UpdateOldProfileOptionState();
             LoadUSBDrives();
             ShowPage(0);
 
-            // Version dynamique lue depuis l'assembly (pilotée par <Version> dans le .csproj)
             var version = Assembly.GetExecutingAssembly().GetName().Version;
             var versionStr = version != null
                 ? $"{version.Major}.{version.Minor}.{version.Build}"
@@ -41,16 +56,17 @@ namespace SaveRestoreGUI
             this.Text = $"SaveRestoreGUI v{versionStr}";
         }
 
-        /// <summary>
-        /// Injecte la liste des navigateurs détectés dans les BrowserPickerButton
-        /// déjà créés par le Designer (btnBrowserPickerBackup / btnBrowserPickerRestore).
-        /// N'ajoute aucun contrôle supplémentaire.
-        /// </summary>
         private void InitializeBrowserPickers()
         {
-            var entries = AppLauncherService.GetBrowserEntries();
-            btnBrowserPickerBackup.SetBrowsers(entries);
-            btnBrowserPickerRestore.SetBrowsers(entries);
+            btnBrowserPickerBackup.SetBrowsers(_browserEntries);
+            btnBrowserPickerRestore.SetBrowsers(_browserEntries);
+        }
+
+        private void ApplyAutoDetect()
+        {
+            chkPanelBackup.ApplyAutoDetect(_autoDetect);
+            chkPanelRestore.ApplyAutoDetect(_autoDetect);
+            chkPanelMigration.ApplyAutoDetect(_autoDetect);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -92,6 +108,31 @@ namespace SaveRestoreGUI
             ApplyResponsiveLayout();
         }
 
+        // ───────────────────────────── Log toggle ─────────────────────────────
+
+        internal void ToggleBackupLog()
+        {
+            _backupLogCollapsed = !_backupLogCollapsed;
+            ApplyResponsiveLayout();
+        }
+
+        internal void ToggleRestoreLog()
+        {
+            _restoreLogCollapsed = !_restoreLogCollapsed;
+            ApplyResponsiveLayout();
+        }
+
+        internal void ToggleMigrationLog()
+        {
+            _migrationLogCollapsed = !_migrationLogCollapsed;
+            ApplyResponsiveLayout();
+        }
+
+        internal bool BackupLogCollapsed    => _backupLogCollapsed;
+        internal bool RestoreLogCollapsed   => _restoreLogCollapsed;
+        internal bool MigrationLogCollapsed => _migrationLogCollapsed;
+        internal static int LogCollapsedHeight => LogCollapsedH;
+
         // ───────────────────────────── Thème ─────────────────────────────
 
         private void OnThemeChanged() => ApplyTheme();
@@ -106,11 +147,11 @@ namespace SaveRestoreGUI
             headerPanel.BackColor  = p.Background;
             statusPanel.BackColor  = p.Sidebar;
 
-            lblAppTitle.ForeColor    = p.Text;
-            lblAppSubtitle.ForeColor = p.TextSecondary;
-            lblPageTitle.ForeColor   = p.Text;
+            lblAppTitle.ForeColor     = p.Text;
+            lblAppSubtitle.ForeColor  = p.TextSecondary;
+            lblPageTitle.ForeColor    = p.Text;
             lblPageSubtitle.ForeColor = p.TextSecondary;
-            statusLabel.ForeColor    = p.TextSecondary;
+            statusLabel.ForeColor     = p.TextSecondary;
 
             btnToggleTheme.Text = ThemeManager.IsDark ? "\U0001f319 Thème sombre" : "\u2600\ufe0f Thème clair";
 
@@ -167,50 +208,36 @@ namespace SaveRestoreGUI
         private void Log(RichTextBox rtb, string message, Color? color = null, bool toast = false, ToastKind kind = ToastKind.Info)
         {
             if (InvokeRequired)
-            {
-                Invoke(() => Log(rtb, message, color, toast, kind));
-                return;
-            }
+            { Invoke(() => Log(rtb, message, color, toast, kind)); return; }
 
-            var p = ThemeManager.Palette;
-            var timestamp   = DateTime.Now.ToString("HH:mm:ss");
-            var fullMessage = $"[{timestamp}] {message}\n";
+            var p         = ThemeManager.Palette;
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            var fullMsg   = $"[{timestamp}] {message}\n";
 
             rtb.SelectionStart = rtb.TextLength;
             rtb.SelectionColor = color ?? p.ConsoleText;
-            rtb.AppendText(fullMessage);
+            rtb.AppendText(fullMsg);
             rtb.ScrollToCaret();
 
-            // Écriture fichier protégée par lock — plusieurs tâches async peuvent logguer simultanément
             string? logPath;
             lock (_logLock) { logPath = _logFilePath; }
-
             if (!string.IsNullOrEmpty(logPath))
             {
-                try
-                {
-                    lock (_logLock)
-                    {
-                        File.AppendAllText(logPath, fullMessage, Encoding.UTF8);
-                    }
-                }
+                try { lock (_logLock) { File.AppendAllText(logPath, fullMsg, Encoding.UTF8); } }
                 catch { }
             }
 
             if (toast) ToastService.Show(this, message, kind);
         }
 
-        private void LogSuccess(RichTextBox rtb, string message) => Log(rtb, "\u2713 " + message, Color.FromArgb(80, 250, 123));
-        private void LogError  (RichTextBox rtb, string message) => Log(rtb, "\u2717 " + message, Color.FromArgb(255, 121, 121), toast: true, kind: ToastKind.Error);
-        private void LogWarning(RichTextBox rtb, string message) => Log(rtb, "\u26a0 " + message, Color.FromArgb(241, 250, 140));
-        private void LogInfo   (RichTextBox rtb, string message) => Log(rtb, "\u2139 " + message, Color.FromArgb(139, 233, 253));
-        private void LogTitle  (RichTextBox rtb, string message) => Log(rtb, $"\n\u2550\u2550\u2550\u2550\u2550\u2550 {message.ToUpper()} \u2550\u2550\u2550\u2550\u2550\u2550", Color.FromArgb(255, 184, 108));
+        private void LogSuccess(RichTextBox rtb, string m) => Log(rtb, "\u2713 " + m, Color.FromArgb(80, 250, 123));
+        private void LogError  (RichTextBox rtb, string m) => Log(rtb, "\u2717 " + m, Color.FromArgb(255, 121, 121), toast: true, kind: ToastKind.Error);
+        private void LogWarning(RichTextBox rtb, string m) => Log(rtb, "\u26a0 " + m, Color.FromArgb(241, 250, 140));
+        private void LogInfo   (RichTextBox rtb, string m) => Log(rtb, "\u2139 " + m, Color.FromArgb(139, 233, 253));
+        private void LogTitle  (RichTextBox rtb, string m) => Log(rtb, $"\n\u2550\u2550\u2550\u2550\u2550\u2550 {m.ToUpper()} \u2550\u2550\u2550\u2550\u2550\u2550", Color.FromArgb(255, 184, 108));
 
         private void UpdateStatus(string message)
-        {
-            if (InvokeRequired) { Invoke(() => UpdateStatus(message)); return; }
-            statusLabel.Text = message;
-        }
+        { if (InvokeRequired) { Invoke(() => UpdateStatus(message)); return; } statusLabel.Text = message; }
 
         private void UpdateProgress(int percent)
         {
@@ -220,11 +247,7 @@ namespace SaveRestoreGUI
         }
 
         private void HideProgress()
-        {
-            if (InvokeRequired) { Invoke(HideProgress); return; }
-            progressBar.Visible = false;
-            progressBar.Value   = 0;
-        }
+        { if (InvokeRequired) { Invoke(HideProgress); return; } progressBar.Visible = false; progressBar.Value = 0; }
 
         private void SetControlsEnabled(bool enabled)
         {
@@ -239,10 +262,8 @@ namespace SaveRestoreGUI
             btnStartMigration.Enabled = enabled;
             btnBrowseBackup.Enabled   = enabled;
             btnBrowseRestore.Enabled  = enabled;
-            if (enabled)
-            {
-                UpdateOldProfileOptionState();
-            }
+            if (enabled) UpdateOldProfileOptionState();
+
             btnSelectAll.Enabled          = enabled;
             btnDeselectAll.Enabled        = enabled;
             btnRestoreSelectAll.Enabled   = enabled;
@@ -253,7 +274,6 @@ namespace SaveRestoreGUI
             lstProfiles.Enabled   = enabled;
             btnRefreshUSB.Enabled = enabled;
 
-            // Les boutons Cancel sont activés PENDANT l'opération (enabled=false = opération en cours)
             btnCancelBackup.Enabled    = !enabled;
             btnCancelRestore.Enabled   = !enabled;
             btnCancelMigration.Enabled = !enabled;
@@ -261,11 +281,7 @@ namespace SaveRestoreGUI
 
         private void ExportLog(RichTextBox rtb, string defaultName)
         {
-            using var sfd = new SaveFileDialog
-            {
-                Filter   = "Fichier texte|*.txt",
-                FileName = defaultName
-            };
+            using var sfd = new SaveFileDialog { Filter = "Fichier texte|*.txt", FileName = defaultName };
             if (sfd.ShowDialog() == DialogResult.OK)
             {
                 File.WriteAllText(sfd.FileName, rtb.Text, Encoding.UTF8);
@@ -278,11 +294,7 @@ namespace SaveRestoreGUI
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var usersDir    = Path.GetDirectoryName(userProfile);
             var currentUser = Environment.UserName;
-            if (usersDir == null)
-            {
-                chkPanelBackup.SetChecked("OldProfile", false);
-                return;
-            }
+            if (usersDir == null) { chkPanelBackup.SetChecked("OldProfile", false); return; }
 
             var exact = Path.Combine(usersDir, currentUser + ".ZEPRODBUR");
             bool hasOldProfile = Directory.Exists(exact);
@@ -299,10 +311,7 @@ namespace SaveRestoreGUI
                         && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase));
             }
 
-            // CategoryCheckPanel n'a pas de notion "Enabled" par case : si aucun ancien
-            // profil n'est détecté, on force simplement la case à false.
-            if (!hasOldProfile)
-                chkPanelBackup.SetChecked("OldProfile", false);
+            if (!hasOldProfile) chkPanelBackup.SetChecked("OldProfile", false);
         }
 
         private void CancelCurrentOperation(RichTextBox rtb)

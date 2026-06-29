@@ -48,6 +48,7 @@ namespace SaveRestoreGUI
         private ModernButton btnStartBackup;
         private ModernButton btnCancelBackup;
         private ModernButton btnExportBackupLog;
+        private ModernButton btnToggleBackupLog;
         private RichTextBox rtbBackupLog;
         private BrowserPickerButton btnBrowserPickerBackup;
 
@@ -65,6 +66,7 @@ namespace SaveRestoreGUI
         private ModernButton btnStartRestore;
         private ModernButton btnCancelRestore;
         private ModernButton btnExportRestoreLog;
+        private ModernButton btnToggleRestoreLog;
         private RichTextBox rtbRestoreLog;
         private BrowserPickerButton btnBrowserPickerRestore;
 
@@ -88,6 +90,7 @@ namespace SaveRestoreGUI
         private ModernButton btnStartMigration;
         private ModernButton btnCancelMigration;
         private ModernButton btnExportMigrationLog;
+        private ModernButton btnToggleMigrationLog;
         private RichTextBox rtbMigrationLog;
 
         private void InitializeComponent()
@@ -95,7 +98,6 @@ namespace SaveRestoreGUI
             components = new System.ComponentModel.Container();
             SuspendLayout();
 
-            // ── Fenêtre principale
             Text          = "SaveRestore GUI";
             Size          = new Size(1100, 780);
             MinimumSize   = new Size(900, 620);
@@ -131,8 +133,8 @@ namespace SaveRestoreGUI
             });
 
             // ── Header
-            headerPanel    = new Panel { Dock = DockStyle.Top, Height = 72 };
-            lblPageTitle   = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
+            headerPanel     = new Panel { Dock = DockStyle.Top, Height = 72 };
+            lblPageTitle    = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
             lblPageSubtitle = new Label { Text = "", AutoSize = true, Tag = "secondary" };
             lblPageTitle.SetBounds(28, 14, 600, 28);
             lblPageSubtitle.SetBounds(28, 44, 700, 20);
@@ -158,8 +160,6 @@ namespace SaveRestoreGUI
             BuildPageMigration();
 
             contentPanel.Controls.AddRange(new Control[] { pageBackup, pageRestore, pageMigration });
-
-            // ── Assemblage final
             Controls.AddRange(new Control[] { contentPanel, headerPanel, sidebarPanel, statusPanel });
 
             ResumeLayout(false);
@@ -171,28 +171,15 @@ namespace SaveRestoreGUI
         // ═══════════════════════════════════════════════════════════════════
         private void BuildPageBackup()
         {
-            // ── Destination
             cardBackupDest  = new CardPanel();
-            lblBackupPath   = new Label
-            {
-                Text = "Dossier de destination",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
+            lblBackupPath   = new Label { Text = "Dossier de destination", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
             txtBackupPath   = new TextBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
             btnBrowseBackup = new ModernButton { Text = "Parcourir\u2026", Role = ButtonRole.Secondary, Size = new Size(120, 32) };
             btnBrowseBackup.Click += BtnBrowseBackup_Click;
             cardBackupDest.Controls.AddRange(new Control[] { lblBackupPath, txtBackupPath, btnBrowseBackup });
 
-            // ── Options (catégories avec icônes)
             cardBackupOptions     = new CardPanel();
-            lblBackupOptionsTitle = new Label
-            {
-                Text = "Éléments à sauvegarder",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
-
+            lblBackupOptionsTitle = new Label { Text = "Éléments à sauvegarder", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
             chkPanelBackup = new CategoryCheckPanel();
             chkPanelBackup.SetCategories(CheckCatalog.Build(includeOldProfile: true));
 
@@ -201,36 +188,29 @@ namespace SaveRestoreGUI
             btnSelectAll.Click   += (s, e) => chkPanelBackup.SetAll(true);
             btnDeselectAll.Click += (s, e) => chkPanelBackup.SetAll(false);
 
-            // BrowserPickerButton remplace chkEdgeProfile
             btnBrowserPickerBackup = new BrowserPickerButton();
 
             cardBackupOptions.Controls.AddRange(new Control[]
             {
-                lblBackupOptionsTitle,
-                chkPanelBackup,
-                btnBrowserPickerBackup,
+                lblBackupOptionsTitle, chkPanelBackup, btnBrowserPickerBackup,
                 btnSelectAll, btnDeselectAll
             });
 
-            // ── Actions
             btnStartBackup     = new ModernButton { Text = "\u25b6 Démarrer la sauvegarde", Height = 44, Role = ButtonRole.Primary };
             btnCancelBackup    = new ModernButton { Text = "\u2b1b Annuler",                Height = 44, Enabled = false };
             btnExportBackupLog = new ModernButton { Text = "\U0001f4c4 Exporter le log",   Height = 34 };
+            btnToggleBackupLog = new ModernButton { Text = "\u25b2 Masquer les logs",       Height = LogToggleH, Role = ButtonRole.Secondary };
             btnStartBackup.Click     += BtnStartBackup_Click;
             btnCancelBackup.Click    += (s, e) => CancelCurrentOperation(rtbBackupLog);
-            btnExportBackupLog.Click += (s, e) => ExportLog(rtbBackupLog, $"Sauvegarde_{System.DateTime.Now:yyyyMMdd_HHmm}.txt");
+            btnExportBackupLog.Click += (s, e) => ExportLog(rtbBackupLog, $"Sauvegarde_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+            btnToggleBackupLog.Click += (s, e) => ToggleBackupLog();
 
-            rtbBackupLog = new RichTextBox
-            {
-                ReadOnly = true,
-                Font = new Font("Consolas", 9f),
-                ScrollBars = RichTextBoxScrollBars.Vertical
-            };
+            rtbBackupLog = new RichTextBox { ReadOnly = true, Font = new Font("Consolas", 9f), ScrollBars = RichTextBoxScrollBars.Vertical };
 
             pageBackup.Controls.AddRange(new Control[] {
                 cardBackupDest, cardBackupOptions,
                 btnStartBackup, btnCancelBackup, btnExportBackupLog,
-                rtbBackupLog
+                btnToggleBackupLog, rtbBackupLog
             });
         }
 
@@ -239,28 +219,15 @@ namespace SaveRestoreGUI
         // ═══════════════════════════════════════════════════════════════════
         private void BuildPageRestore()
         {
-            // ── Source
             cardRestoreSource  = new CardPanel();
-            lblRestorePath     = new Label
-            {
-                Text = "Dossier source de la sauvegarde",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
+            lblRestorePath     = new Label { Text = "Dossier source de la sauvegarde", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
             txtRestorePath   = new TextBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
             btnBrowseRestore = new ModernButton { Text = "Parcourir\u2026", Role = ButtonRole.Secondary, Size = new Size(120, 32) };
             btnBrowseRestore.Click += BtnBrowseRestore_Click;
             cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
 
-            // ── Options
             cardRestoreOptions     = new CardPanel();
-            lblRestoreOptionsTitle = new Label
-            {
-                Text = "Éléments à restaurer",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
-
+            lblRestoreOptionsTitle = new Label { Text = "Éléments à restaurer", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
             chkPanelRestore = new CategoryCheckPanel();
             chkPanelRestore.SetCategories(CheckCatalog.Build(includeLaunchApps: true));
 
@@ -273,31 +240,25 @@ namespace SaveRestoreGUI
 
             cardRestoreOptions.Controls.AddRange(new Control[]
             {
-                lblRestoreOptionsTitle,
-                chkPanelRestore,
-                btnBrowserPickerRestore,
+                lblRestoreOptionsTitle, chkPanelRestore, btnBrowserPickerRestore,
                 btnRestoreSelectAll, btnRestoreDeselectAll
             });
 
-            // ── Actions
             btnStartRestore     = new ModernButton { Text = "\u25b6 Démarrer la restauration", Height = 44, Role = ButtonRole.Primary };
             btnCancelRestore    = new ModernButton { Text = "\u2b1b Annuler",                  Height = 44, Enabled = false };
             btnExportRestoreLog = new ModernButton { Text = "\U0001f4c4 Exporter le log",     Height = 34 };
+            btnToggleRestoreLog = new ModernButton { Text = "\u25b2 Masquer les logs",         Height = LogToggleH, Role = ButtonRole.Secondary };
             btnStartRestore.Click     += BtnStartRestore_Click;
             btnCancelRestore.Click    += (s, e) => CancelCurrentOperation(rtbRestoreLog);
-            btnExportRestoreLog.Click += (s, e) => ExportLog(rtbRestoreLog, $"Restauration_{System.DateTime.Now:yyyyMMdd_HHmm}.txt");
+            btnExportRestoreLog.Click += (s, e) => ExportLog(rtbRestoreLog, $"Restauration_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+            btnToggleRestoreLog.Click += (s, e) => ToggleRestoreLog();
 
-            rtbRestoreLog = new RichTextBox
-            {
-                ReadOnly = true,
-                Font = new Font("Consolas", 9f),
-                ScrollBars = RichTextBoxScrollBars.Vertical
-            };
+            rtbRestoreLog = new RichTextBox { ReadOnly = true, Font = new Font("Consolas", 9f), ScrollBars = RichTextBoxScrollBars.Vertical };
 
             pageRestore.Controls.AddRange(new Control[] {
                 cardRestoreSource, cardRestoreOptions,
                 btnStartRestore, btnCancelRestore, btnExportRestoreLog,
-                rtbRestoreLog
+                btnToggleRestoreLog, rtbRestoreLog
             });
         }
 
@@ -306,59 +267,25 @@ namespace SaveRestoreGUI
         // ═══════════════════════════════════════════════════════════════════
         private void BuildPageMigration()
         {
-            // ── Carte source
             cardMigrationSource = new CardPanel();
-
-            lblUSBDrives = new Label
-            {
-                Text = "Disque externe contenant Windows",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
-            cmbUSBDrives = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font          = new Font("Segoe UI", 9.5f),
-                FlatStyle     = FlatStyle.Flat
-            };
+            lblUSBDrives = new Label { Text = "Disque externe contenant Windows", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
+            cmbUSBDrives = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 9.5f), FlatStyle = FlatStyle.Flat };
             cmbUSBDrives.SelectedIndexChanged += CmbUSBDrives_SelectedIndexChanged;
 
             btnRefreshUSB = new ModernButton { Text = "\U0001f504", Role = ButtonRole.Secondary, Size = new Size(40, 32) };
             btnRefreshUSB.Click += BtnRefreshUSB_Click;
 
-            btnUnlockBitLocker = new ModernButton
-            {
-                Text = "\U0001f512 Déverrouiller ce disque (BitLocker)",
-                Height = 34, Visible = false, Role = ButtonRole.Secondary
-            };
+            btnUnlockBitLocker = new ModernButton { Text = "\U0001f512 Déverrouiller ce disque (BitLocker)", Height = 34, Visible = false, Role = ButtonRole.Secondary };
             btnUnlockBitLocker.Click += (s, e) => BtnBitLocker_Click(s, e);
 
-            lblProfiles = new Label
-            {
-                Text = "Profil utilisateur à migrer",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
+            lblProfiles = new Label { Text = "Profil utilisateur à migrer", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
             lstProfiles = new ListBox { Font = new Font("Segoe UI", 9.5f), BorderStyle = BorderStyle.FixedSingle };
 
-            lblMigrationInfo = new Label
-            {
-                Text = "Sélectionnez un disque pour afficher les profils.",
-                Font = new Font("Segoe UI", 8.5f),
-                BackColor = Color.Transparent, Tag = "secondary"
-            };
-            btnBitLocker = new ModernButton
-            {
-                Text = "\U0001f512 Vérifier BitLocker",
-                Role = ButtonRole.Secondary, Size = new Size(180, 32)
-            };
+            lblMigrationInfo = new Label { Text = "Sélectionnez un disque pour afficher les profils.", Font = new Font("Segoe UI", 8.5f), BackColor = Color.Transparent, Tag = "secondary" };
+            btnBitLocker = new ModernButton { Text = "\U0001f512 Vérifier BitLocker", Role = ButtonRole.Secondary, Size = new Size(180, 32) };
             btnBitLocker.Click += BtnBitLocker_Click;
 
-            lblBitLockerStatus = new Label
-            {
-                Text = "", Font = new Font("Segoe UI", 8.5f),
-                AutoSize = false, BackColor = Color.Transparent, Tag = "secondary"
-            };
+            lblBitLockerStatus = new Label { Text = "", Font = new Font("Segoe UI", 8.5f), AutoSize = false, BackColor = Color.Transparent, Tag = "secondary" };
 
             cardMigrationSource.Controls.AddRange(new Control[]
             {
@@ -366,15 +293,8 @@ namespace SaveRestoreGUI
                 lblProfiles, lstProfiles, btnBitLocker, lblBitLockerStatus, lblMigrationInfo
             });
 
-            // ── Carte options
             cardMigrationOptions     = new CardPanel();
-            lblMigrationOptionsTitle = new Label
-            {
-                Text = "Éléments à migrer (mode fusion : les fichiers plus récents sont conservés)",
-                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-                AutoSize = true, BackColor = Color.Transparent
-            };
-
+            lblMigrationOptionsTitle = new Label { Text = "Éléments à migrer (mode fusion)", Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true, BackColor = Color.Transparent };
             chkPanelMigration = new CategoryCheckPanel();
             chkPanelMigration.SetCategories(CheckCatalog.Build());
 
@@ -385,30 +305,25 @@ namespace SaveRestoreGUI
 
             cardMigrationOptions.Controls.AddRange(new Control[]
             {
-                lblMigrationOptionsTitle,
-                chkPanelMigration,
+                lblMigrationOptionsTitle, chkPanelMigration,
                 btnMigrateSelectAll, btnMigrateDeselectAll
             });
 
-            // ── Actions
             btnStartMigration     = new ModernButton { Text = "\u25b6 Démarrer la migration", Height = 44, Role = ButtonRole.Primary };
             btnCancelMigration    = new ModernButton { Text = "\u2b1b Annuler",               Height = 44, Enabled = false };
             btnExportMigrationLog = new ModernButton { Text = "\U0001f4c4 Exporter le log",  Height = 34 };
+            btnToggleMigrationLog = new ModernButton { Text = "\u25b2 Masquer les logs",      Height = LogToggleH, Role = ButtonRole.Secondary };
             btnStartMigration.Click     += BtnStartMigration_Click;
             btnCancelMigration.Click    += (s, e) => CancelCurrentOperation(rtbMigrationLog);
-            btnExportMigrationLog.Click += (s, e) => ExportLog(rtbMigrationLog, $"Migration_{System.DateTime.Now:yyyyMMdd_HHmm}.txt");
+            btnExportMigrationLog.Click += (s, e) => ExportLog(rtbMigrationLog, $"Migration_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+            btnToggleMigrationLog.Click += (s, e) => ToggleMigrationLog();
 
-            rtbMigrationLog = new RichTextBox
-            {
-                ReadOnly = true,
-                Font = new Font("Consolas", 9f),
-                ScrollBars = RichTextBoxScrollBars.Vertical
-            };
+            rtbMigrationLog = new RichTextBox { ReadOnly = true, Font = new Font("Consolas", 9f), ScrollBars = RichTextBoxScrollBars.Vertical };
 
             pageMigration.Controls.AddRange(new Control[] {
                 cardMigrationSource, cardMigrationOptions,
                 btnStartMigration, btnCancelMigration, btnExportMigrationLog,
-                rtbMigrationLog
+                btnToggleMigrationLog, rtbMigrationLog
             });
         }
 

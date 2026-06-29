@@ -5,10 +5,6 @@ using SaveRestoreGUI.UI;
 
 namespace SaveRestoreGUI
 {
-    /// <summary>
-    /// Mise en page responsive : toute la géométrie est calculée ici, une seule fois,
-    /// à partir de page.ClientSize.
-    /// </summary>
     public partial class MainForm
     {
         // ── Marges et espacements
@@ -20,28 +16,28 @@ namespace SaveRestoreGUI
         private const int TopCardH     = 90;
         private const int MigTopCardH  = 340;
 
-        // ── Carte options (CategoryCheckPanel)
-        private const int ChkPanelH    = 320;
-        private const int BtnGapY      = 14;
-        private const int CardPadBot   = 16;
-        private const int ChkStartY    = 44;
-        private const int ChkColGap    = 12;
-
-        // ── BrowserPickerButton
-        private const int BrowserPickerH = 28;
+        // ── Carte options
+        private const int ChkPanelH         = 320;
+        private const int BtnGapY           = 14;
+        private const int CardPadBot        = 16;
+        private const int ChkStartY         = 44;
+        private const int ChkColGap         = 12;
+        private const int BrowserPickerH    = 28;
         private const int BrowserPickerGapY = 8;
 
         // ── Barre d'actions
-        private const int ActionH      = 44;
-        private const int BtnStartW    = 230;
-        private const int BtnCancelW   = 120;
-        private const int BtnExportW   = 150;
+        private const int ActionH    = 44;
+        private const int BtnStartW  = 230;
+        private const int BtnCancelW = 120;
+        private const int BtnExportW = 150;
 
         // ── Console log
-        private const int LogMinH      = 120;
-        private const int LogMarginBot = 12;
+        private const int LogMinH       = 120;
+        private const int LogMarginBot  = 12;
+        private const int LogToggleH    = 28;
+        private const int LogToggleGapY = 6;
 
-        // ── Migration : zones internes de la carte source
+        // ── Migration
         private const int MigCmbY        = 40;
         private const int MigCmbH        = 30;
         private const int MigBitlocY     = 78;
@@ -81,8 +77,15 @@ namespace SaveRestoreGUI
             int actY = optY + optH + CardGap;
             LayoutActionBar(Margin, actY, cw, btnStartBackup, btnCancelBackup, btnExportBackupLog);
 
-            int logY = actY + ActionH + CardGap;
-            rtbBackupLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
+            int toggleY = actY + ActionH + LogToggleGapY;
+            btnToggleBackupLog.SetBounds(Margin, toggleY, 160, LogToggleH);
+            btnToggleBackupLog.Text = _backupLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
+
+            int logY = toggleY + LogToggleH + LogToggleGapY;
+            if (_backupLogCollapsed)
+                rtbBackupLog.SetBounds(Margin, logY, cw, LogCollapsedHeight);
+            else
+                rtbBackupLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -105,8 +108,15 @@ namespace SaveRestoreGUI
             int actY = optY + optH + CardGap;
             LayoutActionBar(Margin, actY, cw, btnStartRestore, btnCancelRestore, btnExportRestoreLog);
 
-            int logY = actY + ActionH + CardGap;
-            rtbRestoreLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
+            int toggleY = actY + ActionH + LogToggleGapY;
+            btnToggleRestoreLog.SetBounds(Margin, toggleY, 160, LogToggleH);
+            btnToggleRestoreLog.Text = _restoreLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
+
+            int logY = toggleY + LogToggleH + LogToggleGapY;
+            if (_restoreLogCollapsed)
+                rtbRestoreLog.SetBounds(Margin, logY, cw, LogCollapsedHeight);
+            else
+                rtbRestoreLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -127,10 +137,8 @@ namespace SaveRestoreGUI
             btnRefreshUSB.SetBounds(InnerPad + cmbW + ChkColGap, MigCmbY, refreshW, MigCmbH + 2);
 
             btnUnlockBitLocker.SetBounds(InnerPad, MigBitlocY, cw - InnerPad * 2, MigBitlocH);
-
             lblProfiles.SetBounds(InnerPad, MigLblProfY, cw - InnerPad * 2, 20);
             lstProfiles.SetBounds(InnerPad, MigListY,    cw - InnerPad * 2, MigListH);
-
             lblBitLockerStatus.SetBounds(InnerPad, MigBitLockerSY, cw - InnerPad * 2, MigBitLockerSH);
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
@@ -141,8 +149,15 @@ namespace SaveRestoreGUI
             int actY = optY + optH + CardGap;
             LayoutActionBar(Margin, actY, cw, btnStartMigration, btnCancelMigration, btnExportMigrationLog);
 
-            int logY = actY + ActionH + CardGap;
-            rtbMigrationLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
+            int toggleY = actY + ActionH + LogToggleGapY;
+            btnToggleMigrationLog.SetBounds(Margin, toggleY, 160, LogToggleH);
+            btnToggleMigrationLog.Text = _migrationLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
+
+            int logY = toggleY + LogToggleH + LogToggleGapY;
+            if (_migrationLogCollapsed)
+                rtbMigrationLog.SetBounds(Margin, logY, cw, LogCollapsedHeight);
+            else
+                rtbMigrationLog.SetBounds(Margin, logY, cw, Math.Max(LogMinH, H - logY - LogMarginBot));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -158,11 +173,6 @@ namespace SaveRestoreGUI
             browse.SetBounds(InnerPad + txtW + ChkColGap, 36, browseW, 32);
         }
 
-        /// <summary>
-        /// Positionne le CategoryCheckPanel, le BrowserPickerButton optionnel,
-        /// puis les boutons Tout cocher / Tout décocher dans la carte options.
-        /// Retourne la hauteur totale calculée de la carte.
-        /// </summary>
         private static int LayoutPanelOptionsCard(
             int cardWidth,
             CategoryCheckPanel panel,
@@ -171,7 +181,6 @@ namespace SaveRestoreGUI
             Button btnNone)
         {
             int innerW = cardWidth - InnerPad * 2;
-
             panel.SetBounds(InnerPad, ChkStartY, innerW, ChkPanelH);
 
             int nextY = ChkStartY + ChkPanelH;
@@ -184,10 +193,10 @@ namespace SaveRestoreGUI
             }
 
             int btnY  = nextY + BtnGapY;
-            int bAllW = btnAll  != null && btnAll.Width  > 0 ? btnAll.Width  : 120;
-            int bAllH = btnAll  != null && btnAll.Height > 0 ? btnAll.Height : 34;
-            int bNoW  = btnNone != null && btnNone.Width > 0 ? btnNone.Width : 130;
-            int bNoH  = btnNone != null && btnNone.Height > 0 ? btnNone.Height : 34;
+            int bAllW = btnAll?.Width  > 0 ? btnAll.Width  : 120;
+            int bAllH = btnAll?.Height > 0 ? btnAll.Height : 34;
+            int bNoW  = btnNone?.Width > 0 ? btnNone.Width : 130;
+            int bNoH  = btnNone?.Height > 0 ? btnNone.Height : 34;
 
             btnAll?.SetBounds(InnerPad, btnY, bAllW, bAllH);
             btnNone?.SetBounds(InnerPad + bAllW + 8, btnY, bNoW, bNoH);
@@ -201,8 +210,7 @@ namespace SaveRestoreGUI
         {
             start.SetBounds(left, top, BtnStartW, ActionH);
             cancel.SetBounds(left + BtnStartW + 8, top, BtnCancelW, ActionH);
-            int exportX = left + availableWidth - BtnExportW;
-            export.SetBounds(exportX, top + (ActionH - 34) / 2, BtnExportW, 34);
+            export.SetBounds(left + availableWidth - BtnExportW, top + (ActionH - 34) / 2, BtnExportW, 34);
         }
     }
 }
