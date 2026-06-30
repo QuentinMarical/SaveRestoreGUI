@@ -318,10 +318,18 @@ namespace SaveRestoreGUI
 
         private void UpdateOldProfileOptionState()
         {
+            // Environnement très tôt dans le cycle de vie : le contrôle peut
+            // ne pas être initialisé si le designer n'a pas généré la page.
+            if (chkPanelBackup == null) return;
+
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var usersDir    = Path.GetDirectoryName(userProfile);
+            var usersDir = Path.GetDirectoryName(userProfile);
             var currentUser = Environment.UserName;
-            if (usersDir == null) { chkPanelBackup.SetChecked("OldProfile", false); return; }
+            if (usersDir == null)
+            {
+                chkPanelBackup.SetChecked("OldProfile", false);
+                return;
+            }
 
             var exact = Path.Combine(usersDir, currentUser + ".ZEPRODBUR");
             bool hasOldProfile = Directory.Exists(exact);
@@ -340,7 +348,6 @@ namespace SaveRestoreGUI
 
             if (!hasOldProfile) chkPanelBackup.SetChecked("OldProfile", false);
         }
-
         /// <summary>
         /// Détecte les anciens profils domaine présents dans C:\Users et les journalise.
         /// Appelé au démarrage de la sauvegarde si l'option "OldProfile" est cochée.
