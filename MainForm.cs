@@ -318,10 +318,18 @@ namespace SaveRestoreGUI
 
         private void UpdateOldProfileOptionState()
         {
+            // Environnement très tôt dans le cycle de vie : le contrôle peut
+            // ne pas être initialisé si le designer n'a pas généré la page.
+            if (chkPanelBackup == null) return;
+
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var usersDir    = Path.GetDirectoryName(userProfile);
             var currentUser = Environment.UserName;
-            if (usersDir == null) { chkPanelBackup.SetChecked("OldProfile", false); return; }
+            if (usersDir == null)
+            {
+                chkPanelBackup.SetChecked("OldProfile", false);
+                return;
+            }
 
             var exact = Path.Combine(usersDir, currentUser + ".ZEPRODBUR");
             bool hasOldProfile = Directory.Exists(exact);
