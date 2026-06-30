@@ -56,6 +56,21 @@ namespace SaveRestoreGUI
             this.Text = $"SaveRestoreGUI v{versionStr}";
         }
 
+        /// <summary>
+        /// Synchronise la taille des pages avec le contentPanel puis applique le layout responsive.
+        /// Méthode appelée sur Load et Resize pour que le concepteur reste simple.
+        /// </summary>
+        private void SyncPageSizes()
+        {
+            var size = contentPanel.ClientSize;
+
+            pageBackup.Bounds    = new Rectangle(0, 0, size.Width, size.Height);
+            pageRestore.Bounds   = new Rectangle(0, 0, size.Width, size.Height);
+            pageMigration.Bounds = new Rectangle(0, 0, size.Width, size.Height);
+
+            ApplyResponsiveLayout();
+        }
+
         private void InitializeBrowserPickers()
         {
             btnBrowserPickerBackup.SetBrowsers(_browserEntries);
