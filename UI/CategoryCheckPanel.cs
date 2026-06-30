@@ -42,7 +42,7 @@ namespace SaveRestoreGUI.UI
     public class CategoryCheckPanel : Panel
     {
         private const int HeaderH    = 34;
-        private const int ItemH      = 34;
+        private const int ItemH      = 40; // hauteur augmentée pour un rendu "icônes moyennes"
         private const int CheckBoxW  = 18;
         private const int HorizPad   = 10;
         private const int ItemRadius = 6;
@@ -50,7 +50,6 @@ namespace SaveRestoreGUI.UI
         private List<CheckCategory>      _categories   = new();
         private Dictionary<string, bool> _checked      = new();
         private string?                  _hoverItem    = null;
-        private int                      _scrollOffset = 0;
 
         public event EventHandler? CheckedChanged;
 
@@ -59,9 +58,10 @@ namespace SaveRestoreGUI.UI
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
-            AutoScroll     = false;
+
+            AutoScroll     = true; // affiche une scrollbar quand le contenu dépasse la hauteur
             Cursor         = Cursors.Hand;
-            MouseWheel += OnMouseWheel;
+
             MouseClick += OnMouseClick;
             MouseMove  += OnMouseMove;
             MouseLeave += (_, _) => { _hoverItem = null; Invalidate(); };
@@ -76,7 +76,8 @@ namespace SaveRestoreGUI.UI
             foreach (var cat in _categories)
                 foreach (var item in cat.Items)
                     _checked[item.Key] = item.DefaultChecked;
-            _scrollOffset = 0;
+
+            UpdateScrollBounds();
             Invalidate();
         }
 
@@ -85,7 +86,11 @@ namespace SaveRestoreGUI.UI
 
         public void SetChecked(string key, bool value)
         {
-            if (_checked.ContainsKey(key)) { _checked[key] = value; Invalidate(); }
+            if (_checked.ContainsKey(key))
+            {
+                _checked[key] = value;
+                Invalidate();
+            }
         }
 
         public void SetAll(bool value)
@@ -113,6 +118,17 @@ namespace SaveRestoreGUI.UI
             SetChecked("StickyNotes", r.StickyNotesDetected);
         }
 
+        protected override void OnResize(EventArgs eventargs)
+        {
+            base.OnResize(eventargs);
+            UpdateScrollBounds();
+        }
+
+        private void UpdateScrollBounds()
+        {
+            AutoScrollMinSize = new Size(0, TotalContentHeight());
+        }
+
         // ── Rendu ─────────────────────────────────────────────────────────
 
         protected override void OnPaint(PaintEventArgs e)
@@ -122,7 +138,9 @@ namespace SaveRestoreGUI.UI
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(p.Surface);
 
-            int y = -_scrollOffset + 4;
+            int scrollY = -AutoScrollPosition.Y;
+            int y = scrollY + 4;
+
             foreach (var cat in _categories)
             {
                 DrawCategoryHeader(g, p, cat, y);
@@ -130,7 +148,10 @@ namespace SaveRestoreGUI.UI
                 if (cat.Expanded)
                 {
                     foreach (var item in cat.Items)
-                    { DrawItem(g, p, item, y); y += ItemH; }
+                    {
+                        DrawItem(g, p, item, y);
+                        y += ItemH;
+                    }
                     y += 6;
                 }
             }
@@ -197,15 +218,15 @@ namespace SaveRestoreGUI.UI
             }
 
             int iconX = cx + CheckBoxW + 8;
-            using var emojiFont = new Font("Segoe UI Emoji", 13f);
+            using var emojiFont = new Font("Segoe UI Emoji", 16f); // icônes plus grandes
             TextRenderer.DrawText(g, item.Icon, emojiFont,
-                new Rectangle(iconX, y, 26, ItemH),
+                new Rectangle(iconX, y, 32, ItemH),
                 p.Text,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
             TextRenderer.DrawText(g, item.Text,
                 new Font("Segoe UI", 9.5f),
-                new Rectangle(iconX + 28, y, Width - iconX - 40, ItemH),
+                new Rectangle(iconX + 36, y, Width - iconX - 40, ItemH),
                 chk ? p.Text : p.TextSecondary,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
@@ -214,12 +235,20 @@ namespace SaveRestoreGUI.UI
 
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
-            int y = -_scrollOffset + 4;
+            int scrollY = -AutoScrollPosition.Y;
+            int y = scrollY + 4;
+
             foreach (var cat in _categories)
             {
                 if (new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH).Contains(e.Location))
-                { cat.Expanded = !cat.Expanded; Invalidate(); return; }
+                {
+                    cat.Expanded = !cat.Expanded;
+                    UpdateScrollBounds();
+                    Invalidate();
+                    return;
+                }
                 y += HeaderH + 4;
+
                 if (cat.Expanded)
                 {
                     foreach (var item in cat.Items)
@@ -241,30 +270,33 @@ namespace SaveRestoreGUI.UI
         private void OnMouseMove(object? sender, MouseEventArgs e)
         {
             var hit = HitTestItem(e.Location);
-            if (hit != _hoverItem) { _hoverItem = hit; Invalidate(); }
+            if (hit != _hoverItem)
+            {
+                _hoverItem = hit;
+                Invalidate();
+            }
         }
 
         private string? HitTestItem(Point pt)
         {
-            int y = -_scrollOffset + 4;
+            int scrollY = -AutoScrollPosition.Y;
+            int y = scrollY + 4;
+
             foreach (var cat in _categories)
             {
                 y += HeaderH + 4;
                 if (cat.Expanded)
                 {
                     foreach (var item in cat.Items)
-                    { if (new Rectangle(0, y, Width, ItemH).Contains(pt)) return item.Key; y += ItemH; }
+                    {
+                        if (new Rectangle(0, y, Width, ItemH).Contains(pt))
+                            return item.Key;
+                        y += ItemH;
+                    }
                     y += 6;
                 }
             }
             return null;
-        }
-
-        private void OnMouseWheel(object? sender, MouseEventArgs e)
-        {
-            int max = Math.Max(0, TotalContentHeight() - Height + 8);
-            _scrollOffset = Math.Clamp(_scrollOffset - e.Delta / 4, 0, max);
-            Invalidate();
         }
 
         private int TotalContentHeight()
@@ -310,11 +342,11 @@ namespace SaveRestoreGUI.UI
             {
                 new("Desktop",    "Bureau",                    "🖥️"),
                 new("Documents",  "Documents",                 "📄"),
-                new("Pictures",   "Images",                   "🖼️"),
+                new("Pictures",   "Images",                   "📁"),
                 new("Videos",     "Vidéos",                   "🎬"),
                 new("Downloads",  "Téléchargements",           "⬇️"),
                 new("Music",      "Musique",                   "🎵"),
-                new("Public",     "Dossier Public (%public%)", "📁"),
+                new("Public",     "Dossier Public (%public%)", "📂"),
             };
             if (includeOldProfile)
                 userFiles.Add(new("OldProfile", "Détecter ancien profil", "👤", false));
