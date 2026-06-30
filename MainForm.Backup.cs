@@ -20,6 +20,9 @@ namespace SaveRestoreGUI
                 txtBackupPath.Text = Path.Combine(dialog.SelectedPath, Environment.UserName);
         }
 
+        private void BtnCancelBackup_Click(object? sender, EventArgs e)
+            => CancelCurrentOperation(rtbBackupLog);
+
         private async void BtnStartBackup_Click(object? sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtBackupPath.Text))

@@ -33,6 +33,9 @@ namespace SaveRestoreGUI
             txtRestorePath.Text = selected;
         }
 
+        private void BtnCancelRestore_Click(object? sender, EventArgs e)
+            => CancelCurrentOperation(rtbRestoreLog);
+
         private async void BtnStartRestore_Click(object? sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtRestorePath.Text) || !Directory.Exists(txtRestorePath.Text))
