@@ -29,7 +29,6 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            // #5 — Calcul de taille estimée avant de démarrer
             UpdateStatus("Calcul de la taille estimée...");
             long estimatedSize = await Task.Run(() => EstimateBackupSize());
 
@@ -187,10 +186,6 @@ namespace SaveRestoreGUI
             }
         }
 
-        /// <summary>
-        /// #5 — Calcule la taille estimée en additionnant les dossiers sélectionnés.
-        /// Exécuté sur le thread pool pour ne pas bloquer l'UI.
-        /// </summary>
         private long EstimateBackupSize()
         {
             var userProfile    = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -221,8 +216,8 @@ namespace SaveRestoreGUI
             if (chkPanelBackup.IsChecked("OfficeTemplates"))    total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Templates"));
             if (chkPanelBackup.IsChecked("ExcelMacros"))  total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"));
             if (chkPanelBackup.IsChecked("Sap"))          total += SizeOf(Path.Combine(appDataRoaming, "SAP"));
-            if (btnBrowserPickerBackup.IsSelected("Microsoft Edge"))  total += SizeOf(Path.Combine(appDataLocal,   "Microsoft", "Edge", "User Data", "Default"));
-            if (chkPanelBackup.IsChecked("StickyNotes"))  total += SizeOf(Path.Combine(appDataLocal,   "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
+            if (btnBrowserPickerBackup.IsSelected("Microsoft Edge"))  total += SizeOf(Path.Combine(appDataLocal, "Microsoft", "Edge", "User Data", "Default"));
+            if (chkPanelBackup.IsChecked("StickyNotes"))  total += SizeOf(Path.Combine(appDataLocal, "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
             if (chkPanelBackup.IsChecked("Public"))       total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments));
 
             return total;
@@ -437,3 +432,180 @@ namespace SaveRestoreGUI
             await Task.Run(() =>
             {
                 RegistryService.BackupOneNoteKeys(backupRoot, msg => LogInfo(rtb, msg));
+                RegistryService.BackupOpenNotebookKey(backupRoot, msg => LogInfo(rtb, msg));
+            });
+        }
+
+        private async Task BackupStickyNotesAsync(string backupRoot, RichTextBox rtb, CancellationToken ct)
+        {
+            var stickyPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState", "plum.sqlite");
+
+            if (File.Exists(stickyPath))
+            {
+                await Task.Run(() => File.Copy(stickyPath, Path.Combine(backupRoot, "StickyNotes.sqlite"), true), ct);
+                LogSuccess(rtb, "Sticky Notes sauvegardés");
+            }
+            else
+            {
+                LogInfo(rtb, "Aucune donnée Sticky Notes trouvée.");
+            }
+        }
+
+        private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
+        {
+            var edgeDefault = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Edge", "User Data", "Default");
+
+            var edgeProcesses = System.Diagnostics.Process.GetProcessesByName("msedge");
+            bool edgeWasRunning = edgeProcesses.Length > 0;
+
+            if (edgeWasRunning)
+            {
+                LogInfo(rtb, $"Edge détecté ({edgeProcesses.Length} processus) — fermeture avant copie...");
+                await Task.Run(() =>
+                {
+                    foreach (var proc in edgeProcesses)
+                    {
+                        try { proc.Kill(entireProcessTree: true); } catch { }
+                        finally { proc.Dispose(); }
+                    }
+                }, ct);
+
+                var deadline = DateTime.UtcNow.AddSeconds(5);
+                while (DateTime.UtcNow < deadline)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await Task.Delay(300, ct);
+                    if (System.Diagnostics.Process.GetProcessesByName("msedge").Length == 0) break;
+                }
+                LogInfo(rtb, "Edge fermé — démarrage de la copie du profil.");
+            }
+
+            await CopyStep(edgeDefault, Path.Combine(backupRoot, "EdgeProfile"), "Profil Edge",
+                rtb, progress, errorList, ct);
+
+            if (edgeWasRunning)
+            {
+                await Task.Run(() =>
+                {
+                    var candidates = new[]
+                    {
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                            "Microsoft", "Edge", "Application", "msedge.exe"),
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                            "Microsoft", "Edge", "Application", "msedge.exe")
+                    };
+                    var edgeExe = candidates.FirstOrDefault(File.Exists);
+                    if (edgeExe != null)
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            { FileName = edgeExe, UseShellExecute = true });
+                    else
+                        LogWarning(rtb, "Impossible de relancer Edge : exécutable introuvable.");
+                }, CancellationToken.None);
+            }
+        }
+
+        private async Task BackupWallpaperAsync(string backupRoot, RichTextBox rtb)
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    string? wallpaperPath = null;
+                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop"))
+                        wallpaperPath = key?.GetValue("Wallpaper") as string;
+
+                    if (!string.IsNullOrEmpty(wallpaperPath) && File.Exists(wallpaperPath))
+                    {
+                        var ext  = Path.GetExtension(wallpaperPath);
+                        if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+                        var dest = Path.Combine(backupRoot, "Wallpaper" + ext);
+                        File.Copy(wallpaperPath, dest, true);
+                        LogSuccess(rtb, $"Fond d'écran sauvegardé ({FileService.FormatSize(new FileInfo(dest).Length)})");
+                        return;
+                    }
+
+                    var transcoded = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "Microsoft", "Windows", "Themes", "TranscodedWallpaper");
+                    if (File.Exists(transcoded))
+                    {
+                        File.Copy(transcoded, Path.Combine(backupRoot, "Wallpaper.jpg"), true);
+                        LogSuccess(rtb, "Fond d'écran sauvegardé (TranscodedWallpaper)");
+                    }
+                    else LogInfo(rtb, "Aucun fond d'écran personnalisé trouvé.");
+                }
+                catch (Exception ex) { LogError(rtb, $"Erreur fond d'écran : {ex.Message}"); }
+            });
+        }
+
+        private async Task BackupNetworkDrivesAsync(string backupRoot, RichTextBox rtb)
+        {
+            await Task.Run(() =>
+            {
+                var lines = new List<string>();
+                try
+                {
+                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                        @"Network");
+                    if (key == null)
+                    {
+                        LogInfo(rtb, "Aucun lecteur réseau trouvé.");
+                        return;
+                    }
+                    foreach (var driveName in key.GetSubKeyNames())
+                    {
+                        using var sub = key.OpenSubKey(driveName);
+                        var remote  = sub?.GetValue("RemotePath") as string ?? "";
+                        var label   = sub?.GetValue("UserName")   as string ?? "";
+                        lines.Add($"{driveName}|{remote}|{label}");
+                    }
+                }
+                catch (Exception ex) { LogError(rtb, $"Erreur lecteurs réseau : {ex.Message}"); }
+
+                if (lines.Count > 0)
+                {
+                    File.WriteAllLines(Path.Combine(backupRoot, "NetworkDrives.txt"), lines);
+                    LogSuccess(rtb, $"{lines.Count} lecteur(s) réseau sauvegardé(s)");
+                }
+                else
+                {
+                    LogInfo(rtb, "Aucun lecteur réseau à sauvegarder.");
+                }
+            });
+        }
+
+        private async Task BackupIpDesktopSoftphoneAsync(string backupRoot, RichTextBox rtb,
+            IProgress<int> progress, List<string> errorList, CancellationToken ct)
+        {
+            var appDataRoaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            var vendorCandidates = new[]
+            {
+                "Alcatel-Lucent Enterprise",
+                "ALE International",
+                "Unify",
+                "Mitel Networks",
+            };
+
+            bool found = false;
+            foreach (var vendor in vendorCandidates)
+            {
+                var vendorSrc = Path.Combine(appDataRoaming, vendor, "IP Desktop Softphone");
+                if (!Directory.Exists(vendorSrc)) continue;
+
+                found = true;
+                var vendorDest = Path.Combine(backupRoot, "IpDesktopSoftphone", vendor);
+                await CopyStep(vendorSrc, vendorDest, $"IP Desktop Softphone ({vendor})",
+                    rtb, progress, errorList, ct);
+            }
+
+            if (!found)
+                LogInfo(rtb, "IP Desktop Softphone : aucun profil trouvé.");
+        }
+    }
+}
