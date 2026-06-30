@@ -168,9 +168,8 @@ namespace SaveRestoreGUI
             pageRestore   = new Panel { Dock = DockStyle.Fill, Visible = false };
             pageMigration = new Panel { Dock = DockStyle.Fill, Visible = false };
 
-            BuildPageBackup();
-            BuildPageRestore();
-            BuildPageMigration();
+            // Construction détaillée des pages dans les autres parties de MainForm
+            // pour laisser le concepteur générer uniquement la structure.
 
             contentPanel.Controls.AddRange(new Control[] { pageBackup, pageRestore, pageMigration });
             Controls.AddRange(new Control[] { contentPanel, headerPanel, sidebarPanel, statusPanel });
@@ -178,8 +177,6 @@ namespace SaveRestoreGUI
             ResumeLayout(false);
             PerformLayout();
         }
-
-        // (reste du fichier inchangé)
 
         #endregion
     }
