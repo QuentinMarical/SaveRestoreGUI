@@ -17,13 +17,13 @@ namespace SaveRestoreGUI
         private const int MigTopCardH  = 340;
 
         // ── Carte options
-        private const int ChkPanelH         = 320;
-        private const int BtnGapY           = 14;
-        private const int CardPadBot        = 16;
-        private const int ChkStartY         = 44;
-        private const int ChkColGap         = 12;
-        private const int BrowserPickerH    = 28;
-        private const int BrowserPickerGapY = 8;
+        private const int CardMinH         = 260; // hauteur minimale utile
+        private const int BtnGapY          = 14;
+        private const int CardPadBot       = 16;
+        private const int ChkStartY        = 44;
+        private const int ChkColGap        = 12;
+        private const int BrowserPickerH   = 28;
+        private const int BrowserPickerGapY= 8;
 
         // ── Barre d'actions
         private const int ActionH    = 44;
@@ -73,6 +73,7 @@ namespace SaveRestoreGUI
 
             int optY = Margin + TopCardH + CardGap;
             int optH = LayoutPanelOptionsCard(cw, chkPanelBackup, btnBrowserPickerBackup, btnSelectAll, btnDeselectAll);
+            optH = Math.Max(CardMinH, optH);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -91,14 +92,6 @@ namespace SaveRestoreGUI
             int progressY = logY + logH + 4;
             progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
             lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
-
-            if (progressBar.Parent != pageBackup)
-            {
-                progressBar.Parent?.Controls.Remove(progressBar);
-                lblProgressPercent.Parent?.Controls.Remove(lblProgressPercent);
-                pageBackup.Controls.Add(progressBar);
-                pageBackup.Controls.Add(lblProgressPercent);
-            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -116,6 +109,7 @@ namespace SaveRestoreGUI
 
             int optY = Margin + TopCardH + CardGap;
             int optH = LayoutPanelOptionsCard(cw, chkPanelRestore, btnBrowserPickerRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
+            optH = Math.Max(CardMinH, optH);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -134,14 +128,6 @@ namespace SaveRestoreGUI
             int progressY = logY + logH + 4;
             progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
             lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
-
-            if (progressBar.Parent != pageRestore)
-            {
-                progressBar.Parent?.Controls.Remove(progressBar);
-                lblProgressPercent.Parent?.Controls.Remove(lblProgressPercent);
-                pageRestore.Controls.Add(progressBar);
-                pageRestore.Controls.Add(lblProgressPercent);
-            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -169,6 +155,7 @@ namespace SaveRestoreGUI
 
             int optY = Margin + MigTopCardH + CardGap;
             int optH = LayoutPanelOptionsCard(cw, chkPanelMigration, null, btnMigrateSelectAll, btnMigrateDeselectAll);
+            optH = Math.Max(CardMinH, optH);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
 
             int actY = optY + optH + CardGap;
@@ -187,14 +174,6 @@ namespace SaveRestoreGUI
             int progressY = logY + logH + 4;
             progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
             lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
-
-            if (progressBar.Parent != pageMigration)
-            {
-                progressBar.Parent?.Controls.Remove(progressBar);
-                lblProgressPercent.Parent?.Controls.Remove(lblProgressPercent);
-                pageMigration.Controls.Add(progressBar);
-                pageMigration.Controls.Add(lblProgressPercent);
-            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -218,14 +197,14 @@ namespace SaveRestoreGUI
             Button btnNone)
         {
             int innerW = cardWidth - InnerPad * 2;
-            panel.SetBounds(InnerPad, ChkStartY, innerW, ChkPanelH);
+            panel.SetBounds(InnerPad, ChkStartY, innerW, Math.Max(CardMinH - 80, 180));
 
-            int nextY = ChkStartY + ChkPanelH;
+            int nextY = ChkStartY + panel.Height;
 
-            if (browserPicker != null)
+            if (browserPicker != null && browserPicker.HasBrowsers)
             {
                 nextY += BrowserPickerGapY;
-                browserPicker.SetBounds(InnerPad, nextY, 220, BrowserPickerH);
+                browserPicker.SetBounds(InnerPad, nextY, 240, BrowserPickerH);
                 nextY += BrowserPickerH;
             }
 
