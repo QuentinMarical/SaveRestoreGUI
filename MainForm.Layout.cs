@@ -201,7 +201,7 @@ namespace SaveRestoreGUI
 
             int nextY = ChkStartY + panel.Height;
 
-            if (browserPicker != null && browserPicker.HasBrowsers)
+            if (browserPicker != null)
             {
                 nextY += BrowserPickerGapY;
                 browserPicker.SetBounds(InnerPad, nextY, 240, BrowserPickerH);
