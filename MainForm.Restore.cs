@@ -19,7 +19,6 @@ namespace SaveRestoreGUI
 
             var selected = dialog.SelectedPath;
 
-            // #6 — Validation : avertir si le dossier ne ressemble pas à une sauvegarde
             if (!BackupValidator.IsValidBackupFolder(selected))
             {
                 var warn = MessageBox.Show(
@@ -174,6 +173,8 @@ namespace SaveRestoreGUI
                 SetControlsEnabled(true);
                 HideProgress();
                 lock (_logLock) { _logFilePath = null; }
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
             }
         }
 
@@ -198,17 +199,12 @@ namespace SaveRestoreGUI
             LogSuccess(rtb, $"{name} : {result.Copied} fichiers restaurés, {result.Skipped} ignorés — {FileService.FormatSize(result.TotalBytes)}");
         }
 
-        /// <summary>Import des clés OneNote + OpenNotebook + paramètres signatures.</summary>
         private async Task RestoreOneNoteAsync(string restoreRoot, RichTextBox rtb)
         {
             Log(rtb, "Import des clés de registre...");
             await Task.Run(() => RegistryService.RestoreOneNoteKeys(restoreRoot, msg => LogInfo(rtb, msg)));
         }
 
-        /// <summary>
-        /// Restauration Outlook complète : PST, autocomplete, profils .reg (import auto),
-        /// règles .rwz, boîtes partagées (affichage + presse-papiers).
-        /// </summary>
         private async Task RestoreOutlookDataAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
         {
             var outlookDataDir = Path.Combine(restoreRoot, "OutlookData");
@@ -218,7 +214,6 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            // ── PST ──────────────────────────────────────────────────────────────────
             var pstFiles = Directory.GetFiles(outlookDataDir, "*.pst");
             if (pstFiles.Length > 0)
             {
@@ -248,7 +243,6 @@ namespace SaveRestoreGUI
                 LogInfo(rtb, "Aucun fichier PST à restaurer.");
             }
 
-            // ── Autocomplete ──────────────────────────────────────────────────────────
             var roamCacheBackup = Path.Combine(outlookDataDir, "RoamCache");
             if (Directory.Exists(roamCacheBackup))
             {
@@ -267,7 +261,6 @@ namespace SaveRestoreGUI
                     LogSuccess(rtb, $"Cache d'autocomplétion restauré ({files.Length} fichiers)");
             }
 
-            // ── #3 : Import automatique des profils .reg ──────────────────────────────
             var regFiles = Directory.GetFiles(outlookDataDir, "Outlook_Profile_*.reg");
             if (regFiles.Length > 0)
             {
@@ -289,7 +282,6 @@ namespace SaveRestoreGUI
                 }
             }
 
-            // ── Règles .rwz ──────────────────────────────────────────────────────────
             var rulesFiles = Directory.GetFiles(outlookDataDir, "*.rwz");
             if (rulesFiles.Length > 0)
             {
@@ -309,7 +301,6 @@ namespace SaveRestoreGUI
                 }
             }
 
-            // ── Boîtes partagées ─────────────────────────────────────────────────────
             var sharedMailboxFile = Path.Combine(outlookDataDir, "SharedMailboxes.txt");
             if (File.Exists(sharedMailboxFile))
             {
@@ -371,9 +362,6 @@ namespace SaveRestoreGUI
                 "Profil Edge", rtb, progress, errorList, ct);
         }
 
-        /// <summary>
-        /// #2 — Affiche les lecteurs réseau sauvegardés avec colonnes alignées (lettre / chemin UNC / libellé).
-        /// </summary>
         private async Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
         {
             var networkDrivesFile = Path.Combine(restoreRoot, "NetworkDrives.txt");
@@ -392,7 +380,6 @@ namespace SaveRestoreGUI
 
             LogTitle(rtb, "Lecteurs réseau de l'ancien poste");
 
-            // Largeurs de colonnes pour un affichage tabulaire aligné
             int wLetter = entries.Max(e => e.Letter.Length);
             int wPath   = Math.Min(60, entries.Max(e => e.UncPath.Length));
 
