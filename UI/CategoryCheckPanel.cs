@@ -42,14 +42,14 @@ namespace SaveRestoreGUI.UI
     public class CategoryCheckPanel : Panel
     {
         private const int HeaderH    = 34;
-        private const int ItemH      = 40; // hauteur augmentée pour un rendu "icônes moyennes"
+        private const int ItemH      = 40;
         private const int CheckBoxW  = 18;
         private const int HorizPad   = 10;
         private const int ItemRadius = 6;
 
-        private List<CheckCategory>      _categories   = new();
-        private Dictionary<string, bool> _checked      = new();
-        private string?                  _hoverItem    = null;
+        private List<CheckCategory>      _categories = new();
+        private Dictionary<string, bool> _checked    = new();
+        private string?                  _hoverItem  = null;
 
         public event EventHandler? CheckedChanged;
 
@@ -59,8 +59,8 @@ namespace SaveRestoreGUI.UI
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
 
-            AutoScroll     = true; // affiche une scrollbar quand le contenu dépasse la hauteur
-            Cursor         = Cursors.Hand;
+            AutoScroll = true;
+            Cursor     = Cursors.Hand;
 
             MouseClick += OnMouseClick;
             MouseMove  += OnMouseMove;
@@ -101,11 +101,6 @@ namespace SaveRestoreGUI.UI
             CheckedChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>
-        /// Applique les résultats de l'auto-détection :
-        /// - Décoche Desktop/Documents/Pictures si synchronisés sur OneDrive
-        /// - Coche/décoche les logiciels selon leur présence
-        /// </summary>
         public void ApplyAutoDetect(AutoDetectResult r)
         {
             if (r.DesktopOnOneDrive)   SetChecked("Desktop",    false);
@@ -135,11 +130,13 @@ namespace SaveRestoreGUI.UI
         {
             var p = ThemeManager.Palette;
             var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.SmoothingMode      = SmoothingMode.AntiAlias;
+            g.TextRenderingHint  = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(p.Surface);
 
-            int scrollY = -AutoScrollPosition.Y;
-            int y = scrollY + 4;
+            // Offset de défilement : AutoScrollPosition.Y est négatif quand on scroll vers le bas
+            int offsetY = AutoScrollPosition.Y; // valeur négative ou 0
+            int y       = offsetY + 4;
 
             foreach (var cat in _categories)
             {
@@ -159,29 +156,48 @@ namespace SaveRestoreGUI.UI
 
         private void DrawCategoryHeader(Graphics g, ThemePalette p, CheckCategory cat, int y)
         {
+            // Culling : hors du viewport visible
             if (y + HeaderH < 0 || y > Height) return;
+
             var rect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
             using var bgPath  = RoundRect(rect, 7);
             using var bgBrush = new SolidBrush(Color.FromArgb(22, p.Accent.R, p.Accent.G, p.Accent.B));
             g.FillPath(bgBrush, bgPath);
+
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
-            string chevron = cat.Expanded ? "▾" : "▸";
-            TextRenderer.DrawText(g, chevron,
-                new Font("Segoe UI", 9f, FontStyle.Bold),
+
+            // Chevron
+            using var chevFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            TextRenderer.DrawText(g, cat.Expanded ? "▾" : "▸", chevFont,
                 new Rectangle(rect.Right - 22, y, 20, HeaderH),
                 p.TextSecondary,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            TextRenderer.DrawText(g, $"{cat.Icon}  {cat.Label}",
-                new Font("Segoe UI", 9f, FontStyle.Bold),
-                new Rectangle(HorizPad + 10, y, Width - HorizPad * 2 - 28, HeaderH),
+
+            // Icône de catégorie (emoji) via GDI+ pour le rendu couleur
+            using var emojiFont = new Font("Segoe UI Emoji", 11f);
+            var iconRect = new RectangleF(HorizPad + 10, y, 26, HeaderH);
+            var sf = new StringFormat
+            {
+                Alignment     = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+            using var textBrush = new SolidBrush(p.Text);
+            g.DrawString(cat.Icon, emojiFont, textBrush, iconRect, sf);
+
+            // Label de la catégorie
+            using var labelFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            TextRenderer.DrawText(g, cat.Label, labelFont,
+                new Rectangle(HorizPad + 38, y, Width - HorizPad * 2 - 52, HeaderH),
                 p.Text,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
         }
 
         private void DrawItem(Graphics g, ThemePalette p, CheckItem item, int y)
         {
+            // Culling
             if (y + ItemH < 0 || y > Height) return;
+
             bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
             bool hovered = _hoverItem == item.Key;
 
@@ -193,6 +209,7 @@ namespace SaveRestoreGUI.UI
                 g.FillPath(bgBrush, bgPath);
             }
 
+            // Checkbox
             int cx      = HorizPad + 16;
             int cy      = y + (ItemH - CheckBoxW) / 2;
             var boxRect = new Rectangle(cx, cy, CheckBoxW, CheckBoxW);
@@ -217,15 +234,21 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(borderPen, boxPath);
             }
 
+            // Icône de l'item (emoji) via GDI+ pour rendu couleur
             int iconX = cx + CheckBoxW + 8;
-            using var emojiFont = new Font("Segoe UI Emoji", 16f); // icônes plus grandes
-            TextRenderer.DrawText(g, item.Icon, emojiFont,
-                new Rectangle(iconX, y, 32, ItemH),
-                p.Text,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            using var emojiFont = new Font("Segoe UI Emoji", 16f);
+            var iconRect = new RectangleF(iconX, y, 32, ItemH);
+            var sf = new StringFormat
+            {
+                Alignment     = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+            using var emojibrush = new SolidBrush(p.Text);
+            g.DrawString(item.Icon, emojiFont, emojibrush, iconRect, sf);
 
-            TextRenderer.DrawText(g, item.Text,
-                new Font("Segoe UI", 9.5f),
+            // Texte de l'item
+            using var textFont = new Font("Segoe UI", 9.5f);
+            TextRenderer.DrawText(g, item.Text, textFont,
                 new Rectangle(iconX + 36, y, Width - iconX - 40, ItemH),
                 chk ? p.Text : p.TextSecondary,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
@@ -235,8 +258,7 @@ namespace SaveRestoreGUI.UI
 
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
-            int scrollY = -AutoScrollPosition.Y;
-            int y = scrollY + 4;
+            int y = AutoScrollPosition.Y + 4;
 
             foreach (var cat in _categories)
             {
@@ -279,8 +301,7 @@ namespace SaveRestoreGUI.UI
 
         private string? HitTestItem(Point pt)
         {
-            int scrollY = -AutoScrollPosition.Y;
-            int y = scrollY + 4;
+            int y = AutoScrollPosition.Y + 4;
 
             foreach (var cat in _categories)
             {
@@ -312,7 +333,7 @@ namespace SaveRestoreGUI.UI
 
         private static GraphicsPath RoundRect(Rectangle r, int radius)
         {
-            int d = radius * 2;
+            int d    = radius * 2;
             var path = new GraphicsPath();
             path.AddArc(r.X,         r.Y,          d, d, 180, 90);
             path.AddArc(r.Right - d, r.Y,          d, d, 270, 90);
@@ -328,11 +349,6 @@ namespace SaveRestoreGUI.UI
     // ─────────────────────────────────────────────────────────────────────────
     public static class CheckCatalog
     {
-        /// <summary>
-        /// Retourne les catégories standard.
-        /// La catégorie Navigateurs a été supprimée : les navigateurs sont gérés
-        /// exclusivement via le BrowserPickerButton (liste déroulante).
-        /// </summary>
         public static CheckCategory[] Build(
             bool includeOldProfile = false,
             bool includeLaunchApps = false)
@@ -342,8 +358,8 @@ namespace SaveRestoreGUI.UI
             {
                 new("Desktop",    "Bureau",                    "🖥️"),
                 new("Documents",  "Documents",                 "📄"),
-                new("Pictures",   "Images",                   "📁"),
-                new("Videos",     "Vidéos",                   "🎬"),
+                new("Pictures",   "Images",                    "📁"),
+                new("Videos",     "Vidéos",                    "🎬"),
                 new("Downloads",  "Téléchargements",           "⬇️"),
                 new("Music",      "Musique",                   "🎵"),
                 new("Public",     "Dossier Public (%public%)", "📂"),
@@ -381,9 +397,9 @@ namespace SaveRestoreGUI.UI
             return new[]
             {
                 new CheckCategory("Fichiers utilisateur",       "📁", userFiles.ToArray()),
-                new CheckCategory("Bureautique",               "💼", office),
+                new CheckCategory("Bureautique",                "💼", office),
                 new CheckCategory("Système & Personnalisation", "⚙️", systemItems.ToArray()),
-                new CheckCategory("Logiciels métier",          "🏢", business),
+                new CheckCategory("Logiciels métier",           "🏢", business),
             };
         }
     }
