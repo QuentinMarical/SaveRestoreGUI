@@ -326,6 +326,42 @@ namespace SaveRestoreGUI
             if (!hasOldProfile) chkPanelBackup.SetChecked("OldProfile", false);
         }
 
+        /// <summary>
+        /// Détecte les anciens profils domaine présents dans C:\Users et les journalise.
+        /// Appelé au démarrage de la sauvegarde si l'option "OldProfile" est cochée.
+        /// </summary>
+        private void DetectAndLogOldProfiles(RichTextBox rtb)
+        {
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var usersDir    = Path.GetDirectoryName(userProfile);
+            var currentUser = Environment.UserName;
+
+            if (usersDir == null) return;
+
+            var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
+
+            var oldProfiles = Directory.GetDirectories(usersDir)
+                .Where(d =>
+                {
+                    var name = Path.GetFileName(d);
+                    return name != null
+                        && !name.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
+                        && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase)
+                        && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase);
+                })
+                .ToList();
+
+            if (oldProfiles.Count == 0)
+            {
+                LogInfo(rtb, "Aucun ancien profil domaine détecté.");
+                return;
+            }
+
+            LogTitle(rtb, "Anciens profils domaine détectés");
+            foreach (var profile in oldProfiles)
+                LogInfo(rtb, $"  \u2192 {Path.GetFileName(profile)}  ({profile})");
+        }
+
         private void CancelCurrentOperation(RichTextBox rtb)
         {
             if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
