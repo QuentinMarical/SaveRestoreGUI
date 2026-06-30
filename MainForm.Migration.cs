@@ -343,6 +343,429 @@ namespace SaveRestoreGUI
             };
         }
 
-        // (reste du fichier inchangé)
+        private void LoadProfiles(USBDriveInfo drive)
+        {
+            lstProfiles.Items.Clear();
+            try
+            {
+                var excluded        = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
+                var currentUsername = Environment.UserName;
+
+                if (!Directory.Exists(drive.UsersPath)) return;
+
+                var profiles = Directory.GetDirectories(drive.UsersPath)
+                    .Select(p => new DirectoryInfo(p))
+                    .Where(d => !excluded.Contains(d.Name, StringComparer.OrdinalIgnoreCase) && !d.Name.StartsWith('.'))
+                    .Where(d => Directory.Exists(Path.Combine(d.FullName, "Documents"))
+                             || Directory.Exists(Path.Combine(d.FullName, "Desktop")))
+                    .Select(d =>
+                    {
+                        var base_ = d.Name.Contains('.') ? d.Name[..d.Name.LastIndexOf('.')] : d.Name;
+                        var isMatch =
+                            d.Name.Equals(currentUsername, StringComparison.OrdinalIgnoreCase) ||
+                            base_.Equals(currentUsername, StringComparison.OrdinalIgnoreCase) ||
+                            d.Name.StartsWith(currentUsername + ".", StringComparison.OrdinalIgnoreCase);
+                        return new UserProfileItem { Name = d.Name, Path = d.FullName, IsMatch = isMatch };
+                    })
+                    .OrderByDescending(p => p.IsMatch)
+                    .ThenBy(p => p.Name)
+                    .ToList();
+
+                foreach (var p in profiles) lstProfiles.Items.Add(p);
+
+                var currentUsername2 = Environment.UserName;
+                var exactMatch  = profiles.FirstOrDefault(p =>
+                    p.Name.Equals(currentUsername2, StringComparison.OrdinalIgnoreCase));
+                var domainMatch = profiles.FirstOrDefault(p =>
+                    p.Name.StartsWith(currentUsername2 + ".", StringComparison.OrdinalIgnoreCase));
+
+                if (exactMatch != null)
+                    lstProfiles.SelectedItem = exactMatch;
+                else if (domainMatch != null)
+                    lstProfiles.SelectedItem = domainMatch;
+                else
+                {
+                    var firstMatch = profiles.FirstOrDefault(p => p.IsMatch);
+                    if (firstMatch != null) lstProfiles.SelectedItem = firstMatch;
+                    else if (lstProfiles.Items.Count > 0) lstProfiles.SelectedIndex = 0;
+                }
+
+                if (exactMatch != null && domainMatch != null && chkPanelMigration.IsChecked("OldProfile"))
+                    lblMigrationInfo.Text =
+                        $"{profiles.Count} profil(s) trouvé(s).\n" +
+                        $"⚠️ Double profil détecté ({domainMatch.Name} + {exactMatch.Name}).\n" +
+                        "La migration copiera d'abord l'ancien profil domaine, puis le profil actuel.";
+                else
+                    lblMigrationInfo.Text = $"{profiles.Count} profil(s) trouvé(s). Sélectionnez le profil à migrer.";
+            }
+            catch (Exception ex)
+            {
+                LogError(rtbMigrationLog, $"Erreur chargement profils : {ex.Message}");
+                lblMigrationInfo.Text = "Erreur lors du chargement des profils.";
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        //  CONSTRUCTION DE LA LISTE DES ÉTAPES DE MIGRATION
+        // ═══════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Construit les étapes de migration pour un profil source donné.
+        /// </summary>
+        private List<(string Name, Func<Task> Action)> BuildMigrationSteps(
+            string sourceProfile,
+            string destProfile,
+            Progress<int> progress,
+            List<string> errorList,
+            CancellationToken ct,
+            USBDriveInfo selectedDrive,
+            bool includePublic)
+        {
+            var steps = new List<(string Name, Func<Task> Action)>();
+
+            if (chkPanelMigration.IsChecked("Documents")) steps.Add(("Documents", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "Documents"),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "Documents", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Desktop")) steps.Add(("Bureau", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "Desktop"),
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "Bureau", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Downloads")) steps.Add(("Téléchargements", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "Downloads"),
+                Path.Combine(destProfile, "Downloads"),
+                "Téléchargements", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Pictures")) steps.Add(("Images", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "Pictures"),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                "Images", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Music")) steps.Add(("Musique", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "Music"),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                "Musique", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Videos")) steps.Add(("Vidéos", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "Videos"),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
+                "Vidéos", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Signatures")) steps.Add(("Signatures Outlook", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Signatures"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),
+                "Signatures Outlook", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Templates"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
+                "Modèles Office", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("ExcelMacros")) steps.Add(("Macros Excel (XLSTART)", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "AppData", "Roaming", "Microsoft", "Excel", "XLSTART"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
+                "Macros Excel (XLSTART)", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("Sap")) steps.Add(("SAP GUI", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "AppData", "Roaming", "SAP"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
+                "SAP GUI", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("BrowserEdge")) steps.Add(("Profil Edge", () => MigrateFolderStep(
+                Path.Combine(sourceProfile, "AppData", "Local", "Microsoft", "Edge", "User Data", "Default"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "Edge", "User Data", "Default"),
+                "Profil Edge", progress, errorList, ct)));
+
+            if (chkPanelMigration.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",
+                () => MigrateStickyNotesAsync(sourceProfile, ct)));
+
+            if (chkPanelMigration.IsChecked("Outlook")) steps.Add(("Données Outlook (PST)",
+                () => MigrateOutlookAsync(sourceProfile, ct)));
+
+            if (chkPanelMigration.IsChecked("OneNote")) steps.Add(("Clés registre OneNote",
+                () => MigrateOneNoteAsync(sourceProfile)));
+
+            if (chkPanelMigration.IsChecked("Wallpaper")) steps.Add(("Fond d'écran",
+                () => MigrateWallpaperAsync(sourceProfile)));
+
+            if (chkPanelMigration.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",
+                () => MigrateNetworkDrivesAsync(sourceProfile)));
+
+            if (chkPanelMigration.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone",
+                () => MigrateIpDesktopSoftphoneAsync(sourceProfile, progress, errorList, ct)));
+
+            if (includePublic && chkPanelMigration.IsChecked("Public")) steps.Add(("Dossier Public", () => MigrateFolderStep(
+                Path.Combine(selectedDrive.Letter + "\\", "Users", "Public"),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
+                "Dossier Public", progress, errorList, ct)));
+
+            return steps;
+        }
+
+        // ── Bouton Démarrer la migration ─────────────────────────────────────────────────
+        private async void BtnStartMigration_Click(object? sender, EventArgs e)
+        {
+            if (lstProfiles.SelectedItem is not UserProfileItem selectedProfile)
+            {
+                MessageBox.Show(
+                    "Veuillez sélectionner un profil à migrer dans la liste.",
+                    "Aucun profil sélectionné",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
+            {
+                MessageBox.Show(
+                    "Veuillez sélectionner un disque source dans la liste.",
+                    "Aucun disque sélectionné",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (selectedDrive.BitLocker == BitLockerState.Locked)
+            {
+                MessageBox.Show(
+                    $"Le lecteur {selectedDrive.Letter} est verrouillé par BitLocker.\n" +
+                    "Déverrouillez-le avant de démarrer la migration.",
+                    "BitLocker verrouillé",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            var currentUsername = Environment.UserName;
+            UserProfileItem? domainProfile = null;
+            UserProfileItem? cleanProfile  = null;
+
+            if (chkPanelMigration.IsChecked("OldProfile") && selectedDrive.HasUsers)
+            {
+                var allProfiles = lstProfiles.Items.Cast<UserProfileItem>().ToList();
+
+                domainProfile = allProfiles.FirstOrDefault(p =>
+                    p.Name.StartsWith(currentUsername + ".", StringComparison.OrdinalIgnoreCase));
+
+                cleanProfile = allProfiles.FirstOrDefault(p =>
+                    p.Name.Equals(currentUsername, StringComparison.OrdinalIgnoreCase));
+            }
+
+            bool doubleMigration = domainProfile != null && cleanProfile != null;
+
+            string confirmMsg = doubleMigration
+                ? $"Double profil détecté :\n" +
+                  $"  1. {domainProfile!.Name}  (ancien profil domaine)\n" +
+                  $"  2. {cleanProfile!.Name}  (profil actuel)\n\n" +
+                  $"La migration copiera d'abord « {domainProfile.Name} » puis « {cleanProfile.Name} ».\n" +
+                  $"Les données du profil actuel écraseront celles de l'ancien profil en cas de conflit.\n\n" +
+                  $"Source : {selectedDrive.Letter}\nConfirmer ?"
+                : $"Démarrer la migration du profil « {selectedProfile.Name} » depuis {selectedDrive.Letter} ?\n\n" +
+                  "Les fichiers plus récents sur le disque source écraseront ceux de la destination.";
+
+            var confirm = MessageBox.Show(
+                confirmMsg,
+                "Confirmer la migration",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes) return;
+
+            rtbMigrationLog.Clear();
+            _cancellationTokenSource = new CancellationTokenSource();
+            var ct        = _cancellationTokenSource.Token;
+            var errorList = new List<string>();
+
+            SetControlsEnabled(false);
+
+            try
+            {
+                var destProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                var progress    = new Progress<int>(UpdateProgress);
+
+                LogTitle(rtbMigrationLog, "Démarrage de la migration");
+                LogInfo(rtbMigrationLog, $"Dest    : {destProfile}");
+                LogInfo(rtbMigrationLog, $"Utilisateur actuel : {currentUsername}");
+
+                if (doubleMigration)
+                {
+                    // ── Passe 1 : NOM.DOMAINE ──────────────────────────────────────────
+                    LogTitle(rtbMigrationLog, $"Passe 1 — Ancien profil domaine : {domainProfile!.Name}");
+                    LogInfo(rtbMigrationLog, $"Source  : {domainProfile.Path}");
+
+                    var steps1 = BuildMigrationSteps(
+                        domainProfile.Path, destProfile, progress, errorList, ct,
+                        selectedDrive, includePublic: false);
+
+                    int total1 = steps1.Count, step1 = 0;
+                    foreach (var (name, action) in steps1)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        step1++;
+                        UpdateStatus($"[Passe 1/2] Migration {name} ({step1}/{total1})");
+                        await action();
+                    }
+
+                    LogSuccess(rtbMigrationLog, $"Passe 1 terminée — profil « {domainProfile.Name} » copié.");
+
+                    // ── Passe 2 : NOM ────────────────────────────────────────────────
+                    LogTitle(rtbMigrationLog, $"Passe 2 — Profil actuel : {cleanProfile!.Name}");
+                    LogInfo(rtbMigrationLog, $"Source  : {cleanProfile.Path}");
+
+                    var steps2 = BuildMigrationSteps(
+                        cleanProfile.Path, destProfile, progress, errorList, ct,
+                        selectedDrive, includePublic: true);
+
+                    int total2 = steps2.Count, step2 = 0;
+                    foreach (var (name, action) in steps2)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        step2++;
+                        UpdateStatus($"[Passe 2/2] Migration {name} ({step2}/{total2})");
+                        await action();
+                    }
+
+                    LogSuccess(rtbMigrationLog, $"Passe 2 terminée — profil « {cleanProfile.Name} » copié.");
+                }
+                else
+                {
+                    // ── Migration simple (un seul profil) ─────────────────────────────
+                    LogInfo(rtbMigrationLog, $"Source  : {selectedProfile.Path}");
+
+                    var steps = BuildMigrationSteps(
+                        selectedProfile.Path, destProfile, progress, errorList, ct,
+                        selectedDrive, includePublic: true);
+
+                    int totalSteps = steps.Count, currentStep = 0;
+                    foreach (var (name, action) in steps)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        currentStep++;
+                        UpdateStatus($"Migration {name} ({currentStep}/{totalSteps})");
+                        await action();
+                    }
+                }
+
+                LogTitle(rtbMigrationLog, "Migration terminée");
+                if (doubleMigration)
+                    LogSuccess(rtbMigrationLog,
+                        $"Profils « {domainProfile!.Name} » puis « {cleanProfile!.Name} » migrés avec succès.");
+                else
+                    LogSuccess(rtbMigrationLog, $"Profil « {selectedProfile.Name} » migré avec succès.");
+
+                if (errorList.Count > 0)
+                {
+                    LogTitle(rtbMigrationLog, "Résumé des erreurs rencontrées");
+                    foreach (var err in errorList)
+                        LogWarning(rtbMigrationLog, err);
+                }
+
+                UpdateStatus("Migration terminée avec succès");
+                ToastService.Show(this, "Migration terminée avec succès !", ToastKind.Success);
+
+                MessageBox.Show(
+                    "Migration terminée avec succès !\n\n" +
+                    (doubleMigration
+                        ? $"Profils migrés :\n  1. {domainProfile!.Name}\n  2. {cleanProfile!.Name}"
+                        : $"Profil migré : {selectedProfile.Name}") +
+                    $"\nSource : {selectedDrive.Letter}",
+                    "Migration réussie",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                LogWarning(rtbMigrationLog, "Migration annulée par l'utilisateur.");
+                UpdateStatus("Migration annulée");
+            }
+            catch (Exception ex)
+            {
+                LogError(rtbMigrationLog, $"Erreur migration : {ex.Message}");
+                UpdateStatus("Erreur lors de la migration");
+
+                MessageBox.Show(
+                    $"Une erreur est survenue :\n{ex.Message}",
+                    "Erreur de migration",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                SetControlsEnabled(true);
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+            }
+        }
+
+        // ── Bouton Vérifier BitLocker ──────────────────────────────────────────────────────────────
+        private async void BtnBitLocker_Click(object? sender, EventArgs e)
+        {
+            if (cmbUSBDrives.SelectedItem is not USBDriveInfo selectedDrive)
+            {
+                MessageBox.Show(
+                    "Veuillez d'abord sélectionner un lecteur dans la liste.",
+                    "Aucun lecteur sélectionné",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (selectedDrive.BitLocker == BitLockerState.Locked)
+            {
+                OpenBitLockerControlPanel();
+                await HandleBitLockerUnlockAsync(selectedDrive);
+            }
+            else
+            {
+                var root = selectedDrive.Letter + "\\";
+                selectedDrive.BitLocker = GetBitLockerStatePowerShell(root);
+                UpdateBitLockerLabel(selectedDrive);
+
+                if (selectedDrive.BitLocker != BitLockerState.Locked && selectedDrive.HasUsers)
+                    LoadProfiles(selectedDrive);
+            }
+        }
+
+        private async Task HandleBitLockerUnlockAsync(USBDriveInfo drive)
+        {
+            const int pollIntervalMs = 2000;
+            const int maxAttempts    = 150; // 5 minutes
+
+            for (int i = 0; i < maxAttempts; i++)
+            {
+                await Task.Delay(pollIntervalMs);
+
+                var newState = GetBitLockerStatePowerShell(drive.Letter + "\\");
+
+                if (newState != BitLockerState.Locked)
+                {
+                    drive.BitLocker = IsVolumeAccessible(drive.Letter + "\\")
+                        ? newState
+                        : BitLockerState.Locked;
+
+                    if (drive.BitLocker != BitLockerState.Locked)
+                    {
+                        LoadUSBDrives();
+
+                        for (int idx = 0; idx < cmbUSBDrives.Items.Count; idx++)
+                        {
+                            if (cmbUSBDrives.Items[idx] is USBDriveInfo d &&
+                                d.Letter.Equals(drive.Letter, StringComparison.OrdinalIgnoreCase))
+                            {
+                                cmbUSBDrives.SelectedIndex = idx;
+                                break;
+                            }
+                        }
+
+                        Log(rtbMigrationLog, $"\U0001f513 {drive.Letter} déverrouillé — profils rechargés.");
+                        return;
+                    }
+                }
+            }
+
+            Log(rtbMigrationLog, $"\u26a0\ufe0f Délai dépassé — {drive.Letter} toujours verrouillé.");
+        }
     }
 }
