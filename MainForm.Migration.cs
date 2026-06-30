@@ -54,7 +54,7 @@ namespace SaveRestoreGUI
         /// <summary>
         /// Appel direct à kernel32 : retourne le type du point de montage même si le
         /// volume est inaccessible (BitLocker verrouillé, disque non prêt…).
-        /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
+        /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
         ///           3=Fixed, 4=Network, 5=CDROM, 6=RAMDisk
         /// </summary>
         [System.Runtime.InteropServices.DllImport("kernel32.dll",
@@ -302,6 +302,9 @@ namespace SaveRestoreGUI
             LoadUSBDrives();
             Log(rtbMigrationLog, "Liste des lecteurs actualisée.");
         }
+
+        private void BtnCancelMigration_Click(object? sender, EventArgs e)
+            => CancelCurrentOperation(rtbMigrationLog);
 
         private void CmbUSBDrives_SelectedIndexChanged(object? sender, EventArgs e)
         {
@@ -561,8 +564,8 @@ namespace SaveRestoreGUI
                   $"  2. {cleanProfile!.Name}  (profil actuel)\n\n" +
                   $"La migration copiera d'abord « {domainProfile.Name} » puis « {cleanProfile.Name} ».\n" +
                   $"Les données du profil actuel écraseront celles de l'ancien profil en cas de conflit.\n\n" +
-                  $"Source : {selectedDrive.Letter}\nConfirmer ?"
-                : $"Démarrer la migration du profil « {selectedProfile.Name} » depuis {selectedDrive.Letter} ?\n\n" +
+                  $"Source : {selectedDrive.Letter}\nConfirmer ?"
+                : $"Démarrer la migration du profil « {selectedProfile.Name} » depuis {selectedDrive.Letter} ?\n\n" +
                   "Les fichiers plus récents sur le disque source écraseront ceux de la destination.";
 
             var confirm = MessageBox.Show(
@@ -694,6 +697,8 @@ namespace SaveRestoreGUI
             finally
             {
                 SetControlsEnabled(true);
+                HideProgress();
+                lock (_logLock) { _logFilePath = null; }
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = null;
             }
