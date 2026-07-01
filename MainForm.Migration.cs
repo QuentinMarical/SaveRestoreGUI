@@ -1,5 +1,6 @@
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
+using System.Runtime.InteropServices;
 
 namespace SaveRestoreGUI
 {
@@ -57,9 +58,8 @@ namespace SaveRestoreGUI
         /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
         ///           3=Fixed, 4=Network, 5=CDROM, 6=RAMDisk
         /// </summary>
-        [System.Runtime.InteropServices.DllImport("kernel32.dll",
-            CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-        private static extern uint GetDriveType(string lpRootPathName);
+        [LibraryImport("kernel32.dll", EntryPoint = "GetDriveTypeW", StringMarshalling = StringMarshalling.Utf16)]
+        private static partial uint GetDriveType(string lpRootPathName);
 
         private static uint GetDriveTypeWin32(string root)
         {
@@ -414,15 +414,16 @@ namespace SaveRestoreGUI
 
         /// <summary>
         /// Construit les étapes de migration pour un profil source donné.
+        /// CancellationToken en dernier paramètre (CA1068).
         /// </summary>
         private List<(string Name, Func<Task> Action)> BuildMigrationSteps(
             string sourceProfile,
             string destProfile,
             Progress<int> progress,
             List<string> errorList,
-            CancellationToken ct,
             USBDriveInfo selectedDrive,
-            bool includePublic)
+            bool includePublic,
+            CancellationToken ct)
         {
             var steps = new List<(string Name, Func<Task> Action)>();
 
@@ -599,8 +600,8 @@ namespace SaveRestoreGUI
                     LogInfo(rtbMigrationLog, $"Source  : {domainProfile.Path}");
 
                     var steps1 = BuildMigrationSteps(
-                        domainProfile.Path, destProfile, progress, errorList, ct,
-                        selectedDrive, includePublic: false);
+                        domainProfile.Path, destProfile, progress, errorList,
+                        selectedDrive, includePublic: false, ct);
 
                     int total1 = steps1.Count, step1 = 0;
                     foreach (var (name, action) in steps1)
@@ -618,8 +619,8 @@ namespace SaveRestoreGUI
                     LogInfo(rtbMigrationLog, $"Source  : {cleanProfile.Path}");
 
                     var steps2 = BuildMigrationSteps(
-                        cleanProfile.Path, destProfile, progress, errorList, ct,
-                        selectedDrive, includePublic: true);
+                        cleanProfile.Path, destProfile, progress, errorList,
+                        selectedDrive, includePublic: true, ct);
 
                     int total2 = steps2.Count, step2 = 0;
                     foreach (var (name, action) in steps2)
@@ -638,8 +639,8 @@ namespace SaveRestoreGUI
                     LogInfo(rtbMigrationLog, $"Source  : {selectedProfile.Path}");
 
                     var steps = BuildMigrationSteps(
-                        selectedProfile.Path, destProfile, progress, errorList, ct,
-                        selectedDrive, includePublic: true);
+                        selectedProfile.Path, destProfile, progress, errorList,
+                        selectedDrive, includePublic: true, ct);
 
                     int totalSteps = steps.Count, currentStep = 0;
                     foreach (var (name, action) in steps)

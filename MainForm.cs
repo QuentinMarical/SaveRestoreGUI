@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
 
@@ -14,7 +15,8 @@ namespace SaveRestoreGUI
         private CancellationTokenSource? _cancellationTokenSource;
 
         private string? _logFilePath;
-        private readonly object _logLock = new();
+        // CA2002 / IDE0044 : utiliser System.Threading.Lock (.NET 9+)
+        private readonly Lock _logLock = new();
 
         // Résultats passés par Program.cs (pré-calculés pendant le splash)
         private readonly IReadOnlyList<BrowserEntry> _browserEntries;
