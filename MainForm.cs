@@ -17,12 +17,12 @@ namespace SaveRestoreGUI
         private readonly object _logLock = new();
 
         // Résultats passés par Program.cs (pré-calculés pendant le splash)
-        private readonly IReadOnlyList<BrowserEntry> _browserEntries;   // SaveRestoreGUI.UI.BrowserEntry
+        private readonly IReadOnlyList<BrowserEntry> _browserEntries;
         private readonly AutoDetectResult _autoDetect;
 
         // État repliage des logs (true = replié)
-        private bool _backupLogCollapsed  = false;
-        private bool _restoreLogCollapsed = false;
+        private bool _backupLogCollapsed    = false;
+        private bool _restoreLogCollapsed   = false;
         private bool _migrationLogCollapsed = false;
         private const int LogCollapsedH = 32;
 
@@ -35,6 +35,14 @@ namespace SaveRestoreGUI
 
             InitializeComponent();
             ThemeManager.ThemeChanged += OnThemeChanged;
+
+            // Peupler les panneaux de cases à cocher
+            chkPanelBackup.SetCategories(
+                CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false));
+            chkPanelRestore.SetCategories(
+                CheckCatalog.Build(includeOldProfile: false, includeLaunchApps: false));
+            chkPanelMigration.SetCategories(
+                CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false));
 
             this.Load += (_, _) =>
             {
@@ -56,10 +64,6 @@ namespace SaveRestoreGUI
             this.Text = $"SaveRestoreGUI v{versionStr}";
         }
 
-        /// <summary>
-        /// Synchronise la taille des pages avec le contentPanel puis applique le layout responsive.
-        /// Méthode appelée sur Load et Resize pour que le concepteur reste simple.
-        /// </summary>
         private void SyncPageSizes()
         {
             var size = contentPanel.ClientSize;
@@ -148,7 +152,7 @@ namespace SaveRestoreGUI
         internal bool MigrationLogCollapsed => _migrationLogCollapsed;
         internal static int LogCollapsedHeight => LogCollapsedH;
 
-        // ───────────────────────────── Thème ─────────────────────────────────
+        // ───────────────────────────── Thème ──────────────────────────────
 
         private void OnThemeChanged() => ApplyTheme();
 
@@ -318,12 +322,10 @@ namespace SaveRestoreGUI
 
         private void UpdateOldProfileOptionState()
         {
-            // Environnement très tôt dans le cycle de vie : le contrôle peut
-            // ne pas être initialisé si le designer n'a pas généré la page.
             if (chkPanelBackup == null) return;
 
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var usersDir = Path.GetDirectoryName(userProfile);
+            var usersDir    = Path.GetDirectoryName(userProfile);
             var currentUser = Environment.UserName;
             if (usersDir == null)
             {
@@ -348,10 +350,7 @@ namespace SaveRestoreGUI
 
             if (!hasOldProfile) chkPanelBackup.SetChecked("OldProfile", false);
         }
-        /// <summary>
-        /// Détecte les anciens profils domaine présents dans C:\Users et les journalise.
-        /// Appelé au démarrage de la sauvegarde si l'option "OldProfile" est cochée.
-        /// </summary>
+
         private void DetectAndLogOldProfiles(RichTextBox rtb)
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
