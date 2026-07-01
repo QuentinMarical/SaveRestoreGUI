@@ -9,6 +9,10 @@
     <ApplicationIcon>diskette.ico</ApplicationIcon>
     <!-- Désactive la génération automatique de AssemblyInfo pour éviter CS0579 -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Ce projet est exclusivement Windows (WinForms) : supprime CA1416 globalement -->
+    <SupportedOSPlatformVersion>10.0.17763</SupportedOSPlatformVersion>
+    <!-- Supprime les avertissements CA1416 (plateforme Windows) partout dans le projet -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <!--
@@ -102,11 +106,6 @@
 
   <!--
     Signature automatique du .exe après chaque build.
-    $(TargetDir) pointe sur le dossier de sortie (bin/Release/.../win-x64/).
-    $(AssemblyName) est le nom du projet = SaveRestoreGUI.
-    On cible explicitement le .exe plutôt que $(TargetPath) qui pointe sur la .dll.
-    Nécessite le certificat "SaveRestoreGUI Code Signing" dans Cert:\CurrentUser\My.
-    Si absent : avertissement, la build continue sans erreur.
   -->
   <Target Name="SignAfterBuild" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
     <PropertyGroup>
@@ -118,9 +117,6 @@
       ContinueOnError="true" />
   </Target>
 
-  <!--
-    Signature du binaire après dotnet publish (PublishSingleFile génère un exe différent).
-  -->
   <Target Name="SignAfterPublish" AfterTargets="Publish" Condition="'$(OS)' == 'Windows_NT'">
     <PropertyGroup>
       <_PublishedExe>$(PublishDir)$(AssemblyName).exe</_PublishedExe>
