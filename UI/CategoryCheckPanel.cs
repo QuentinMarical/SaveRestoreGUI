@@ -8,44 +8,37 @@ using SaveRestoreGUI.Services;
 
 namespace SaveRestoreGUI.UI
 {
-    // ─────────────────────────────────────────────────────────────────────────
-    // Descripteur d'une case à cocher dans une catégorie
-    // ─────────────────────────────────────────────────────────────────────────
     public class CheckItem
     {
         public string Key            { get; }
         public string Text           { get; }
         public string Icon           { get; }
         public bool   DefaultChecked { get; }
-
         public CheckItem(string key, string text, string icon, bool defaultChecked = true)
         { Key = key; Text = text; Icon = icon; DefaultChecked = defaultChecked; }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Un groupe de cases (catégorie repliable)
-    // ─────────────────────────────────────────────────────────────────────────
     public class CheckCategory
     {
         public string      Label    { get; }
         public string      Icon     { get; }
         public CheckItem[] Items    { get; }
         public bool        Expanded { get; set; } = true;
-
         public CheckCategory(string label, string icon, CheckItem[] items)
         { Label = label; Icon = icon; Items = items; }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CategoryCheckPanel
-    // ─────────────────────────────────────────────────────────────────────────
     public class CategoryCheckPanel : Panel
     {
+        // ── Dimensions
+        private const int Cols       = 5;    // tuiles par ligne
         private const int HeaderH    = 34;
-        private const int ItemH      = 40;
-        private const int CheckBoxW  = 18;
+        private const int TileW      = 100;  // largeur fixe d'une tuile
+        private const int TileH      = 90;   // hauteur fixe d'une tuile
+        private const int TileGap    = 8;    // espace entre tuiles
         private const int HorizPad   = 10;
-        private const int ItemRadius = 6;
+        private const int CheckBoxW  = 16;
+        private const int TileRadius = 8;
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
@@ -58,17 +51,15 @@ namespace SaveRestoreGUI.UI
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             DoubleBuffered = true;
-
-            AutoScroll = true;
-            Cursor     = Cursors.Hand;
+            AutoScroll     = true;
+            Cursor         = Cursors.Hand;
 
             MouseClick += OnMouseClick;
             MouseMove  += OnMouseMove;
             MouseLeave += (_, _) => { _hoverItem = null; Invalidate(); };
         }
 
-        // ── API publique ───────────────────────────────────────────────────
-
+        // ── API publique
         public void SetCategories(IEnumerable<CheckCategory> categories)
         {
             _categories = new List<CheckCategory>(categories);
@@ -76,27 +67,20 @@ namespace SaveRestoreGUI.UI
             foreach (var cat in _categories)
                 foreach (var item in cat.Items)
                     _checked[item.Key] = item.DefaultChecked;
-
             UpdateScrollBounds();
             Invalidate();
         }
 
-        public bool IsChecked(string key)
-            => _checked.TryGetValue(key, out var v) && v;
+        public bool IsChecked(string key) => _checked.TryGetValue(key, out var v) && v;
 
         public void SetChecked(string key, bool value)
         {
-            if (_checked.ContainsKey(key))
-            {
-                _checked[key] = value;
-                Invalidate();
-            }
+            if (_checked.ContainsKey(key)) { _checked[key] = value; Invalidate(); }
         }
 
         public void SetAll(bool value)
         {
-            foreach (var k in _checked.Keys.ToList())
-                _checked[k] = value;
+            foreach (var k in _checked.Keys.ToList()) _checked[k] = value;
             Invalidate();
             CheckedChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -106,162 +90,207 @@ namespace SaveRestoreGUI.UI
             if (r.DesktopOnOneDrive)   SetChecked("Desktop",    false);
             if (r.DocumentsOnOneDrive) SetChecked("Documents",  false);
             if (r.PicturesOnOneDrive)  SetChecked("Pictures",   false);
-
             SetChecked("Sap",         r.SapDetected);
             SetChecked("IpSoftphone", r.IpSoftphoneDetected);
             SetChecked("Outlook",     r.OutlookDetected);
             SetChecked("StickyNotes", r.StickyNotesDetected);
         }
 
-        protected override void OnResize(EventArgs eventargs)
-        {
-            base.OnResize(eventargs);
-            UpdateScrollBounds();
-        }
+        protected override void OnResize(EventArgs e) { base.OnResize(e); UpdateScrollBounds(); }
 
         private void UpdateScrollBounds()
         {
             AutoScrollMinSize = new Size(0, TotalContentHeight());
         }
 
-        // ── Rendu ─────────────────────────────────────────────────────────
+        // ── Calculs de layout
+        private int ColsActual()
+        {
+            int available = Width - HorizPad * 2;
+            if (available <= 0) return Cols;
+            // Combien de tuiles rentrent ? Au moins 1.
+            int n = (available + TileGap) / (TileW + TileGap);
+            return Math.Max(1, n);
+        }
 
+        private int ActualTileW()
+        {
+            int cols      = ColsActual();
+            int available = Width - HorizPad * 2;
+            // Répartir l'espace équitablement, en gardant le gap
+            return (available - TileGap * (cols - 1)) / cols;
+        }
+
+        private int RowsForCat(CheckCategory cat)
+        {
+            int cols = ColsActual();
+            return (cat.Items.Length + cols - 1) / cols;
+        }
+
+        private int GridHeightForCat(CheckCategory cat)
+            => RowsForCat(cat) * TileH + Math.Max(0, RowsForCat(cat) - 1) * TileGap;
+
+        private int TotalContentHeight()
+        {
+            int h = 4;
+            foreach (var cat in _categories)
+            {
+                h += HeaderH + 6;
+                if (cat.Expanded) h += GridHeightForCat(cat) + 8;
+            }
+            return h + 4;
+        }
+
+        // ── Rendu
         protected override void OnPaint(PaintEventArgs e)
         {
             var p = ThemeManager.Palette;
             var g = e.Graphics;
-            g.SmoothingMode      = SmoothingMode.AntiAlias;
-            g.TextRenderingHint  = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            g.SmoothingMode     = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(p.Surface);
 
-            // Offset de défilement : AutoScrollPosition.Y est négatif quand on scroll vers le bas
-            int offsetY = AutoScrollPosition.Y; // valeur négative ou 0
+            int offsetY = AutoScrollPosition.Y;
             int y       = offsetY + 4;
 
             foreach (var cat in _categories)
             {
                 DrawCategoryHeader(g, p, cat, y);
-                y += HeaderH + 4;
+                y += HeaderH + 6;
                 if (cat.Expanded)
                 {
-                    foreach (var item in cat.Items)
-                    {
-                        DrawItem(g, p, item, y);
-                        y += ItemH;
-                    }
-                    y += 6;
+                    DrawGrid(g, p, cat, y);
+                    y += GridHeightForCat(cat) + 8;
                 }
             }
         }
 
         private void DrawCategoryHeader(Graphics g, ThemePalette p, CheckCategory cat, int y)
         {
-            // Culling : hors du viewport visible
             if (y + HeaderH < 0 || y > Height) return;
-
             var rect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
             using var bgPath  = RoundRect(rect, 7);
             using var bgBrush = new SolidBrush(Color.FromArgb(22, p.Accent.R, p.Accent.G, p.Accent.B));
             g.FillPath(bgBrush, bgPath);
-
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
+
+            // Icône catégorie
+            using var emojiFont = new Font("Segoe UI Emoji", 11f);
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            using var textBrush = new SolidBrush(p.Text);
+            g.DrawString(cat.Icon, emojiFont, textBrush, new RectangleF(HorizPad + 10, y, 26, HeaderH), sf);
+
+            // Label
+            using var labelFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            TextRenderer.DrawText(g, cat.Label, labelFont,
+                new Rectangle(HorizPad + 40, y, Width - HorizPad * 2 - 60, HeaderH),
+                p.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
             // Chevron
             using var chevFont = new Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Expanded ? "▾" : "▸", chevFont,
                 new Rectangle(rect.Right - 22, y, 20, HeaderH),
-                p.TextSecondary,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-
-            // Icône de catégorie (emoji) via GDI+ pour le rendu couleur
-            using var emojiFont = new Font("Segoe UI Emoji", 11f);
-            var iconRect = new RectangleF(HorizPad + 10, y, 26, HeaderH);
-            var sf = new StringFormat
-            {
-                Alignment     = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center
-            };
-            using var textBrush = new SolidBrush(p.Text);
-            g.DrawString(cat.Icon, emojiFont, textBrush, iconRect, sf);
-
-            // Label de la catégorie
-            using var labelFont = new Font("Segoe UI", 9f, FontStyle.Bold);
-            TextRenderer.DrawText(g, cat.Label, labelFont,
-                new Rectangle(HorizPad + 38, y, Width - HorizPad * 2 - 52, HeaderH),
-                p.Text,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                p.TextSecondary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
-        private void DrawItem(Graphics g, ThemePalette p, CheckItem item, int y)
+        private void DrawGrid(Graphics g, ThemePalette p, CheckCategory cat, int y)
         {
-            // Culling
-            if (y + ItemH < 0 || y > Height) return;
+            int cols  = ColsActual();
+            int tileW = ActualTileW();
 
+            for (int i = 0; i < cat.Items.Length; i++)
+            {
+                int col  = i % cols;
+                int row  = i / cols;
+                int tx   = HorizPad + col * (tileW + TileGap);
+                int ty   = y + row * (TileH + TileGap);
+
+                if (ty + TileH < 0 || ty > Height) continue;
+
+                DrawTile(g, p, cat.Items[i], tx, ty, tileW);
+            }
+        }
+
+        private void DrawTile(Graphics g, ThemePalette p, CheckItem item, int x, int y, int w)
+        {
             bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
             bool hovered = _hoverItem == item.Key;
 
-            if (hovered)
+            // Fond de la tuile
+            var tileRect = new Rectangle(x, y, w, TileH);
+            using var tilePath = RoundRect(tileRect, TileRadius);
+
+            Color bgColor;
+            if (chk)
+                bgColor = Color.FromArgb(hovered ? 55 : 38, p.Accent.R, p.Accent.G, p.Accent.B);
+            else
+                bgColor = Color.FromArgb(hovered ? 30 : 16, p.Text.R, p.Text.G, p.Text.B);
+
+            using var bgBrush = new SolidBrush(bgColor);
+            g.FillPath(bgBrush, tilePath);
+
+            // Bordure accent si coché
+            if (chk)
             {
-                var bgRect = new Rectangle(HorizPad + 4, y + 2, Width - HorizPad * 2 - 8, ItemH - 4);
-                using var bgPath  = RoundRect(bgRect, ItemRadius);
-                using var bgBrush = new SolidBrush(Color.FromArgb(28, p.Accent.R, p.Accent.G, p.Accent.B));
-                g.FillPath(bgBrush, bgPath);
+                using var borderPen = new Pen(Color.FromArgb(120, p.Accent.R, p.Accent.G, p.Accent.B), 1.5f);
+                g.DrawPath(borderPen, tilePath);
+            }
+            else
+            {
+                using var borderPen = new Pen(Color.FromArgb(40, p.Border.R, p.Border.G, p.Border.B), 1f);
+                g.DrawPath(borderPen, tilePath);
             }
 
-            // Checkbox
-            int cx      = HorizPad + 16;
-            int cy      = y + (ItemH - CheckBoxW) / 2;
-            var boxRect = new Rectangle(cx, cy, CheckBoxW, CheckBoxW);
-            using var boxPath = RoundRect(boxRect, 5);
+            // Checkbox en haut à gauche
+            int cbx = x + 8;
+            int cby = y + 8;
+            var boxRect = new Rectangle(cbx, cby, CheckBoxW, CheckBoxW);
+            using var boxPath = RoundRect(boxRect, 4);
             if (chk)
             {
                 using var fillBrush = new SolidBrush(p.Accent);
                 g.FillPath(fillBrush, boxPath);
-                using var checkPen = new Pen(Color.White, 2f);
+                using var checkPen = new Pen(Color.White, 1.8f);
                 g.DrawLines(checkPen, new[]
                 {
-                    new PointF(cx + 3,  cy + CheckBoxW / 2f),
-                    new PointF(cx + 7,  cy + CheckBoxW - 4f),
-                    new PointF(cx + 15, cy + 4f)
+                    new PointF(cbx + 2,  cby + CheckBoxW / 2f),
+                    new PointF(cbx + 6,  cby + CheckBoxW - 3f),
+                    new PointF(cbx + 14, cby + 3f)
                 });
             }
             else
             {
                 using var emptyBrush = new SolidBrush(p.InputBackground);
                 g.FillPath(emptyBrush, boxPath);
-                using var borderPen = new Pen(p.Border, 1.4f);
-                g.DrawPath(borderPen, boxPath);
+                using var bPen = new Pen(p.Border, 1.2f);
+                g.DrawPath(bPen, boxPath);
             }
 
-            // Icône de l'item (emoji) via GDI+ pour rendu couleur
-            int iconX = cx + CheckBoxW + 8;
-            using var emojiFont = new Font("Segoe UI Emoji", 16f);
-            var iconRect = new RectangleF(iconX, y, 32, ItemH);
-            var sf = new StringFormat
-            {
-                Alignment     = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center
-            };
-            using var emojibrush = new SolidBrush(p.Text);
-            g.DrawString(item.Icon, emojiFont, emojibrush, iconRect, sf);
+            // Icône centrée (emoji grand)
+            using var emojiFont = new Font("Segoe UI Emoji", 22f);
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            using var emojiB = new SolidBrush(Color.FromArgb(chk ? 255 : 160, p.Text));
+            // Zone icône : centre de la tuile, un peu au-dessus du texte
+            g.DrawString(item.Icon, emojiFont, emojiB,
+                new RectangleF(x, y + 10, w, TileH - 28), sf);
 
-            // Texte de l'item
-            using var textFont = new Font("Segoe UI", 9.5f);
-            TextRenderer.DrawText(g, item.Text, textFont,
-                new Rectangle(iconX + 36, y, Width - iconX - 40, ItemH),
+            // Texte en bas de la tuile
+            using var textFont  = new Font("Segoe UI", 7.5f);
+            using var textBrush = new SolidBrush(chk ? p.Text : p.TextSecondary);
+            var textRect = new Rectangle(x + 2, y + TileH - 22, w - 4, 20);
+            TextRenderer.DrawText(g, item.Text, textFont, textRect,
                 chk ? p.Text : p.TextSecondary,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
         }
 
-        // ── Interactions ───────────────────────────────────────────────────
-
+        // ── Interactions
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
             int y = AutoScrollPosition.Y + 4;
-
             foreach (var cat in _categories)
             {
+                // Clic sur le header
                 if (new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH).Contains(e.Location))
                 {
                     cat.Expanded = !cat.Expanded;
@@ -269,22 +298,27 @@ namespace SaveRestoreGUI.UI
                     Invalidate();
                     return;
                 }
-                y += HeaderH + 4;
+                y += HeaderH + 6;
 
                 if (cat.Expanded)
                 {
-                    foreach (var item in cat.Items)
+                    int cols  = ColsActual();
+                    int tileW = ActualTileW();
+                    for (int i = 0; i < cat.Items.Length; i++)
                     {
-                        if (new Rectangle(0, y, Width, ItemH).Contains(e.Location))
+                        int col  = i % cols;
+                        int row  = i / cols;
+                        int tx   = HorizPad + col * (tileW + TileGap);
+                        int ty   = y + row * (TileH + TileGap);
+                        if (new Rectangle(tx, ty, tileW, TileH).Contains(e.Location))
                         {
-                            _checked[item.Key] = !_checked[item.Key];
+                            _checked[cat.Items[i].Key] = !_checked[cat.Items[i].Key];
                             Invalidate();
                             CheckedChanged?.Invoke(this, EventArgs.Empty);
                             return;
                         }
-                        y += ItemH;
                     }
-                    y += 6;
+                    y += GridHeightForCat(cat) + 8;
                 }
             }
         }
@@ -292,29 +326,29 @@ namespace SaveRestoreGUI.UI
         private void OnMouseMove(object? sender, MouseEventArgs e)
         {
             var hit = HitTestItem(e.Location);
-            if (hit != _hoverItem)
-            {
-                _hoverItem = hit;
-                Invalidate();
-            }
+            if (hit != _hoverItem) { _hoverItem = hit; Invalidate(); }
         }
 
         private string? HitTestItem(Point pt)
         {
             int y = AutoScrollPosition.Y + 4;
-
             foreach (var cat in _categories)
             {
-                y += HeaderH + 4;
+                y += HeaderH + 6;
                 if (cat.Expanded)
                 {
-                    foreach (var item in cat.Items)
+                    int cols  = ColsActual();
+                    int tileW = ActualTileW();
+                    for (int i = 0; i < cat.Items.Length; i++)
                     {
-                        if (new Rectangle(0, y, Width, ItemH).Contains(pt))
-                            return item.Key;
-                        y += ItemH;
+                        int col = i % cols;
+                        int row = i / cols;
+                        int tx  = HorizPad + col * (tileW + TileGap);
+                        int ty  = y + row * (TileH + TileGap);
+                        if (new Rectangle(tx, ty, tileW, TileH).Contains(pt))
+                            return cat.Items[i].Key;
                     }
-                    y += 6;
+                    y += GridHeightForCat(cat) + 8;
                 }
             }
             return null;
@@ -322,13 +356,13 @@ namespace SaveRestoreGUI.UI
 
         private int TotalContentHeight()
         {
-            int h = 8;
+            int h = 4;
             foreach (var cat in _categories)
             {
-                h += HeaderH + 4;
-                if (cat.Expanded) h += cat.Items.Length * ItemH + 6;
+                h += HeaderH + 6;
+                if (cat.Expanded) h += GridHeightForCat(cat) + 8;
             }
-            return h;
+            return h + 4;
         }
 
         private static GraphicsPath RoundRect(Rectangle r, int radius)
@@ -344,16 +378,12 @@ namespace SaveRestoreGUI.UI
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Catalogue partagé des catégories
-    // ─────────────────────────────────────────────────────────────────────────
     public static class CheckCatalog
     {
         public static CheckCategory[] Build(
             bool includeOldProfile = false,
             bool includeLaunchApps = false)
         {
-            // ── Catégorie 1 : Fichiers utilisateur
             var userFiles = new List<CheckItem>
             {
                 new("Desktop",    "Bureau",                    "🖥️"),
@@ -362,36 +392,33 @@ namespace SaveRestoreGUI.UI
                 new("Videos",     "Vidéos",                    "🎬"),
                 new("Downloads",  "Téléchargements",           "⬇️"),
                 new("Music",      "Musique",                   "🎵"),
-                new("Public",     "Dossier Public (%public%)", "📂"),
+                new("Public",     "Dossier Public",            "📂"),
             };
             if (includeOldProfile)
-                userFiles.Add(new("OldProfile", "Détecter ancien profil", "👤", false));
+                userFiles.Add(new("OldProfile", "Ancien profil", "👤", false));
 
-            // ── Catégorie 2 : Bureautique
             var office = new CheckItem[]
             {
-                new("Outlook",         "PST Outlook",            "📧"),
-                new("Signatures",      "Signatures Outlook",     "✍️"),
-                new("OfficeTemplates", "Modèles Office",         "📋"),
-                new("OneNote",         "OneNote (registre)",     "📓"),
-                new("StickyNotes",     "Sticky Notes",           "📌"),
-                new("ExcelMacros",     "Macros Excel (XLSTART)", "📊"),
+                new("Outlook",         "PST Outlook",      "📧"),
+                new("Signatures",      "Signatures",       "✍️"),
+                new("OfficeTemplates", "Modèles Office",   "📋"),
+                new("OneNote",         "OneNote",          "📓"),
+                new("StickyNotes",     "Sticky Notes",     "📌"),
+                new("ExcelMacros",     "Macros Excel",     "📊"),
             };
 
-            // ── Catégorie 3 : Système & Personnalisation
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",    "🖼️"),
+                new("Wallpaper",     "Fond d'écran",   "🖼️"),
                 new("NetworkDrives", "Lecteurs réseau", "🔗"),
             };
             if (includeLaunchApps)
-                systemItems.Add(new("LaunchApps", "Lancer les applications", "🚀"));
+                systemItems.Add(new("LaunchApps", "Applications", "🚀"));
 
-            // ── Catégorie 4 : Logiciels métier
             var business = new CheckItem[]
             {
-                new("Sap",         "SAP GUI",              "🗂️",  false),
-                new("IpSoftphone", "IP Desktop Softphone", "📞",  false),
+                new("Sap",         "SAP GUI",         "🗂️", false),
+                new("IpSoftphone", "IP Softphone",    "📞", false),
             };
 
             return new[]
