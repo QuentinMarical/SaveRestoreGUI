@@ -22,8 +22,6 @@ namespace SaveRestoreGUI
         private const int CardPadBot       = 16;
         private const int ChkStartY        = 44;
         private const int ChkColGap        = 12;
-        private const int BrowserPickerH   = 28;
-        private const int BrowserPickerGapY= 8;
 
         // ── Barre d'actions
         private const int ActionH    = 44;
@@ -63,19 +61,23 @@ namespace SaveRestoreGUI
         {
             if (pageBackup.ClientSize.Width <= 0) return;
             int cw = pageBackup.ClientSize.Width - Margin * 2;
+            int ch = pageBackup.ClientSize.Height;
 
             cardBackupDest.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
 
             int optY = Margin + TopCardH + CardGap;
-            int optH = LayoutPanelOptionsCard(cw, chkPanelBackup, btnBrowserPickerBackup, btnSelectAll, btnDeselectAll);
-            optH = Math.Max(CardMinH, optH);
+
+            // Barre d'action + progression en bas
+            int progressAreaH = LogProgressH + 10;
+            int actY = ch - ActionH - Margin - progressAreaH;
+            int optH = Math.Max(CardMinH, actY - optY - CardGap);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
 
-            int actY = optY + optH + CardGap;
+            LayoutPanelOptionsCard(cw, optH, chkPanelBackup, btnSelectAll, btnDeselectAll);
+
             LayoutActionBar(Margin, actY, cw, btnStartBackup, btnCancelBackup, btnExportBackupLog);
 
-            // Bouton "Voir les logs" à droite du bouton Exporter
             btnOpenBackupLog.SetBounds(
                 Margin + cw - BtnExportW - BtnLogsW - 8,
                 actY + (ActionH - 34) / 2,
@@ -89,16 +91,20 @@ namespace SaveRestoreGUI
         {
             if (pageRestore.ClientSize.Width <= 0) return;
             int cw = pageRestore.ClientSize.Width - Margin * 2;
+            int ch = pageRestore.ClientSize.Height;
 
             cardRestoreSource.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
 
             int optY = Margin + TopCardH + CardGap;
-            int optH = LayoutPanelOptionsCard(cw, chkPanelRestore, btnBrowserPickerRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
-            optH = Math.Max(CardMinH, optH);
+
+            int progressAreaH = LogProgressH + 10;
+            int actY = ch - ActionH - Margin - progressAreaH;
+            int optH = Math.Max(CardMinH, actY - optY - CardGap);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
 
-            int actY = optY + optH + CardGap;
+            LayoutPanelOptionsCard(cw, optH, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
+
             LayoutActionBar(Margin, actY, cw, btnStartRestore, btnCancelRestore, btnExportRestoreLog);
 
             btnOpenRestoreLog.SetBounds(
@@ -114,6 +120,7 @@ namespace SaveRestoreGUI
         {
             if (pageMigration.ClientSize.Width <= 0) return;
             int cw = pageMigration.ClientSize.Width - Margin * 2;
+            int ch = pageMigration.ClientSize.Height;
 
             cardMigrationSource.SetBounds(Margin, Margin, cw, MigTopCardH);
 
@@ -129,11 +136,14 @@ namespace SaveRestoreGUI
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
             int optY = Margin + MigTopCardH + CardGap;
-            int optH = LayoutPanelOptionsCard(cw, chkPanelMigration, null, btnMigrateSelectAll, btnMigrateDeselectAll);
-            optH = Math.Max(CardMinH, optH);
+
+            int progressAreaH = LogProgressH + 10;
+            int actY = ch - ActionH - Margin - progressAreaH;
+            int optH = Math.Max(CardMinH, actY - optY - CardGap);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
 
-            int actY = optY + optH + CardGap;
+            LayoutPanelOptionsCard(cw, optH, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll);
+
             LayoutActionBar(Margin, actY, cw, btnStartMigration, btnCancelMigration, btnExportMigrationLog);
 
             btnOpenMigrationLog.SetBounds(
@@ -170,35 +180,29 @@ namespace SaveRestoreGUI
             browse.SetBounds(InnerPad + txtW + ChkColGap, 36, browseW, 32);
         }
 
-        private static int LayoutPanelOptionsCard(
+        private static void LayoutPanelOptionsCard(
             int cardWidth,
+            int cardHeight,
             CategoryCheckPanel panel,
-            BrowserPickerButton? browserPicker,
             Button btnAll,
             Button btnNone)
         {
             int innerW = cardWidth - InnerPad * 2;
-            panel.SetBounds(InnerPad, ChkStartY, innerW, Math.Max(CardMinH - 80, 180));
 
-            int nextY = ChkStartY + panel.Height;
-
-            if (browserPicker != null)
-            {
-                nextY += BrowserPickerGapY;
-                browserPicker.SetBounds(InnerPad, nextY, 240, BrowserPickerH);
-                nextY += BrowserPickerH;
-            }
-
-            int btnY  = nextY + BtnGapY;
-            int bAllW = btnAll?.Width  > 0 ? btnAll.Width  : 120;
-            int bAllH = btnAll?.Height > 0 ? btnAll.Height : 34;
-            int bNoW  = btnNone?.Width > 0 ? btnNone.Width : 130;
+            int bAllH = btnAll?.Height  > 0 ? btnAll.Height  : 34;
             int bNoH  = btnNone?.Height > 0 ? btnNone.Height : 34;
+            int btnRowH = Math.Max(bAllH, bNoH);
+
+            // Le panel checkboxes remplit tout l'espace disponible entre le titre et les boutons
+            int chkH = Math.Max(180, cardHeight - ChkStartY - BtnGapY - btnRowH - CardPadBot);
+            panel.SetBounds(InnerPad, ChkStartY, innerW, chkH);
+
+            int btnY  = ChkStartY + chkH + BtnGapY;
+            int bAllW = btnAll?.Width  > 0 ? btnAll.Width  : 120;
+            int bNoW  = btnNone?.Width > 0 ? btnNone.Width : 130;
 
             btnAll?.SetBounds(InnerPad, btnY, bAllW, bAllH);
             btnNone?.SetBounds(InnerPad + bAllW + 8, btnY, bNoW, bNoH);
-
-            return btnY + Math.Max(bAllH, bNoH) + CardPadBot;
         }
 
         private static void LayoutActionBar(

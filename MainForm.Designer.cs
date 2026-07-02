@@ -50,7 +50,6 @@ namespace SaveRestoreGUI
         private ModernButton btnCancelBackup;
         private ModernButton btnExportBackupLog;
         private ModernButton btnOpenBackupLog;
-        private BrowserPickerButton btnBrowserPickerBackup;
 
         // ─── Page Restauration ───
         private Panel pageRestore;
@@ -67,7 +66,6 @@ namespace SaveRestoreGUI
         private ModernButton btnCancelRestore;
         private ModernButton btnExportRestoreLog;
         private ModernButton btnOpenRestoreLog;
-        private BrowserPickerButton btnBrowserPickerRestore;
 
         // ─── Page Migration ───
         private Panel pageMigration;
@@ -182,10 +180,9 @@ namespace SaveRestoreGUI
             cardBackupOptions     = new CardPanel();
             lblBackupOptionsTitle = new Label { Text = "Éléments à sauvegarder", AutoSize = true, Tag = "secondary" };
             chkPanelBackup        = new CategoryCheckPanel();
-            btnBrowserPickerBackup = new BrowserPickerButton { Text = "Navigateur(s)..." };
             btnSelectAll   = new ModernButton { Text = "Tout cocher" };
             btnDeselectAll = new ModernButton { Text = "Tout décocher" };
-            cardBackupOptions.Controls.AddRange(new Control[] { lblBackupOptionsTitle, chkPanelBackup, btnBrowserPickerBackup, btnSelectAll, btnDeselectAll });
+            cardBackupOptions.Controls.AddRange(new Control[] { lblBackupOptionsTitle, chkPanelBackup, btnSelectAll, btnDeselectAll });
 
             btnStartBackup     = new ModernButton { Text = "Démarrer la sauvegarde" };
             btnCancelBackup    = new ModernButton { Text = "Annuler" };
@@ -214,10 +211,9 @@ namespace SaveRestoreGUI
             cardRestoreOptions     = new CardPanel();
             lblRestoreOptionsTitle = new Label { Text = "Éléments à restaurer", AutoSize = true, Tag = "secondary" };
             chkPanelRestore        = new CategoryCheckPanel();
-            btnBrowserPickerRestore = new BrowserPickerButton { Text = "Navigateur(s)..." };
             btnRestoreSelectAll   = new ModernButton { Text = "Tout cocher" };
             btnRestoreDeselectAll = new ModernButton { Text = "Tout décocher" };
-            cardRestoreOptions.Controls.AddRange(new Control[] { lblRestoreOptionsTitle, chkPanelRestore, btnBrowserPickerRestore, btnRestoreSelectAll, btnRestoreDeselectAll });
+            cardRestoreOptions.Controls.AddRange(new Control[] { lblRestoreOptionsTitle, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll });
 
             btnStartRestore     = new ModernButton { Text = "Démarrer la restauration" };
             btnCancelRestore    = new ModernButton { Text = "Annuler" };

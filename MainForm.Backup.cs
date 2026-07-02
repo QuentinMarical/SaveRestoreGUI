@@ -219,7 +219,7 @@ namespace SaveRestoreGUI
             if (chkPanelBackup.IsChecked("OfficeTemplates")) total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Templates"));
             if (chkPanelBackup.IsChecked("ExcelMacros"))     total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"));
             if (chkPanelBackup.IsChecked("Sap"))             total += SizeOf(Path.Combine(appDataRoaming, "SAP"));
-            if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) total += SizeOf(Path.Combine(appDataLocal, "Microsoft", "Edge", "User Data", "Default"));
+            if (chkPanelBackup.IsChecked("BrowserEdge"))     total += SizeOf(Path.Combine(appDataLocal, "Microsoft", "Edge", "User Data", "Default"));
             if (chkPanelBackup.IsChecked("StickyNotes"))     total += SizeOf(Path.Combine(appDataLocal, "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
             if (chkPanelBackup.IsChecked("Public"))          total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments));
 
@@ -286,7 +286,7 @@ namespace SaveRestoreGUI
                 if (chkPanelBackup.IsChecked("Outlook"))        steps.Add(("Données Outlook",       () => BackupOutlookDataAsync(backupRoot, BackupLogBox, ct)));
                 if (chkPanelBackup.IsChecked("OneNote"))        steps.Add(("OneNote (registre)",    () => BackupOneNoteAsync(backupRoot, BackupLogBox)));
                 if (chkPanelBackup.IsChecked("StickyNotes"))    steps.Add(("Sticky Notes",          () => BackupStickyNotesAsync(backupRoot, BackupLogBox, ct)));
-                if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",   () => BackupEdgeProfileAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("BrowserEdge"))    steps.Add(("Profil Edge",           () => BackupEdgeProfileAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
                 if (chkPanelBackup.IsChecked("Wallpaper"))      steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, BackupLogBox)));
                 if (chkPanelBackup.IsChecked("NetworkDrives"))  steps.Add(("Lecteurs réseau",       () => BackupNetworkDrivesAsync(backupRoot, BackupLogBox)));
                 if (chkPanelBackup.IsChecked("IpSoftphone"))    steps.Add(("IP Desktop Softphone",  () => BackupIpDesktopSoftphoneAsync(backupRoot, BackupLogBox, progress, errorList, ct)));

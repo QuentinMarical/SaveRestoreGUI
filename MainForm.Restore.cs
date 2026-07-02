@@ -116,12 +116,12 @@ namespace SaveRestoreGUI
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
                     "Dossier Public", RestoreLogBox, progress, errorList, ct)));
 
-                if (chkPanelRestore.IsChecked("Outlook"))    steps.Add(("Données Outlook",      () => RestoreOutlookDataAsync(restoreRoot, RestoreLogBox, ct)));
-                if (chkPanelRestore.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",         () => RestoreStickyNotesAsync(restoreRoot, RestoreLogBox, ct)));
-                if (btnBrowserPickerRestore.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
-                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",    () => RestoreNetworkDrivesInfoAsync(restoreRoot, RestoreLogBox)));
-                if (chkPanelRestore.IsChecked("Wallpaper"))  steps.Add(("Fond d'écran",          () => RestoreWallpaperAsync(restoreRoot, RestoreLogBox, ct)));
-                if (chkPanelRestore.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
+                if (chkPanelRestore.IsChecked("Outlook"))      steps.Add(("Données Outlook",      () => RestoreOutlookDataAsync(restoreRoot, RestoreLogBox, ct)));
+                if (chkPanelRestore.IsChecked("StickyNotes"))  steps.Add(("Sticky Notes",         () => RestoreStickyNotesAsync(restoreRoot, RestoreLogBox, ct)));
+                if (chkPanelRestore.IsChecked("BrowserEdge"))  steps.Add(("Profil Edge",           () => RestoreEdgeProfileAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
+                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",      () => RestoreNetworkDrivesInfoAsync(restoreRoot, RestoreLogBox)));
+                if (chkPanelRestore.IsChecked("Wallpaper"))    steps.Add(("Fond d'écran",          () => RestoreWallpaperAsync(restoreRoot, RestoreLogBox, ct)));
+                if (chkPanelRestore.IsChecked("IpSoftphone"))  steps.Add(("IP Desktop Softphone",  () => RestoreIpDesktopSoftphoneAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
