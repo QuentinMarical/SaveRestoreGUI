@@ -86,15 +86,32 @@ namespace SaveRestoreGUI.UI
             CheckedChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// Applique les résultats d'auto-détection :
+        /// - Décoche les dossiers synchronisés par OneDrive.
+        /// - Coche les logiciels détectés, décoche ceux qui sont absents.
+        /// - Coche/décoche les éléments dont la présence a été sondée.
+        /// </summary>
         public void ApplyAutoDetect(AutoDetectResult r)
         {
-            if (r.DesktopOnOneDrive)   SetChecked("Desktop",    false);
-            if (r.DocumentsOnOneDrive) SetChecked("Documents",  false);
-            if (r.PicturesOnOneDrive)  SetChecked("Pictures",   false);
+            // OneDrive
+            if (r.DesktopOnOneDrive)   SetChecked("Desktop",   false);
+            if (r.DocumentsOnOneDrive) SetChecked("Documents", false);
+            if (r.PicturesOnOneDrive)  SetChecked("Pictures",  false);
+
+            // Logiciels métier (présents → coché, absents → décoché)
             SetChecked("Sap",         r.SapDetected);
             SetChecked("IpSoftphone", r.IpSoftphoneDetected);
             SetChecked("Outlook",     r.OutlookDetected);
             SetChecked("StickyNotes", r.StickyNotesDetected);
+
+            // Données bureautique / système (coché uniquement si données présentes)
+            SetChecked("Wallpaper",      r.HasWallpaper);
+            SetChecked("NetworkDrives",  r.HasNetworkDrives);
+            SetChecked("OneNote",        r.HasOneNote);
+            SetChecked("Signatures",     r.HasSignatures);
+            SetChecked("OfficeTemplates",r.HasOfficeTemplates);
+            SetChecked("ExcelMacros",    r.HasExcelMacros);
         }
 
         protected override void OnResize(EventArgs e) { base.OnResize(e); UpdateScrollBounds(); }
@@ -129,7 +146,6 @@ namespace SaveRestoreGUI.UI
             return rows * TileH + Math.Max(0, rows - 1) * TileGap;
         }
 
-        // Nom unique pour éviter CS0111
         private int CalcTotalHeight()
         {
             int h = 4;
@@ -367,18 +383,18 @@ namespace SaveRestoreGUI.UI
 
             var office = new CheckItem[]
             {
-                new("Outlook",         "PST Outlook",    "📧"),
-                new("Signatures",      "Signatures",     "✍️"),
-                new("OfficeTemplates", "Modèles Office", "📋"),
-                new("OneNote",         "OneNote",        "📓"),
-                new("StickyNotes",     "Sticky Notes",   "📌"),
-                new("ExcelMacros",     "Macros Excel",   "📊"),
+                new("Outlook",         "PST Outlook",    "📧",  false),
+                new("Signatures",      "Signatures",     "✍️",  false),
+                new("OfficeTemplates", "Modèles Office", "📋",  false),
+                new("OneNote",         "OneNote",        "📓",  false),
+                new("StickyNotes",     "Sticky Notes",   "📌",  false),
+                new("ExcelMacros",     "Macros Excel",   "📊",  false),
             };
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",    "🖼️"),
-                new("NetworkDrives", "Lecteurs réseau", "🔗"),
+                new("Wallpaper",     "Fond d'écran",    "🖼️",  false),
+                new("NetworkDrives", "Lecteurs réseau", "🔗",  false),
             };
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Applications", "🚀"));

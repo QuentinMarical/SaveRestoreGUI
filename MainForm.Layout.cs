@@ -17,7 +17,7 @@ namespace SaveRestoreGUI
         private const int MigTopCardH  = 340;
 
         // ── Carte options
-        private const int CardMinH         = 260; // hauteur minimale utile
+        private const int CardMinH         = 260;
         private const int BtnGapY          = 14;
         private const int CardPadBot       = 16;
         private const int ChkStartY        = 44;
@@ -30,13 +30,10 @@ namespace SaveRestoreGUI
         private const int BtnStartW  = 230;
         private const int BtnCancelW = 120;
         private const int BtnExportW = 150;
+        private const int BtnLogsW   = 140;
 
-        // ── Console log
-        private const int LogMinH       = 120;
-        private const int LogMarginBot  = 12;
-        private const int LogToggleH    = 28;
-        private const int LogToggleGapY = 6;
-        private const int LogProgressH  = 20;
+        // ── Barre de progression (overlay dans contentPanel)
+        private const int LogProgressH = 20;
 
         // ── Migration
         private const int MigCmbY        = 40;
@@ -56,6 +53,7 @@ namespace SaveRestoreGUI
             LayoutBackupPage();
             LayoutRestorePage();
             LayoutMigrationPage();
+            LayoutProgressOverlay();
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -64,9 +62,7 @@ namespace SaveRestoreGUI
         private void LayoutBackupPage()
         {
             if (pageBackup.ClientSize.Width <= 0) return;
-            int W  = pageBackup.ClientSize.Width;
-            int H  = pageBackup.ClientSize.Height;
-            int cw = W - Margin * 2;
+            int cw = pageBackup.ClientSize.Width - Margin * 2;
 
             cardBackupDest.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
@@ -79,19 +75,11 @@ namespace SaveRestoreGUI
             int actY = optY + optH + CardGap;
             LayoutActionBar(Margin, actY, cw, btnStartBackup, btnCancelBackup, btnExportBackupLog);
 
-            int toggleY = actY + ActionH + LogToggleGapY;
-            btnToggleBackupLog.SetBounds(Margin, toggleY, 160, LogToggleH);
-            btnToggleBackupLog.Text = _backupLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
-
-            int logY = toggleY + LogToggleH + LogToggleGapY;
-            int logH = _backupLogCollapsed
-                ? LogCollapsedHeight
-                : Math.Max(LogMinH, H - logY - LogMarginBot - LogProgressH - 4);
-            rtbBackupLog.SetBounds(Margin, logY, cw, logH);
-
-            int progressY = logY + logH + 4;
-            progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
-            lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
+            // Bouton "Voir les logs" à droite du bouton Exporter
+            btnOpenBackupLog.SetBounds(
+                Margin + cw - BtnExportW - BtnLogsW - 8,
+                actY + (ActionH - 34) / 2,
+                BtnLogsW, 34);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -100,9 +88,7 @@ namespace SaveRestoreGUI
         private void LayoutRestorePage()
         {
             if (pageRestore.ClientSize.Width <= 0) return;
-            int W  = pageRestore.ClientSize.Width;
-            int H  = pageRestore.ClientSize.Height;
-            int cw = W - Margin * 2;
+            int cw = pageRestore.ClientSize.Width - Margin * 2;
 
             cardRestoreSource.SetBounds(Margin, Margin, cw, TopCardH);
             LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
@@ -115,19 +101,10 @@ namespace SaveRestoreGUI
             int actY = optY + optH + CardGap;
             LayoutActionBar(Margin, actY, cw, btnStartRestore, btnCancelRestore, btnExportRestoreLog);
 
-            int toggleY = actY + ActionH + LogToggleGapY;
-            btnToggleRestoreLog.SetBounds(Margin, toggleY, 160, LogToggleH);
-            btnToggleRestoreLog.Text = _restoreLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
-
-            int logY = toggleY + LogToggleH + LogToggleGapY;
-            int logH = _restoreLogCollapsed
-                ? LogCollapsedHeight
-                : Math.Max(LogMinH, H - logY - LogMarginBot - LogProgressH - 4);
-            rtbRestoreLog.SetBounds(Margin, logY, cw, logH);
-
-            int progressY = logY + logH + 4;
-            progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
-            lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
+            btnOpenRestoreLog.SetBounds(
+                Margin + cw - BtnExportW - BtnLogsW - 8,
+                actY + (ActionH - 34) / 2,
+                BtnLogsW, 34);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -136,9 +113,7 @@ namespace SaveRestoreGUI
         private void LayoutMigrationPage()
         {
             if (pageMigration.ClientSize.Width <= 0) return;
-            int W  = pageMigration.ClientSize.Width;
-            int H  = pageMigration.ClientSize.Height;
-            int cw = W - Margin * 2;
+            int cw = pageMigration.ClientSize.Width - Margin * 2;
 
             cardMigrationSource.SetBounds(Margin, Margin, cw, MigTopCardH);
 
@@ -161,19 +136,25 @@ namespace SaveRestoreGUI
             int actY = optY + optH + CardGap;
             LayoutActionBar(Margin, actY, cw, btnStartMigration, btnCancelMigration, btnExportMigrationLog);
 
-            int toggleY = actY + ActionH + LogToggleGapY;
-            btnToggleMigrationLog.SetBounds(Margin, toggleY, 160, LogToggleH);
-            btnToggleMigrationLog.Text = _migrationLogCollapsed ? "▼ Afficher les logs" : "▲ Masquer les logs";
+            btnOpenMigrationLog.SetBounds(
+                Margin + cw - BtnExportW - BtnLogsW - 8,
+                actY + (ActionH - 34) / 2,
+                BtnLogsW, 34);
+        }
 
-            int logY = toggleY + LogToggleH + LogToggleGapY;
-            int logH = _migrationLogCollapsed
-                ? LogCollapsedHeight
-                : Math.Max(LogMinH, H - logY - LogMarginBot - LogProgressH - 4);
-            rtbMigrationLog.SetBounds(Margin, logY, cw, logH);
+        // ═══════════════════════════════════════════════════════════════════
+        // BARRE DE PROGRESSION (overlay dans contentPanel)
+        // ═══════════════════════════════════════════════════════════════════
+        private void LayoutProgressOverlay()
+        {
+            int cw = contentPanel.ClientSize.Width;
+            int ch = contentPanel.ClientSize.Height;
+            if (cw <= 0 || ch <= 0) return;
 
-            int progressY = logY + logH + 4;
-            progressBar.SetBounds(Margin, progressY, cw - 80, LogProgressH);
-            lblProgressPercent.SetBounds(Margin + cw - 80, progressY, 80, LogProgressH);
+            int barW = cw - Margin * 2 - 80;
+            int y    = ch - LogProgressH - 6;
+            progressBar.SetBounds(Margin, y, barW, LogProgressH);
+            lblProgressPercent.SetBounds(Margin + barW, y, 80, LogProgressH);
         }
 
         // ═══════════════════════════════════════════════════════════════════
