@@ -52,12 +52,6 @@ namespace SaveRestoreGUI
         //  DÉTECTION DES LECTEURS
         // ═══════════════════════════════════════════════════════════════════
 
-        /// <summary>
-        /// Appel direct à kernel32 : retourne le type du point de montage même si le
-        /// volume est inaccessible (BitLocker verrouillé, disque non prêt…).
-        /// Valeurs : 0=Unknown, 1=NoRootDir (lettre libre), 2=Removable,
-        ///           3=Fixed, 4=Network, 5=CDROM, 6=RAMDisk
-        /// </summary>
         [LibraryImport("kernel32.dll", EntryPoint = "GetDriveTypeW", StringMarshalling = StringMarshalling.Utf16)]
         private static partial uint GetDriveType(string lpRootPathName);
 
@@ -67,10 +61,6 @@ namespace SaveRestoreGUI
             catch { return 0; }
         }
 
-        /// <summary>
-        /// Teste si le volume est accessible en lecture.
-        /// Un volume BitLocker verrouillé lève UnauthorizedAccessException ou IOException.
-        /// </summary>
         private static bool IsVolumeAccessible(string root)
         {
             try { Directory.GetDirectories(root); return true; }
@@ -81,7 +71,6 @@ namespace SaveRestoreGUI
 
         private void LoadUSBDrives()
         {
-            // Le concepteur ou le cycle de vie très tôt peuvent donner des contrôles non initialisés.
             if (cmbUSBDrives == null || lstProfiles == null || lblBitLockerStatus == null || lblMigrationInfo == null)
                 return;
 
@@ -99,10 +88,9 @@ namespace SaveRestoreGUI
                 var result      = new List<USBDriveInfo>();
                 var seenLetters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                // ── Étape 1 : scan A–Z via GetDriveType (fonctionne même si IsReady = false)
                 foreach (char c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
                 {
-                    if (c == 'A' || c == 'B') continue;   // disquettes
+                    if (c == 'A' || c == 'B') continue;
 
                     var letter = $"{c}:";
                     var root   = letter + "\\";
@@ -110,14 +98,14 @@ namespace SaveRestoreGUI
                     if (currentRoot != null && letter.Equals(currentRoot, StringComparison.OrdinalIgnoreCase)) continue;
 
                     uint driveType = GetDriveTypeWin32(root);
-                    if (driveType <= 1) continue;          // 0=inconnu, 1=lettre libre
-                    if (driveType == 5 || driveType == 6) continue; // CD/DVD, RAMDisk
+                    if (driveType <= 1) continue;
+                    if (driveType == 5 || driveType == 6) continue;
 
                     bool accessible = IsVolumeAccessible(root);
 
                     if (!accessible)
                     {
-                        var bdeState  = GetBitLockerStatePowerShell(root);
+                        var bdeState   = GetBitLockerStatePowerShell(root);
                         var finalState = bdeState == BitLockerState.Unknown
                             ? BitLockerState.Locked
                             : bdeState;
@@ -147,7 +135,7 @@ namespace SaveRestoreGUI
                         if (!string.IsNullOrEmpty(di.VolumeLabel)) volLabel = di.VolumeLabel;
                         volSize = di.TotalSize;
                     }
-                    catch { /* volume démonté entre-temps */ }
+                    catch { }
 
                     var state = GetBitLockerStatePowerShell(root);
 
@@ -164,7 +152,6 @@ namespace SaveRestoreGUI
                     seenLetters.Add(letter);
                 }
 
-                // ── Étape 2 : fallback PowerShell global
                 foreach (var ltr in GetLockedBitLockerLetters(currentRoot ?? "C:"))
                 {
                     if (seenLetters.Contains(ltr)) continue;
@@ -188,7 +175,7 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur détection disque : {ex.Message}");
+                LogError(MigrationLogBox, $"Erreur détection disque : {ex.Message}");
             }
         }
 
@@ -238,7 +225,7 @@ namespace SaveRestoreGUI
                     letters.Add(root);
                 }
             }
-            catch { /* module BitLocker absent — silencieux */ }
+            catch { }
             return letters;
         }
 
@@ -300,11 +287,11 @@ namespace SaveRestoreGUI
         private void BtnRefreshUSB_Click(object? sender, EventArgs e)
         {
             LoadUSBDrives();
-            Log(rtbMigrationLog, "Liste des lecteurs actualisée.");
+            Log(MigrationLogBox, "Liste des lecteurs actualisée.");
         }
 
         private void BtnCancelMigration_Click(object? sender, EventArgs e)
-            => CancelCurrentOperation(rtbMigrationLog);
+            => CancelCurrentOperation(MigrationLogBox);
 
         private void CmbUSBDrives_SelectedIndexChanged(object? sender, EventArgs e)
         {
@@ -403,7 +390,7 @@ namespace SaveRestoreGUI
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur chargement profils : {ex.Message}");
+                LogError(MigrationLogBox, $"Erreur chargement profils : {ex.Message}");
                 lblMigrationInfo.Text = "Erreur lors du chargement des profils.";
             }
         }
@@ -412,10 +399,6 @@ namespace SaveRestoreGUI
         //  CONSTRUCTION DE LA LISTE DES ÉTAPES DE MIGRATION
         // ═══════════════════════════════════════════════════════════════════
 
-        /// <summary>
-        /// Construit les étapes de migration pour un profil source donné.
-        /// CancellationToken en dernier paramètre (CA1068).
-        /// </summary>
         private List<(string Name, Func<Task> Action)> BuildMigrationSteps(
             string sourceProfile,
             string destProfile,
@@ -577,7 +560,7 @@ namespace SaveRestoreGUI
 
             if (confirm != DialogResult.Yes) return;
 
-            rtbMigrationLog.Clear();
+            MigrationLogBox.Clear();
             _cancellationTokenSource = new CancellationTokenSource();
             var ct        = _cancellationTokenSource.Token;
             var errorList = new List<string>();
@@ -589,15 +572,15 @@ namespace SaveRestoreGUI
                 var destProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 var progress    = new Progress<int>(UpdateProgress);
 
-                LogTitle(rtbMigrationLog, "Démarrage de la migration");
-                LogInfo(rtbMigrationLog, $"Dest    : {destProfile}");
-                LogInfo(rtbMigrationLog, $"Utilisateur actuel : {currentUsername}");
+                LogTitle(MigrationLogBox, "Démarrage de la migration");
+                LogInfo(MigrationLogBox, $"Dest    : {destProfile}");
+                LogInfo(MigrationLogBox, $"Utilisateur actuel : {currentUsername}");
 
                 if (doubleMigration)
                 {
                     // ── Passe 1 : NOM.DOMAINE ──────────────────────────────────────────
-                    LogTitle(rtbMigrationLog, $"Passe 1 — Ancien profil domaine : {domainProfile!.Name}");
-                    LogInfo(rtbMigrationLog, $"Source  : {domainProfile.Path}");
+                    LogTitle(MigrationLogBox, $"Passe 1 — Ancien profil domaine : {domainProfile!.Name}");
+                    LogInfo(MigrationLogBox, $"Source  : {domainProfile.Path}");
 
                     var steps1 = BuildMigrationSteps(
                         domainProfile.Path, destProfile, progress, errorList,
@@ -612,11 +595,11 @@ namespace SaveRestoreGUI
                         await action();
                     }
 
-                    LogSuccess(rtbMigrationLog, $"Passe 1 terminée — profil « {domainProfile.Name} » copié.");
+                    LogSuccess(MigrationLogBox, $"Passe 1 terminée — profil « {domainProfile.Name} » copié.");
 
                     // ── Passe 2 : NOM ────────────────────────────────────────────────
-                    LogTitle(rtbMigrationLog, $"Passe 2 — Profil actuel : {cleanProfile!.Name}");
-                    LogInfo(rtbMigrationLog, $"Source  : {cleanProfile.Path}");
+                    LogTitle(MigrationLogBox, $"Passe 2 — Profil actuel : {cleanProfile!.Name}");
+                    LogInfo(MigrationLogBox, $"Source  : {cleanProfile.Path}");
 
                     var steps2 = BuildMigrationSteps(
                         cleanProfile.Path, destProfile, progress, errorList,
@@ -631,12 +614,12 @@ namespace SaveRestoreGUI
                         await action();
                     }
 
-                    LogSuccess(rtbMigrationLog, $"Passe 2 terminée — profil « {cleanProfile.Name} » copié.");
+                    LogSuccess(MigrationLogBox, $"Passe 2 terminée — profil « {cleanProfile.Name} » copié.");
                 }
                 else
                 {
                     // ── Migration simple (un seul profil) ─────────────────────────────
-                    LogInfo(rtbMigrationLog, $"Source  : {selectedProfile.Path}");
+                    LogInfo(MigrationLogBox, $"Source  : {selectedProfile.Path}");
 
                     var steps = BuildMigrationSteps(
                         selectedProfile.Path, destProfile, progress, errorList,
@@ -652,18 +635,18 @@ namespace SaveRestoreGUI
                     }
                 }
 
-                LogTitle(rtbMigrationLog, "Migration terminée");
+                LogTitle(MigrationLogBox, "Migration terminée");
                 if (doubleMigration)
-                    LogSuccess(rtbMigrationLog,
+                    LogSuccess(MigrationLogBox,
                         $"Profils « {domainProfile!.Name} » puis « {cleanProfile!.Name} » migrés avec succès.");
                 else
-                    LogSuccess(rtbMigrationLog, $"Profil « {selectedProfile.Name} » migré avec succès.");
+                    LogSuccess(MigrationLogBox, $"Profil « {selectedProfile.Name} » migré avec succès.");
 
                 if (errorList.Count > 0)
                 {
-                    LogTitle(rtbMigrationLog, "Résumé des erreurs rencontrées");
+                    LogTitle(MigrationLogBox, "Résumé des erreurs rencontrées");
                     foreach (var err in errorList)
-                        LogWarning(rtbMigrationLog, err);
+                        LogWarning(MigrationLogBox, err);
                 }
 
                 UpdateStatus("Migration terminée avec succès");
@@ -681,12 +664,12 @@ namespace SaveRestoreGUI
             }
             catch (OperationCanceledException)
             {
-                LogWarning(rtbMigrationLog, "Migration annulée par l'utilisateur.");
+                LogWarning(MigrationLogBox, "Migration annulée par l'utilisateur.");
                 UpdateStatus("Migration annulée");
             }
             catch (Exception ex)
             {
-                LogError(rtbMigrationLog, $"Erreur migration : {ex.Message}");
+                LogError(MigrationLogBox, $"Erreur migration : {ex.Message}");
                 UpdateStatus("Erreur lors de la migration");
 
                 MessageBox.Show(
@@ -765,13 +748,13 @@ namespace SaveRestoreGUI
                             }
                         }
 
-                        Log(rtbMigrationLog, $"\U0001f513 {drive.Letter} déverrouillé — profils rechargés.");
+                        Log(MigrationLogBox, $"\U0001f513 {drive.Letter} déverrouillé — profils rechargés.");
                         return;
                     }
                 }
             }
 
-            Log(rtbMigrationLog, $"\u26a0\ufe0f Délai dépassé — {drive.Letter} toujours verrouillé.");
+            Log(MigrationLogBox, $"\u26a0\ufe0f Délai dépassé — {drive.Letter} toujours verrouillé.");
         }
     }
 }
