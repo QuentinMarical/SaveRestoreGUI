@@ -28,20 +28,20 @@ namespace SaveRestoreGUI
         {
             if (!Directory.Exists(source))
             {
-                LogInfo(rtbMigrationLog, $"{name} : dossier source introuvable — ignoré.");
+                LogInfo(MigrationLogBox, $"{name} : dossier source introuvable — ignoré.");
                 return;
             }
 
-            Log(rtbMigrationLog, $"Migration de {name}...");
+            Log(MigrationLogBox, $"Migration de {name}...");
             var result = await FileService.CopyFolderAsync(source, destination, progress, null, ct);
 
             foreach (var err in result.Errors)
             {
-                LogError(rtbMigrationLog, $"Erreur copie {err}");
+                LogError(MigrationLogBox, $"Erreur copie {err}");
                 errorList.Add($"{name} : {err}");
             }
 
-            LogSuccess(rtbMigrationLog,
+            LogSuccess(MigrationLogBox,
                 $"{name} : {result.Copied} fichier(s) migré(s), {result.Skipped} ignoré(s) — {FileService.FormatSize(result.TotalBytes)}");
         }
 
@@ -62,7 +62,7 @@ namespace SaveRestoreGUI
 
             if (!File.Exists(stickySource))
             {
-                LogInfo(rtbMigrationLog, "Sticky Notes : aucune donnée trouvée sur le disque source.");
+                LogInfo(MigrationLogBox, "Sticky Notes : aucune donnée trouvée sur le disque source.");
                 return;
             }
 
@@ -74,7 +74,7 @@ namespace SaveRestoreGUI
             var destFile = Path.Combine(destDir, "plum.sqlite");
 
             await Task.Run(() => File.Copy(stickySource, destFile, overwrite: true), ct);
-            LogSuccess(rtbMigrationLog, "Sticky Notes migrés.");
+            LogSuccess(MigrationLogBox, "Sticky Notes migrés.");
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -113,26 +113,26 @@ namespace SaveRestoreGUI
                     {
                         await Task.Run(() => File.Copy(pst, dest, overwrite: true), ct);
                         var size = new FileInfo(dest).Length;
-                        LogSuccess(rtbMigrationLog,
+                        LogSuccess(MigrationLogBox,
                             $"PST migré : {Path.GetFileName(pst)} ({FileService.FormatSize(size)})");
                         pstCopied++;
                     }
                     catch (OperationCanceledException) { throw; }
                     catch (Exception ex)
                     {
-                        LogError(rtbMigrationLog,
+                        LogError(MigrationLogBox,
                             $"Erreur PST {Path.GetFileName(pst)} : {ex.Message}");
                     }
                 }
             }
 
             if (pstCopied == 0)
-                LogInfo(rtbMigrationLog, "Outlook : aucun fichier PST trouvé.");
+                LogInfo(MigrationLogBox, "Outlook : aucun fichier PST trouvé.");
             else
             {
-                LogInfo(rtbMigrationLog, $"Les fichiers PST ont été copiés dans : {pstDestDir}");
-                LogInfo(rtbMigrationLog, "Pour les rattacher dans Outlook :");
-                LogInfo(rtbMigrationLog, "  Fichier > Ouvrir et exporter > Ouvrir le fichier de données Outlook");
+                LogInfo(MigrationLogBox, $"Les fichiers PST ont été copiés dans : {pstDestDir}");
+                LogInfo(MigrationLogBox, "Pour les rattacher dans Outlook :");
+                LogInfo(MigrationLogBox, "  Fichier > Ouvrir et exporter > Ouvrir le fichier de données Outlook");
             }
 
             // ── 2. Cache d'autocompltion ───────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ namespace SaveRestoreGUI
                 }
 
                 if (autocomplete.Length > 0)
-                    LogSuccess(rtbMigrationLog,
+                    LogSuccess(MigrationLogBox,
                         $"Cache autocompltion Outlook migré ({autocomplete.Length} fichier(s)).");
             }
 
@@ -177,12 +177,12 @@ namespace SaveRestoreGUI
                     {
                         await Task.Run(() =>
                             File.Copy(rule, Path.Combine(ruleDest, Path.GetFileName(rule)), overwrite: true), ct);
-                        LogSuccess(rtbMigrationLog, $"Règles Outlook migrées : {Path.GetFileName(rule)}");
+                        LogSuccess(MigrationLogBox, $"Règles Outlook migrées : {Path.GetFileName(rule)}");
                     }
                     catch (OperationCanceledException) { throw; }
                     catch (Exception ex)
                     {
-                        LogError(rtbMigrationLog,
+                        LogError(MigrationLogBox,
                             $"Erreur règles {Path.GetFileName(rule)} : {ex.Message}");
                     }
                 }
@@ -226,7 +226,7 @@ namespace SaveRestoreGUI
 
                     if (sourceFile == null)
                     {
-                        LogInfo(rtbMigrationLog, "Fond d'écran : aucun fichier trouvé sur le disque source.");
+                        LogInfo(MigrationLogBox, "Fond d'écran : aucun fichier trouvé sur le disque source.");
                         return;
                     }
 
@@ -236,11 +236,11 @@ namespace SaveRestoreGUI
                     Directory.CreateDirectory(destDir);
 
                     File.Copy(sourceFile, Path.Combine(destDir, "TranscodedWallpaper"), overwrite: true);
-                    LogSuccess(rtbMigrationLog, "Fond d'écran migré (visible après reconnexion).");
+                    LogSuccess(MigrationLogBox, "Fond d'écran migré (visible après reconnexion).");
                 }
                 catch (Exception ex)
                 {
-                    LogError(rtbMigrationLog, $"Erreur fond d'écran : {ex.Message}");
+                    LogError(MigrationLogBox, $"Erreur fond d'écran : {ex.Message}");
                 }
             });
         }
@@ -251,10 +251,6 @@ namespace SaveRestoreGUI
 
         /// <summary>
         /// Lit la liste des lecteurs réseau sauvegardés et affiche les chemins UNC dans le log.
-        /// Ordre de recherche du fichier NetworkDrives.txt :
-        ///   1. Racine du drive USB (ex. E:\NetworkDrives.txt)
-        ///   2. Dossier parent du profil source (ex. E:\Backup\NetworkDrives.txt)
-        ///   3. Dossier du profil source lui-même
         /// </summary>
         private async Task MigrateNetworkDrivesAsync(string sourceProfile)
         {
@@ -262,10 +258,6 @@ namespace SaveRestoreGUI
             {
                 try
                 {
-                    // #4 — Cherche NetworkDrives.txt dans cet ordre de priorité :
-                    //   1. Racine du drive USB (E:\ par exemple)
-                    //   2. Dossier parent du profil (E:\Backup\)
-                    //   3. Dossier du profil lui-même
                     var driveRoot     = Path.GetPathRoot(sourceProfile) ?? sourceProfile;
                     var parentFolder  = Path.GetDirectoryName(sourceProfile) ?? sourceProfile;
 
@@ -280,7 +272,7 @@ namespace SaveRestoreGUI
                         if (File.Exists(candidate))
                         {
                             networkDrivesFile = candidate;
-                            LogInfo(rtbMigrationLog, $"NetworkDrives.txt trouvé : {candidate}");
+                            LogInfo(MigrationLogBox, $"NetworkDrives.txt trouvé : {candidate}");
                             break;
                         }
                     }
@@ -293,10 +285,10 @@ namespace SaveRestoreGUI
 
                         if (lines.Length > 0)
                         {
-                            LogInfo(rtbMigrationLog, "Lecteurs réseau de l'ancien profil :");
+                            LogInfo(MigrationLogBox, "Lecteurs réseau de l'ancien profil :");
                             foreach (var line in lines)
-                                Log(rtbMigrationLog, $"   {line}");
-                            LogWarning(rtbMigrationLog,
+                                Log(MigrationLogBox, $"   {line}");
+                            LogWarning(MigrationLogBox,
                                 "Merci de recréer manuellement ces lecteurs réseau sur le nouveau poste.");
                             return;
                         }
@@ -316,18 +308,18 @@ namespace SaveRestoreGUI
 
                     if (mapped.Count > 0)
                     {
-                        LogInfo(rtbMigrationLog, "Lecteurs réseau actuellement montés (poste courant) :");
+                        LogInfo(MigrationLogBox, "Lecteurs réseau actuellement montés (poste courant) :");
                         foreach (var m in mapped)
-                            Log(rtbMigrationLog, $"   {m}");
+                            Log(MigrationLogBox, $"   {m}");
                     }
                     else
                     {
-                        LogInfo(rtbMigrationLog, "Aucun lecteur réseau détecté.");
+                        LogInfo(MigrationLogBox, "Aucun lecteur réseau détecté.");
                     }
                 }
                 catch (Exception ex)
                 {
-                    LogError(rtbMigrationLog, $"Erreur lecteurs réseau : {ex.Message}");
+                    LogError(MigrationLogBox, $"Erreur lecteurs réseau : {ex.Message}");
                 }
             });
         }
@@ -337,12 +329,7 @@ namespace SaveRestoreGUI
         // ═══════════════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Migre la configuration OneNote depuis le profil USB :
-        /// <list type="number">
-        ///   <item>Copie le dossier AppData\Roaming\Microsoft\OneNote (cache + options).</item>
-        ///   <item>Importe les clés de registre OneNote depuis l'hive ntuser.dat du profil
-        ///         source via reg.exe /load + /export (si ntuser.dat accessible).</item>
-        /// </list>
+        /// Migre la configuration OneNote depuis le profil USB.
         /// </summary>
         private async Task MigrateOneNoteAsync(string sourceProfile)
         {
@@ -350,7 +337,6 @@ namespace SaveRestoreGUI
             {
                 try
                 {
-                    // ── 1. Copie du dossier AppData\Roaming\Microsoft\OneNote ───────────
                     var oneNoteSrc = Path.Combine(
                         sourceProfile, "AppData", "Roaming", "Microsoft", "OneNote");
                     var oneNoteDest = Path.Combine(
@@ -360,18 +346,17 @@ namespace SaveRestoreGUI
                     if (Directory.Exists(oneNoteSrc))
                     {
                         CopyDirectoryRecursive(oneNoteSrc, oneNoteDest);
-                        LogSuccess(rtbMigrationLog, "OneNote : dossier de configuration migré.");
+                        LogSuccess(MigrationLogBox, "OneNote : dossier de configuration migré.");
                     }
                     else
                     {
-                        LogInfo(rtbMigrationLog, "OneNote : aucun dossier de configuration trouvé dans le profil source.");
+                        LogInfo(MigrationLogBox, "OneNote : aucun dossier de configuration trouvé dans le profil source.");
                     }
 
-                    // ── 2. Import des clés de registre depuis ntuser.dat ──────────────
                     var ntUserDat = Path.Combine(sourceProfile, "NTUSER.DAT");
                     if (!File.Exists(ntUserDat))
                     {
-                        LogInfo(rtbMigrationLog, "OneNote : ntuser.dat inaccessible — import registre ignoré.");
+                        LogInfo(MigrationLogBox, "OneNote : ntuser.dat inaccessible — import registre ignoré.");
                         return;
                     }
 
@@ -380,16 +365,13 @@ namespace SaveRestoreGUI
 
                     try
                     {
-                        // Charger le hive temporaire
                         RunRegExe($"load \"{tempHive}\" \"{ntUserDat}\"");
 
-                        // Exporter la branche OneNote
                         var oneNoteHiveKey = $"{tempHive}\\Software\\Microsoft\\Office";
                         RunRegExe($"export \"{oneNoteHiveKey}\" \"{tempRegFile}\" /y");
 
                         if (File.Exists(tempRegFile))
                         {
-                            // Filtrer pour ne garder que les clés OneNote, remplacer le chemin du hive
                             var regContent = File.ReadAllText(tempRegFile);
                             regContent = regContent.Replace(
                                 tempHive.Replace("\\", "\\\\"),
@@ -410,23 +392,22 @@ namespace SaveRestoreGUI
                             RunRegExe($"import \"{filteredPath}\"");
                             File.Delete(filteredPath);
 
-                            LogSuccess(rtbMigrationLog, "OneNote : clés de registre importées.");
+                            LogSuccess(MigrationLogBox, "OneNote : clés de registre importées.");
                         }
                         else
                         {
-                            LogInfo(rtbMigrationLog, "OneNote : aucune clé de registre Office trouvée dans le hive.");
+                            LogInfo(MigrationLogBox, "OneNote : aucune clé de registre Office trouvée dans le hive.");
                         }
                     }
                     finally
                     {
-                        // Décharger le hive temporaire (toujours, même en cas d'erreur)
                         RunRegExe($"unload \"{tempHive}\"");
                         if (File.Exists(tempRegFile)) File.Delete(tempRegFile);
                     }
                 }
                 catch (Exception ex)
                 {
-                    LogError(rtbMigrationLog, $"OneNote : erreur migration — {ex.Message}");
+                    LogError(MigrationLogBox, $"OneNote : erreur migration — {ex.Message}");
                 }
             });
         }
@@ -437,7 +418,6 @@ namespace SaveRestoreGUI
 
         /// <summary>
         /// Migre la configuration IP Desktop Softphone (Alcatel-Lucent) depuis le profil USB.
-        /// Copie les dossiers AppData\Roaming et AppData\Local d'Alcatel-Lucent.
         /// </summary>
         private async Task MigrateIpDesktopSoftphoneAsync(
             string sourceProfile,
@@ -464,23 +444,23 @@ namespace SaveRestoreGUI
                 if (!Directory.Exists(src)) continue;
                 anyFound = true;
 
-                Log(rtbMigrationLog, $"IP Desktop Softphone : migration de {Path.GetFileName(Path.GetDirectoryName(src) ?? src)}...");
+                Log(MigrationLogBox, $"IP Desktop Softphone : migration de {Path.GetFileName(Path.GetDirectoryName(src) ?? src)}...");
 
                 var result = await FileService.CopyFolderAsync(src, dest, progress, null, ct);
 
                 foreach (var err in result.Errors)
                 {
-                    LogError(rtbMigrationLog, $"Erreur copie IP Softphone : {err}");
+                    LogError(MigrationLogBox, $"Erreur copie IP Softphone : {err}");
                     errorList.Add($"IP Desktop Softphone : {err}");
                 }
 
-                LogSuccess(rtbMigrationLog,
+                LogSuccess(MigrationLogBox,
                     $"IP Desktop Softphone ({(src.Contains("Roaming") ? "Roaming" : "Local")}) : " +
                     $"{result.Copied} fichier(s) migré(s) — {FileService.FormatSize(result.TotalBytes)}");
             }
 
             if (!anyFound)
-                LogInfo(rtbMigrationLog,
+                LogInfo(MigrationLogBox,
                     "IP Desktop Softphone : aucun dossier de configuration trouvé dans le profil source.");
         }
 
@@ -490,7 +470,6 @@ namespace SaveRestoreGUI
 
         /// <summary>
         /// Copie récursive d'un dossier source vers destination.
-        /// Utilisé par les étapes qui n'ont pas besoin du rapport de progression granulaire.
         /// </summary>
         private static void CopyDirectoryRecursive(string source, string destination)
         {
@@ -510,7 +489,6 @@ namespace SaveRestoreGUI
 
         /// <summary>
         /// Lance reg.exe avec les arguments spécifiés et attend la fin du processus.
-        /// Nécessite des droits administrateur pour reg load/unload.
         /// </summary>
         private static void RunRegExe(string arguments)
         {

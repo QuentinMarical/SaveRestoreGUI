@@ -21,7 +21,7 @@ namespace SaveRestoreGUI
         }
 
         private void BtnCancelBackup_Click(object? sender, EventArgs e)
-            => CancelCurrentOperation(rtbBackupLog);
+            => CancelCurrentOperation(BackupLogBox);
 
         private async void BtnStartBackup_Click(object? sender, EventArgs e)
         {
@@ -50,7 +50,7 @@ namespace SaveRestoreGUI
                 }
             }
 
-            rtbBackupLog.Clear();
+            BackupLogBox.Clear();
             _cancellationTokenSource = new CancellationTokenSource();
             var ct = _cancellationTokenSource.Token;
             var errorList = new List<string>();
@@ -63,16 +63,16 @@ namespace SaveRestoreGUI
                 Directory.CreateDirectory(backupRoot);
                 lock (_logLock) { _logFilePath = Path.Combine(backupRoot, "Sauvegarde.log"); }
 
-                LogTitle(rtbBackupLog, "Démarrage de la sauvegarde");
-                LogInfo(rtbBackupLog, $"Utilisateur : {Environment.UserName}");
-                LogInfo(rtbBackupLog, $"Poste : {Environment.MachineName}");
-                LogInfo(rtbBackupLog, $"Destination : {backupRoot}");
+                LogTitle(BackupLogBox, "Démarrage de la sauvegarde");
+                LogInfo(BackupLogBox, $"Utilisateur : {Environment.UserName}");
+                LogInfo(BackupLogBox, $"Poste : {Environment.MachineName}");
+                LogInfo(BackupLogBox, $"Destination : {backupRoot}");
                 if (estimatedSize > 0)
-                    LogInfo(rtbBackupLog, $"Taille estimée : {FileService.FormatSize(estimatedSize)}");
+                    LogInfo(BackupLogBox, $"Taille estimée : {FileService.FormatSize(estimatedSize)}");
 
                 UpdateOldProfileOptionState();
                 if (chkPanelBackup.IsChecked("OldProfile"))
-                    DetectAndLogOldProfiles(rtbBackupLog);
+                    DetectAndLogOldProfiles(BackupLogBox);
 
                 var currentUsername   = Environment.UserName;
                 string? domainProfilePath = null;
@@ -105,16 +105,15 @@ namespace SaveRestoreGUI
 
                 if (doubleBackup)
                 {
-                    LogInfo(rtbBackupLog, $"\u26a0\ufe0f Double profil détecté : « {Path.GetFileName(domainProfilePath)} » + « {currentUsername} »");
-                    LogInfo(rtbBackupLog, "La sauvegarde copiera d'abord l'ancien profil domaine, puis le profil actuel.");
+                    LogInfo(BackupLogBox, $"\u26a0\ufe0f Double profil détecté : « {Path.GetFileName(domainProfilePath)} » + « {currentUsername} »");
+                    LogInfo(BackupLogBox, "La sauvegarde copiera d'abord l'ancien profil domaine, puis le profil actuel.");
                 }
 
                 var progress = new Progress<int>(UpdateProgress);
 
                 if (doubleBackup)
                 {
-                    LogTitle(rtbBackupLog, $"Passe 1 — Ancien profil domaine : {Path.GetFileName(domainProfilePath)}");
-                    // CA1068 : CancellationToken en dernier paramètre
+                    LogTitle(BackupLogBox, $"Passe 1 — Ancien profil domaine : {Path.GetFileName(domainProfilePath)}");
                     var steps1 = BuildBackupSteps(backupRoot, domainProfilePath!, progress, errorList,
                         includePublic: false, includeAppData: false, ct);
 
@@ -126,13 +125,12 @@ namespace SaveRestoreGUI
                         UpdateStatus($"[Passe 1/2] Sauvegarde {name} ({idx1}/{total1})");
                         await action();
                     }
-                    LogSuccess(rtbBackupLog, $"Passe 1 terminée — profil « {Path.GetFileName(domainProfilePath)} » sauvegardé.");
+                    LogSuccess(BackupLogBox, $"Passe 1 terminée — profil « {Path.GetFileName(domainProfilePath)} » sauvegardé.");
                 }
 
                 if (doubleBackup)
-                    LogTitle(rtbBackupLog, $"Passe 2 — Profil actuel : {currentUsername}");
+                    LogTitle(BackupLogBox, $"Passe 2 — Profil actuel : {currentUsername}");
 
-                // CA1068 : CancellationToken en dernier paramètre
                 var steps = BuildBackupSteps(backupRoot, cleanProfilePath ?? string.Empty,
                     progress, errorList, includePublic: true, includeAppData: true, ct);
 
@@ -148,21 +146,21 @@ namespace SaveRestoreGUI
                 }
 
                 if (doubleBackup)
-                    LogSuccess(rtbBackupLog, $"Passe 2 terminée — profil « {currentUsername} » sauvegardé.");
+                    LogSuccess(BackupLogBox, $"Passe 2 terminée — profil « {currentUsername} » sauvegardé.");
 
-                LogTitle(rtbBackupLog, "Récapitulatif final");
+                LogTitle(BackupLogBox, "Récapitulatif final");
                 UpdateStatus("Calcul de la taille finale...");
                 var totalSize = await Task.Run(() => FileService.GetDirectorySize(backupRoot), CancellationToken.None);
-                LogInfo(rtbBackupLog, $"Taille totale de la sauvegarde : {FileService.FormatSize(totalSize)}");
+                LogInfo(BackupLogBox, $"Taille totale de la sauvegarde : {FileService.FormatSize(totalSize)}");
 
                 if (errorList.Count > 0)
                 {
-                    LogTitle(rtbBackupLog, "Résumé des erreurs rencontrées");
-                    foreach (var err in errorList) LogWarning(rtbBackupLog, err);
+                    LogTitle(BackupLogBox, "Résumé des erreurs rencontrées");
+                    foreach (var err in errorList) LogWarning(BackupLogBox, err);
                 }
 
-                LogTitle(rtbBackupLog, "Sauvegarde terminée");
-                LogSuccess(rtbBackupLog, $"Fichiers sauvegardés dans : {backupRoot}");
+                LogTitle(BackupLogBox, "Sauvegarde terminée");
+                LogSuccess(BackupLogBox, $"Fichiers sauvegardés dans : {backupRoot}");
                 UpdateStatus("Sauvegarde terminée avec succès");
                 ToastService.Show(this, "Sauvegarde terminée avec succès !", ToastKind.Success);
 
@@ -171,12 +169,12 @@ namespace SaveRestoreGUI
             }
             catch (OperationCanceledException)
             {
-                LogWarning(rtbBackupLog, "Sauvegarde annulée par l'utilisateur.");
+                LogWarning(BackupLogBox, "Sauvegarde annulée par l'utilisateur.");
                 UpdateStatus("Sauvegarde annulée");
             }
             catch (Exception ex)
             {
-                LogError(rtbBackupLog, $"Erreur : {ex.Message}");
+                LogError(BackupLogBox, $"Erreur : {ex.Message}");
                 UpdateStatus("Erreur lors de la sauvegarde");
                 MessageBox.Show($"Erreur lors de la sauvegarde :\n{ex.Message}", "Erreur",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -199,7 +197,6 @@ namespace SaveRestoreGUI
 
             long total = 0;
 
-            // IDE0062 : SizeOf ne capture aucune variable d'instance → static
             static long SizeOf(string path)
             {
                 if (!Directory.Exists(path)) return 0;
@@ -233,10 +230,6 @@ namespace SaveRestoreGUI
         //  Construction des étapes de sauvegarde
         // ───────────────────────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Construit la liste ordonnée des étapes de sauvegarde.
-        /// CancellationToken est en dernier paramètre (CA1068).
-        /// </summary>
         private List<(string Name, Func<Task> Action)> BuildBackupSteps(
             string backupRoot,
             string sourceProfileOverride,
@@ -258,27 +251,27 @@ namespace SaveRestoreGUI
 
             if (chkPanelBackup.IsChecked("Documents")) steps.Add(("Documents", () => CopyStep(
                 useOverride ? Src("Documents") : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                Path.Combine(backupRoot, "Documents"), "Documents", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Documents"), "Documents", BackupLogBox, progress, errorList, ct)));
 
             if (chkPanelBackup.IsChecked("Desktop")) steps.Add(("Bureau", () => CopyStep(
                 useOverride ? Src("Desktop") : Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                Path.Combine(backupRoot, "Desktop"), "Bureau", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Desktop"), "Bureau", BackupLogBox, progress, errorList, ct)));
 
             if (chkPanelBackup.IsChecked("Downloads")) steps.Add(("Téléchargements", () => CopyStep(
                 useOverride ? Src("Downloads") : Path.Combine(userProfile, "Downloads"),
-                Path.Combine(backupRoot, "Downloads"), "Téléchargements", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Downloads"), "Téléchargements", BackupLogBox, progress, errorList, ct)));
 
             if (chkPanelBackup.IsChecked("Pictures")) steps.Add(("Images", () => CopyStep(
                 useOverride ? Src("Pictures") : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                Path.Combine(backupRoot, "Pictures"), "Images", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Pictures"), "Images", BackupLogBox, progress, errorList, ct)));
 
             if (chkPanelBackup.IsChecked("Music")) steps.Add(("Musique", () => CopyStep(
                 useOverride ? Src("Music") : Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
-                Path.Combine(backupRoot, "Music"), "Musique", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Music"), "Musique", BackupLogBox, progress, errorList, ct)));
 
             if (chkPanelBackup.IsChecked("Videos")) steps.Add(("Vidéos", () => CopyStep(
                 useOverride ? Src("Videos") : Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
-                Path.Combine(backupRoot, "Videos"), "Vidéos", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Videos"), "Vidéos", BackupLogBox, progress, errorList, ct)));
 
             if (includeAppData)
             {
@@ -286,22 +279,22 @@ namespace SaveRestoreGUI
                     ? Path.Combine(sourceProfileOverride, "AppData", "Roaming")
                     : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-                if (chkPanelBackup.IsChecked("Signatures"))     steps.Add(("Signatures Outlook",   () => BackupSignaturesAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office",       () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),     Path.Combine(backupRoot, "Templates"),        "Modèles Office",        rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("ExcelMacros"))    steps.Add(("Macros Excel (XLSTART)",() => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"), Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Sap"))            steps.Add(("SAP GUI",              () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                          Path.Combine(backupRoot, "SAP"),              "SAP GUI",                rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Outlook"))        steps.Add(("Données Outlook",      () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
-                if (chkPanelBackup.IsChecked("OneNote"))        steps.Add(("OneNote (registre)",   () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
-                if (chkPanelBackup.IsChecked("StickyNotes"))    steps.Add(("Sticky Notes",         () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
-                if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",  () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Wallpaper"))      steps.Add(("Fond d'écran",         () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
-                if (chkPanelBackup.IsChecked("NetworkDrives"))  steps.Add(("Lecteurs réseau",      () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
-                if (chkPanelBackup.IsChecked("IpSoftphone"))    steps.Add(("IP Desktop Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Signatures"))     steps.Add(("Signatures Outlook",    () => BackupSignaturesAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office",        () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),     Path.Combine(backupRoot, "Templates"),        "Modèles Office",        BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("ExcelMacros"))    steps.Add(("Macros Excel (XLSTART)", () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"), Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Sap"))            steps.Add(("SAP GUI",               () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                          Path.Combine(backupRoot, "SAP"),              "SAP GUI",                BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Outlook"))        steps.Add(("Données Outlook",       () => BackupOutlookDataAsync(backupRoot, BackupLogBox, ct)));
+                if (chkPanelBackup.IsChecked("OneNote"))        steps.Add(("OneNote (registre)",    () => BackupOneNoteAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("StickyNotes"))    steps.Add(("Sticky Notes",          () => BackupStickyNotesAsync(backupRoot, BackupLogBox, ct)));
+                if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",   () => BackupEdgeProfileAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Wallpaper"))      steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("NetworkDrives"))  steps.Add(("Lecteurs réseau",       () => BackupNetworkDrivesAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("IpSoftphone"))    steps.Add(("IP Desktop Softphone",  () => BackupIpDesktopSoftphoneAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
             }
 
             if (includePublic && chkPanelBackup.IsChecked("Public")) steps.Add(("Dossier Public", () => CopyStep(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-                Path.Combine(backupRoot, "Public"), "Dossier Public", rtbBackupLog, progress, errorList, ct)));
+                Path.Combine(backupRoot, "Public"), "Dossier Public", BackupLogBox, progress, errorList, ct)));
 
             return steps;
         }
@@ -426,7 +419,7 @@ namespace SaveRestoreGUI
             if (sharedMailboxes.Count > 0)
             {
                 LogInfo(rtb, $"{sharedMailboxes.Count} boîte(s) partagée(s) détectée(s)");
-                foreach (var mb in sharedMailboxes) Log(rtb, $"   \u2192 {mb}");
+                foreach (var mb in sharedMailboxes) Log(rtb, $"   \u2192 {mb}", Color.FromArgb(139, 233, 253));
                 await File.WriteAllLinesAsync(Path.Combine(outlookDir, "SharedMailboxes.txt"), sharedMailboxes, ct);
                 LogSuccess(rtb, "Liste sauvegardée dans SharedMailboxes.txt");
             }

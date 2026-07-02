@@ -34,7 +34,7 @@ namespace SaveRestoreGUI
         }
 
         private void BtnCancelRestore_Click(object? sender, EventArgs e)
-            => CancelCurrentOperation(rtbRestoreLog);
+            => CancelCurrentOperation(RestoreLogBox);
 
         private async void BtnStartRestore_Click(object? sender, EventArgs e)
         {
@@ -45,7 +45,7 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            rtbRestoreLog.Clear();
+            RestoreLogBox.Clear();
             _cancellationTokenSource = new CancellationTokenSource();
             var ct = _cancellationTokenSource.Token;
             var errorList = new List<string>();
@@ -57,8 +57,8 @@ namespace SaveRestoreGUI
                 var restoreRoot = txtRestorePath.Text;
                 lock (_logLock) { _logFilePath = Path.Combine(restoreRoot, "Restauration.log"); }
 
-                LogTitle(rtbRestoreLog, "Démarrage de la restauration");
-                LogInfo(rtbRestoreLog, $"Source : {restoreRoot}");
+                LogTitle(RestoreLogBox, "Démarrage de la restauration");
+                LogInfo(RestoreLogBox, $"Source : {restoreRoot}");
 
                 var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 var progress = new Progress<int>(UpdateProgress);
@@ -67,61 +67,61 @@ namespace SaveRestoreGUI
 
                 if (chkPanelRestore.IsChecked("Documents")) steps.Add(("Documents", () => RestoreStep(
                     Path.Combine(restoreRoot, "Documents"), Path.Combine(userProfile, "Documents"),
-                    "Documents", rtbRestoreLog, progress, errorList, ct)));
+                    "Documents", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Desktop")) steps.Add(("Bureau", () => RestoreStep(
                     Path.Combine(restoreRoot, "Desktop"), Path.Combine(userProfile, "Desktop"),
-                    "Bureau", rtbRestoreLog, progress, errorList, ct)));
+                    "Bureau", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Downloads")) steps.Add(("Téléchargements", () => RestoreStep(
                     Path.Combine(restoreRoot, "Downloads"), Path.Combine(userProfile, "Downloads"),
-                    "Téléchargements", rtbRestoreLog, progress, errorList, ct)));
+                    "Téléchargements", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Pictures")) steps.Add(("Images", () => RestoreStep(
                     Path.Combine(restoreRoot, "Pictures"), Path.Combine(userProfile, "Pictures"),
-                    "Images", rtbRestoreLog, progress, errorList, ct)));
+                    "Images", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Music")) steps.Add(("Musique", () => RestoreStep(
                     Path.Combine(restoreRoot, "Music"), Path.Combine(userProfile, "Music"),
-                    "Musique", rtbRestoreLog, progress, errorList, ct)));
+                    "Musique", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Videos")) steps.Add(("Vidéos", () => RestoreStep(
                     Path.Combine(restoreRoot, "Videos"), Path.Combine(userProfile, "Videos"),
-                    "Vidéos", rtbRestoreLog, progress, errorList, ct)));
+                    "Vidéos", RestoreLogBox, progress, errorList, ct)));
 
-                if (chkPanelRestore.IsChecked("OneNote")) steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, rtbRestoreLog)));
+                if (chkPanelRestore.IsChecked("OneNote")) steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, RestoreLogBox)));
 
                 if (chkPanelRestore.IsChecked("Signatures")) steps.Add(("Signatures Outlook", () => RestoreStep(
                     Path.Combine(restoreRoot, "Signatures"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Signatures"),
-                    "Signatures Outlook", rtbRestoreLog, progress, errorList, ct)));
+                    "Signatures Outlook", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office", () => RestoreStep(
                     Path.Combine(restoreRoot, "Templates"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Templates"),
-                    "Modèles Office", rtbRestoreLog, progress, errorList, ct)));
+                    "Modèles Office", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("ExcelMacros")) steps.Add(("Macros Excel (XLSTART)", () => RestoreStep(
                     Path.Combine(restoreRoot, "Excel", "XLSTART"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Excel", "XLSTART"),
-                    "Macros Excel (XLSTART)", rtbRestoreLog, progress, errorList, ct)));
+                    "Macros Excel (XLSTART)", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Sap")) steps.Add(("SAP GUI", () => RestoreStep(
                     Path.Combine(restoreRoot, "SAP"),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SAP"),
-                    "SAP GUI", rtbRestoreLog, progress, errorList, ct)));
+                    "SAP GUI", RestoreLogBox, progress, errorList, ct)));
 
                 if (chkPanelRestore.IsChecked("Public")) steps.Add(("Dossier Public", () => RestoreStep(
                     Path.Combine(restoreRoot, "Public"),
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-                    "Dossier Public", rtbRestoreLog, progress, errorList, ct)));
+                    "Dossier Public", RestoreLogBox, progress, errorList, ct)));
 
-                if (chkPanelRestore.IsChecked("Outlook"))    steps.Add(("Données Outlook",    () => RestoreOutlookDataAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkPanelRestore.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",       () => RestoreStickyNotesAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (btnBrowserPickerRestore.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",        () => RestoreEdgeProfileAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
-                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",  () => RestoreNetworkDrivesInfoAsync(restoreRoot, rtbRestoreLog)));
-                if (chkPanelRestore.IsChecked("Wallpaper"))  steps.Add(("Fond d'écran",        () => RestoreWallpaperAsync(restoreRoot, rtbRestoreLog, ct)));
-                if (chkPanelRestore.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, rtbRestoreLog, progress, errorList, ct)));
+                if (chkPanelRestore.IsChecked("Outlook"))    steps.Add(("Données Outlook",      () => RestoreOutlookDataAsync(restoreRoot, RestoreLogBox, ct)));
+                if (chkPanelRestore.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",         () => RestoreStickyNotesAsync(restoreRoot, RestoreLogBox, ct)));
+                if (btnBrowserPickerRestore.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge", () => RestoreEdgeProfileAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
+                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",    () => RestoreNetworkDrivesInfoAsync(restoreRoot, RestoreLogBox)));
+                if (chkPanelRestore.IsChecked("Wallpaper"))  steps.Add(("Fond d'écran",          () => RestoreWallpaperAsync(restoreRoot, RestoreLogBox, ct)));
+                if (chkPanelRestore.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone", () => RestoreIpDesktopSoftphoneAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -136,23 +136,23 @@ namespace SaveRestoreGUI
 
                 if (chkPanelRestore.IsChecked("LaunchApps"))
                 {
-                    LogTitle(rtbRestoreLog, "Lancement des applications");
+                    LogTitle(RestoreLogBox, "Lancement des applications");
                     await Task.Run(() => AppLauncherService.LaunchApplications(
-                        msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
+                        msg => LogInfo(RestoreLogBox, msg)), CancellationToken.None);
 
-                    LogTitle(rtbRestoreLog, "Synchronisation OneDrive");
+                    LogTitle(RestoreLogBox, "Synchronisation OneDrive");
                     await Task.Run(() => AppLauncherService.OpenOneDriveBackupSettings(
-                        msg => LogInfo(rtbRestoreLog, msg)), CancellationToken.None);
+                        msg => LogInfo(RestoreLogBox, msg)), CancellationToken.None);
                 }
 
                 if (errorList.Count > 0)
                 {
-                    LogTitle(rtbRestoreLog, "Résumé des erreurs rencontrées");
+                    LogTitle(RestoreLogBox, "Résumé des erreurs rencontrées");
                     foreach (var err in errorList)
-                        LogWarning(rtbRestoreLog, err);
+                        LogWarning(RestoreLogBox, err);
                 }
 
-                LogTitle(rtbRestoreLog, "Restauration terminée");
+                LogTitle(RestoreLogBox, "Restauration terminée");
                 UpdateStatus("Restauration terminée avec succès");
                 ToastService.Show(this, "Restauration terminée avec succès !", ToastKind.Success);
 
@@ -161,12 +161,12 @@ namespace SaveRestoreGUI
             }
             catch (OperationCanceledException)
             {
-                LogWarning(rtbRestoreLog, "Restauration annulée par l'utilisateur.");
+                LogWarning(RestoreLogBox, "Restauration annulée par l'utilisateur.");
                 UpdateStatus("Restauration annulée");
             }
             catch (Exception ex)
             {
-                LogError(rtbRestoreLog, $"Erreur : {ex.Message}");
+                LogError(RestoreLogBox, $"Erreur : {ex.Message}");
                 UpdateStatus("Erreur lors de la restauration");
                 MessageBox.Show($"Erreur lors de la restauration :\n{ex.Message}", "Erreur",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
