@@ -18,12 +18,12 @@ namespace SaveRestoreGUI.UI
         // ── Modèle ────────────────────────────────────────────────────────
 
         /// <summary>Navigateurs disponibles. Seuls les IsAvailable=true apparaissent.</summary>
-        public List<BrowserEntry> Browsers { get; } = new();
+        public List<BrowserEntry> Browsers { get; } = [];
 
         /// <summary>Noms des navigateurs actuellement cochés.</summary>
         public IReadOnlyList<string> SelectedBrowsers => _selected.AsReadOnly();
 
-        private readonly List<string> _selected = new();
+        private readonly List<string> _selected = [];
 
         // ── Constructeur ─────────────────────────────────────────────────
 

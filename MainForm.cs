@@ -52,7 +52,6 @@ namespace SaveRestoreGUI
             this.Load += (_, _) =>
             {
                 SyncPageSizes();
-                InitializeBrowserPickers();
                 ApplyAutoDetect();
             };
             this.Resize += (_, _) => SyncPageSizes();
@@ -78,12 +77,6 @@ namespace SaveRestoreGUI
             pageMigration.Bounds = new Rectangle(0, 0, size.Width, size.Height);
 
             ApplyResponsiveLayout();
-        }
-
-        private void InitializeBrowserPickers()
-        {
-            btnBrowserPickerBackup.SetBrowsers(_browserEntries);
-            btnBrowserPickerRestore.SetBrowsers(_browserEntries);
         }
 
         private void ApplyAutoDetect()
@@ -348,7 +341,7 @@ namespace SaveRestoreGUI
 
             if (!hasOldProfile)
             {
-                var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
+                string[] excluded = ["Public", "Default", "Default User", "All Users", "defaultuser0"];
                 hasOldProfile = Directory.GetDirectories(usersDir)
                     .Select(Path.GetFileName)
                     .Any(name =>
@@ -369,7 +362,7 @@ namespace SaveRestoreGUI
 
             if (usersDir == null) return;
 
-            var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
+            string[] excluded = ["Public", "Default", "Default User", "All Users", "defaultuser0"];
 
             var oldProfiles = Directory.GetDirectories(usersDir)
                 .Where(d =>
