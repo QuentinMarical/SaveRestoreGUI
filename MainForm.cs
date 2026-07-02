@@ -15,18 +15,16 @@ namespace SaveRestoreGUI
         private CancellationTokenSource? _cancellationTokenSource;
 
         private string? _logFilePath;
-        // CA2002 / IDE0044 : utiliser System.Threading.Lock (.NET 9+)
         private readonly Lock _logLock = new();
 
         // Résultats passés par Program.cs (pré-calculés pendant le splash)
         private readonly IReadOnlyList<BrowserEntry> _browserEntries;
         private readonly AutoDetectResult _autoDetect;
 
-        // État repliage des logs (true = replié)
-        private bool _backupLogCollapsed    = false;
-        private bool _restoreLogCollapsed   = false;
-        private bool _migrationLogCollapsed = false;
-        private const int LogCollapsedH = 32;
+        // Fenêtres de logs flottantes (une par onglet)
+        private readonly LogWindow _logWindowBackup;
+        private readonly LogWindow _logWindowRestore;
+        private readonly LogWindow _logWindowMigration;
 
         public MainForm(
             IReadOnlyList<BrowserEntry> browserEntries,
@@ -34,6 +32,11 @@ namespace SaveRestoreGUI
         {
             _browserEntries = browserEntries;
             _autoDetect     = autoDetect;
+
+            // Créer les LogWindows avant InitializeComponent (Designer les référence)
+            _logWindowBackup    = new LogWindow("Logs — Sauvegarde",    "backup-log.txt");
+            _logWindowRestore   = new LogWindow("Logs — Restauration",  "restore-log.txt");
+            _logWindowMigration = new LogWindow("Logs — Migration USB", "migration-log.txt");
 
             InitializeComponent();
             ThemeManager.ThemeChanged += OnThemeChanged;
@@ -93,6 +96,9 @@ namespace SaveRestoreGUI
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             ThemeManager.ThemeChanged -= OnThemeChanged;
+            _logWindowBackup.CloseIfOpen();
+            _logWindowRestore.CloseIfOpen();
+            _logWindowMigration.CloseIfOpen();
             base.OnFormClosed(e);
         }
 
@@ -100,6 +106,11 @@ namespace SaveRestoreGUI
 
         private void ShowPage(int index)
         {
+            // Fermer les fenêtres de log des onglets non-actifs
+            if (index != 0) _logWindowBackup.CloseIfOpen();
+            if (index != 1) _logWindowRestore.CloseIfOpen();
+            if (index != 2) _logWindowMigration.CloseIfOpen();
+
             pageBackup.Visible    = index == 0;
             pageRestore.Visible   = index == 1;
             pageMigration.Visible = index == 2;
@@ -129,30 +140,31 @@ namespace SaveRestoreGUI
             ApplyResponsiveLayout();
         }
 
-        // ───────────────────────────── Log toggle ─────────────────────────────
-
-        internal void ToggleBackupLog()
+        // Ouvre (ou met au premier plan) la LogWindow de l'onglet courant
+        private void OpenLogWindow(int index)
         {
-            _backupLogCollapsed = !_backupLogCollapsed;
-            ApplyResponsiveLayout();
+            var win = index switch
+            {
+                0 => _logWindowBackup,
+                1 => _logWindowRestore,
+                2 => _logWindowMigration,
+                _ => _logWindowBackup
+            };
+
+            if (win.Visible)
+            {
+                win.BringToFront();
+                return;
+            }
+
+            win.PositionNear(this);
+            win.Show(this);
         }
 
-        internal void ToggleRestoreLog()
-        {
-            _restoreLogCollapsed = !_restoreLogCollapsed;
-            ApplyResponsiveLayout();
-        }
-
-        internal void ToggleMigrationLog()
-        {
-            _migrationLogCollapsed = !_migrationLogCollapsed;
-            ApplyResponsiveLayout();
-        }
-
-        internal bool BackupLogCollapsed    => _backupLogCollapsed;
-        internal bool RestoreLogCollapsed   => _restoreLogCollapsed;
-        internal bool MigrationLogCollapsed => _migrationLogCollapsed;
-        internal static int LogCollapsedHeight => LogCollapsedH;
+        // Accesseur utilisé par les fichiers Backup/Restore/Migration
+        internal RichTextBox BackupLogBox    => _logWindowBackup.LogBox;
+        internal RichTextBox RestoreLogBox   => _logWindowRestore.LogBox;
+        internal RichTextBox MigrationLogBox => _logWindowMigration.LogBox;
 
         // ───────────────────────────── Thème ──────────────────────────────
 
@@ -194,10 +206,6 @@ namespace SaveRestoreGUI
                     case CardPanel card:
                         ApplyThemeRecursive(card, p);
                         card.Invalidate();
-                        break;
-                    case RichTextBox rtb:
-                        rtb.BackColor = p.ConsoleBackground;
-                        rtb.ForeColor = p.ConsoleText;
                         break;
                     case TextBox txt:
                         txt.BackColor = p.InputBackground;
