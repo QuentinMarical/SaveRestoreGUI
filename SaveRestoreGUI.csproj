@@ -9,17 +9,16 @@
     <ApplicationIcon>diskette.ico</ApplicationIcon>
     <!-- Désactive la génération automatique de AssemblyInfo pour éviter CS0579 -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- LibraryImport (source-gen P/Invoke) génère du code unsafe -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Ce projet est exclusivement Windows (WinForms) : supprime CA1416 globalement -->
-    <!-- SupportedOSPlatformVersion retiré : doit être ≤ TargetPlatformVersion (7.0) -->
-    <!-- Supprime les avertissements CA1416 (plateforme Windows) partout dans le projet -->
+    <!-- Supprime aussi CA1838/SYSLIB1054 (LibraryImport string marshalling) -->
     <NoWarn>$(NoWarn);CA1416;CA1838;SYSLIB1054</NoWarn>
   </PropertyGroup>
 
   <!--
     Propriétés de publication autonome activées UNIQUEMENT lors du dotnet publish.
     Appel : dotnet publish /p:Publishing=true
-    Cela évite que SelfContained=true et RuntimeIdentifier contaminent
-    le projet de tests via ProjectReference lors d'un simple dotnet build.
   -->
   <PropertyGroup Condition="'$(Publishing)' == 'true'">
     <SelfContained>true</SelfContained>
@@ -30,18 +29,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!--
-      Le glob SDK inclut par défaut tous les **/*.cs de manière récursive.
-      On exclut explicitement le dossier Tests pour éviter que les fichiers
-      xUnit soient compilés dans ce projet (CS0246 + CS0579).
-    -->
     <Compile Remove="SaveRestoreGUI.Tests\**" />
     <EmbeddedResource Remove="SaveRestoreGUI.Tests\**" />
     <None Remove="SaveRestoreGUI.Tests\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Seul MainForm.cs est le Form racine — les autres sont des partial classes -->
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -66,11 +59,6 @@
     </Compile>
   </ItemGroup>
 
-  <!--
-    Seul MainForm.resx est légitime.
-    Tous les autres .resx (noms avec point OU underscore) sont exclus
-    de tous les ItemGroups pour éviter le conflit MSB3577.
-  -->
   <ItemGroup>
     <EmbeddedResource Remove="MainForm_Backup.resx" />
     <EmbeddedResource Remove="MainForm_Layout.resx" />
@@ -104,9 +92,6 @@
     <PackageReference Include="System.Management" Version="10.0.9" />
   </ItemGroup>
 
-  <!--
-    Signature automatique du .exe après chaque build.
-  -->
   <Target Name="SignAfterBuild" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
     <PropertyGroup>
       <_ExeToSign>$(TargetDir)$(AssemblyName).exe</_ExeToSign>

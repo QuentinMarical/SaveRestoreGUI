@@ -114,8 +114,9 @@ namespace SaveRestoreGUI
                 if (doubleBackup)
                 {
                     LogTitle(rtbBackupLog, $"Passe 1 — Ancien profil domaine : {Path.GetFileName(domainProfilePath)}");
-                    var steps1 = BuildBackupSteps(backupRoot, domainProfilePath!, progress, errorList, ct,
-                        includePublic: false, includeAppData: false);
+                    // CA1068 : CancellationToken en dernier paramètre
+                    var steps1 = BuildBackupSteps(backupRoot, domainProfilePath!, progress, errorList,
+                        includePublic: false, includeAppData: false, ct);
 
                     int total1 = steps1.Count, idx1 = 0;
                     foreach (var (name, action) in steps1)
@@ -131,8 +132,9 @@ namespace SaveRestoreGUI
                 if (doubleBackup)
                     LogTitle(rtbBackupLog, $"Passe 2 — Profil actuel : {currentUsername}");
 
+                // CA1068 : CancellationToken en dernier paramètre
                 var steps = BuildBackupSteps(backupRoot, cleanProfilePath ?? string.Empty,
-                    progress, errorList, ct, includePublic: true, includeAppData: true);
+                    progress, errorList, includePublic: true, includeAppData: true, ct);
 
                 int totalSteps = steps.Count, currentStep = 0;
                 foreach (var (name, action) in steps)
@@ -197,7 +199,8 @@ namespace SaveRestoreGUI
 
             long total = 0;
 
-            long SizeOf(string path)
+            // IDE0062 : SizeOf ne capture aucune variable d'instance → static
+            static long SizeOf(string path)
             {
                 if (!Directory.Exists(path)) return 0;
                 try
@@ -209,19 +212,19 @@ namespace SaveRestoreGUI
                 catch { return 0; }
             }
 
-            if (chkPanelBackup.IsChecked("Documents"))    total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
-            if (chkPanelBackup.IsChecked("Desktop"))      total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
-            if (chkPanelBackup.IsChecked("Downloads"))    total += SizeOf(Path.Combine(userProfile, "Downloads"));
-            if (chkPanelBackup.IsChecked("Pictures"))     total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
-            if (chkPanelBackup.IsChecked("Music"))        total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
-            if (chkPanelBackup.IsChecked("Videos"))       total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
-            if (chkPanelBackup.IsChecked("Signatures"))   total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Signatures"));
-            if (chkPanelBackup.IsChecked("OfficeTemplates"))    total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Templates"));
-            if (chkPanelBackup.IsChecked("ExcelMacros"))  total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"));
-            if (chkPanelBackup.IsChecked("Sap"))          total += SizeOf(Path.Combine(appDataRoaming, "SAP"));
-            if (btnBrowserPickerBackup.IsSelected("Microsoft Edge"))  total += SizeOf(Path.Combine(appDataLocal, "Microsoft", "Edge", "User Data", "Default"));
-            if (chkPanelBackup.IsChecked("StickyNotes"))  total += SizeOf(Path.Combine(appDataLocal, "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
-            if (chkPanelBackup.IsChecked("Public"))       total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments));
+            if (chkPanelBackup.IsChecked("Documents"))       total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+            if (chkPanelBackup.IsChecked("Desktop"))         total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+            if (chkPanelBackup.IsChecked("Downloads"))       total += SizeOf(Path.Combine(userProfile, "Downloads"));
+            if (chkPanelBackup.IsChecked("Pictures"))        total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+            if (chkPanelBackup.IsChecked("Music"))           total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
+            if (chkPanelBackup.IsChecked("Videos"))          total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
+            if (chkPanelBackup.IsChecked("Signatures"))      total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Signatures"));
+            if (chkPanelBackup.IsChecked("OfficeTemplates")) total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Templates"));
+            if (chkPanelBackup.IsChecked("ExcelMacros"))     total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"));
+            if (chkPanelBackup.IsChecked("Sap"))             total += SizeOf(Path.Combine(appDataRoaming, "SAP"));
+            if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) total += SizeOf(Path.Combine(appDataLocal, "Microsoft", "Edge", "User Data", "Default"));
+            if (chkPanelBackup.IsChecked("StickyNotes"))     total += SizeOf(Path.Combine(appDataLocal, "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
+            if (chkPanelBackup.IsChecked("Public"))          total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments));
 
             return total;
         }
@@ -230,14 +233,18 @@ namespace SaveRestoreGUI
         //  Construction des étapes de sauvegarde
         // ───────────────────────────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Construit la liste ordonnée des étapes de sauvegarde.
+        /// CancellationToken est en dernier paramètre (CA1068).
+        /// </summary>
         private List<(string Name, Func<Task> Action)> BuildBackupSteps(
             string backupRoot,
             string sourceProfileOverride,
             IProgress<int> progress,
             List<string> errorList,
-            CancellationToken ct,
             bool includePublic,
-            bool includeAppData)
+            bool includeAppData,
+            CancellationToken ct)
         {
             var steps = new List<(string Name, Func<Task> Action)>();
 
@@ -279,17 +286,17 @@ namespace SaveRestoreGUI
                     ? Path.Combine(sourceProfileOverride, "AppData", "Roaming")
                     : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-                if (chkPanelBackup.IsChecked("Signatures"))  steps.Add(("Signatures Outlook",  () => BackupSignaturesAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("OfficeTemplates"))   steps.Add(("Modèles Office",       () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),     Path.Combine(backupRoot, "Templates"),               "Modèles Office",       rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("ExcelMacros")) steps.Add(("Macros Excel (XLSTART)",() => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"), Path.Combine(backupRoot, "Excel", "XLSTART"),        "Macros Excel (XLSTART)",rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Sap"))         steps.Add(("SAP GUI",              () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                          Path.Combine(backupRoot, "SAP"),                     "SAP GUI",               rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Outlook"))     steps.Add(("Données Outlook",      () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
-                if (chkPanelBackup.IsChecked("OneNote"))     steps.Add(("OneNote (registre)",   () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
-                if (chkPanelBackup.IsChecked("StickyNotes")) steps.Add(("Sticky Notes",         () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
-                if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",          () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Wallpaper"))   steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
-                if (chkPanelBackup.IsChecked("NetworkDrives"))steps.Add(("Lecteurs réseau",     () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
-                if (chkPanelBackup.IsChecked("IpSoftphone")) steps.Add(("IP Desktop Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Signatures"))     steps.Add(("Signatures Outlook",   () => BackupSignaturesAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office",       () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),     Path.Combine(backupRoot, "Templates"),        "Modèles Office",        rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("ExcelMacros"))    steps.Add(("Macros Excel (XLSTART)",() => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"), Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Sap"))            steps.Add(("SAP GUI",              () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                          Path.Combine(backupRoot, "SAP"),              "SAP GUI",                rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Outlook"))        steps.Add(("Données Outlook",      () => BackupOutlookDataAsync(backupRoot, rtbBackupLog, ct)));
+                if (chkPanelBackup.IsChecked("OneNote"))        steps.Add(("OneNote (registre)",   () => BackupOneNoteAsync(backupRoot, rtbBackupLog)));
+                if (chkPanelBackup.IsChecked("StickyNotes"))    steps.Add(("Sticky Notes",         () => BackupStickyNotesAsync(backupRoot, rtbBackupLog, ct)));
+                if (btnBrowserPickerBackup.IsSelected("Microsoft Edge")) steps.Add(("Profil Edge",  () => BackupEdgeProfileAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Wallpaper"))      steps.Add(("Fond d'écran",         () => BackupWallpaperAsync(backupRoot, rtbBackupLog)));
+                if (chkPanelBackup.IsChecked("NetworkDrives"))  steps.Add(("Lecteurs réseau",      () => BackupNetworkDrivesAsync(backupRoot, rtbBackupLog)));
+                if (chkPanelBackup.IsChecked("IpSoftphone"))    steps.Add(("IP Desktop Softphone", () => BackupIpDesktopSoftphoneAsync(backupRoot, rtbBackupLog, progress, errorList, ct)));
             }
 
             if (includePublic && chkPanelBackup.IsChecked("Public")) steps.Add(("Dossier Public", () => CopyStep(
@@ -553,8 +560,7 @@ namespace SaveRestoreGUI
                 var lines = new List<string>();
                 try
                 {
-                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                        @"Network");
+                    using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Network");
                     if (key == null)
                     {
                         LogInfo(rtb, "Aucun lecteur réseau trouvé.");
