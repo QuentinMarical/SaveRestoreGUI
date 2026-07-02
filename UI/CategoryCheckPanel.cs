@@ -41,6 +41,9 @@ namespace SaveRestoreGUI.UI
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
+        // Taille de l'icône SVG rendue dans chaque tuile
+        private const int IconSize   = 36;
+
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
         private string?                  _hoverItem;
@@ -246,7 +249,7 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp, tilePath);
             }
 
-            // Checkbox
+            // ── Checkbox (coin haut-gauche)
             int cbx = x + 8, cby = y + 8;
             var boxRect = new Rectangle(cbx, cby, CheckBoxW, CheckBoxW);
             using var boxPath = RoundRect(boxRect, 4);
@@ -270,13 +273,57 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp, boxPath);
             }
 
-            // Icône emoji centrée
-            using var emojiFont = new Font("Segoe UI Emoji", 22f);
-            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            using var emojiB = new SolidBrush(Color.FromArgb(chk ? 255 : 160, p.Text));
-            g.DrawString(item.Icon, emojiFont, emojiB, new RectangleF(x, y + 10, w, TileH - 28), sf);
+            // ── Zone disponible pour l'icône (entre checkbox+marge et texte du bas)
+            // Checkbox : y+8 à y+8+CheckBoxW = y+24
+            // Texte bas : y+TileH-22 à y+TileH
+            // Zone icône disponible : de y+28 à y+TileH-24
+            const int iconTopMargin    = 28; // offset depuis le haut de la tuile
+            const int iconBottomMargin = 24; // espace réservé pour le texte du bas
+            int iconAreaTop    = y + iconTopMargin;
+            int iconAreaHeight = TileH - iconTopMargin - iconBottomMargin; // = 38 px
 
-            // Texte en bas
+            Color iconColor = Color.FromArgb(chk ? 220 : 160, p.Text);
+
+            // Tente le rendu SVG officiel
+            var bmp = SvgIcons.Get(item.Key, IconSize, iconColor);
+            if (bmp != null)
+            {
+                // Centre le bitmap dans la zone icône
+                int bx = x + (w - bmp.Width)  / 2;
+                int by = iconAreaTop + (iconAreaHeight - bmp.Height) / 2;
+
+                if (chk)
+                {
+                    // Rendu avec transparence normale
+                    g.DrawImage(bmp, bx, by, bmp.Width, bmp.Height);
+                }
+                else
+                {
+                    // Rendu semi-transparent quand non coché
+                    using var ia = new System.Drawing.Imaging.ImageAttributes();
+                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.63f };
+                    ia.SetColorMatrix(cm);
+                    g.DrawImage(bmp,
+                        new Rectangle(bx, by, bmp.Width, bmp.Height),
+                        0, 0, bmp.Width, bmp.Height,
+                        GraphicsUnit.Pixel, ia);
+                }
+            }
+            else
+            {
+                // Fallback émoji centré dans la même zone
+                using var emojiFont = new Font("Segoe UI Emoji", 18f);
+                var sf = new StringFormat
+                {
+                    Alignment     = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+                using var emojiB = new SolidBrush(iconColor);
+                g.DrawString(item.Icon, emojiFont, emojiB,
+                    new RectangleF(x, iconAreaTop, w, iconAreaHeight), sf);
+            }
+
+            // ── Texte en bas, centré horizontalement
             using var textFont  = new Font("Segoe UI", 7.5f);
             Color textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
