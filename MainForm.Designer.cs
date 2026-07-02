@@ -49,8 +49,7 @@ namespace SaveRestoreGUI
         private ModernButton btnStartBackup;
         private ModernButton btnCancelBackup;
         private ModernButton btnExportBackupLog;
-        private ModernButton btnToggleBackupLog;
-        private RichTextBox rtbBackupLog;
+        private ModernButton btnOpenBackupLog;
         private BrowserPickerButton btnBrowserPickerBackup;
 
         // ─── Page Restauration ───
@@ -67,8 +66,7 @@ namespace SaveRestoreGUI
         private ModernButton btnStartRestore;
         private ModernButton btnCancelRestore;
         private ModernButton btnExportRestoreLog;
-        private ModernButton btnToggleRestoreLog;
-        private RichTextBox rtbRestoreLog;
+        private ModernButton btnOpenRestoreLog;
         private BrowserPickerButton btnBrowserPickerRestore;
 
         // ─── Page Migration ───
@@ -91,8 +89,7 @@ namespace SaveRestoreGUI
         private ModernButton btnStartMigration;
         private ModernButton btnCancelMigration;
         private ModernButton btnExportMigrationLog;
-        private ModernButton btnToggleMigrationLog;
-        private RichTextBox rtbMigrationLog;
+        private ModernButton btnOpenMigrationLog;
 
         private void InitializeComponent()
         {
@@ -193,18 +190,16 @@ namespace SaveRestoreGUI
             btnStartBackup     = new ModernButton { Text = "Démarrer la sauvegarde" };
             btnCancelBackup    = new ModernButton { Text = "Annuler" };
             btnExportBackupLog = new ModernButton { Text = "Exporter les logs" };
-            btnToggleBackupLog = new ModernButton { Text = "▲ Masquer les logs" };
-            rtbBackupLog       = new RichTextBox  { ReadOnly = true, BorderStyle = BorderStyle.None };
+            btnOpenBackupLog   = new ModernButton { Text = "\U0001f4cb Voir les logs" };
 
             btnStartBackup.Click     += BtnStartBackup_Click;
             btnCancelBackup.Click    += BtnCancelBackup_Click;
-            btnExportBackupLog.Click += (s, e) => ExportLog(rtbBackupLog, "backup-log.txt");
-            btnToggleBackupLog.Click += (s, e) => ToggleBackupLog();
+            btnExportBackupLog.Click += (s, e) => ExportLog(_logWindowBackup.LogBox, "backup-log.txt");
+            btnOpenBackupLog.Click   += (s, e) => OpenLogWindow(0);
 
             pageBackup.Controls.AddRange(new Control[] {
                 cardBackupDest, cardBackupOptions,
-                btnStartBackup, btnCancelBackup, btnExportBackupLog,
-                btnToggleBackupLog, rtbBackupLog
+                btnStartBackup, btnCancelBackup, btnExportBackupLog, btnOpenBackupLog
             });
 
             // ════════════════════════════════════════════════
@@ -227,18 +222,16 @@ namespace SaveRestoreGUI
             btnStartRestore     = new ModernButton { Text = "Démarrer la restauration" };
             btnCancelRestore    = new ModernButton { Text = "Annuler" };
             btnExportRestoreLog = new ModernButton { Text = "Exporter les logs" };
-            btnToggleRestoreLog = new ModernButton { Text = "▲ Masquer les logs" };
-            rtbRestoreLog       = new RichTextBox  { ReadOnly = true, BorderStyle = BorderStyle.None };
+            btnOpenRestoreLog   = new ModernButton { Text = "\U0001f4cb Voir les logs" };
 
             btnStartRestore.Click     += BtnStartRestore_Click;
             btnCancelRestore.Click    += BtnCancelRestore_Click;
-            btnExportRestoreLog.Click += (s, e) => ExportLog(rtbRestoreLog, "restore-log.txt");
-            btnToggleRestoreLog.Click += (s, e) => ToggleRestoreLog();
+            btnExportRestoreLog.Click += (s, e) => ExportLog(_logWindowRestore.LogBox, "restore-log.txt");
+            btnOpenRestoreLog.Click   += (s, e) => OpenLogWindow(1);
 
             pageRestore.Controls.AddRange(new Control[] {
                 cardRestoreSource, cardRestoreOptions,
-                btnStartRestore, btnCancelRestore, btnExportRestoreLog,
-                btnToggleRestoreLog, rtbRestoreLog
+                btnStartRestore, btnCancelRestore, btnExportRestoreLog, btnOpenRestoreLog
             });
 
             // ════════════════════════════════════════════════
@@ -254,7 +247,6 @@ namespace SaveRestoreGUI
             lblBitLockerStatus  = new Label   { Text = "", AutoSize = false };
             lblMigrationInfo    = new Label   { Text = "", AutoSize = false, Tag = "secondary" };
 
-            // btnBitLocker est le même bouton que btnUnlockBitLocker (alias)
             btnBitLocker = btnUnlockBitLocker;
 
             cmbUSBDrives.SelectedIndexChanged += CmbUSBDrives_SelectedIndexChanged;
@@ -276,18 +268,16 @@ namespace SaveRestoreGUI
             btnStartMigration     = new ModernButton { Text = "Démarrer la migration" };
             btnCancelMigration    = new ModernButton { Text = "Annuler" };
             btnExportMigrationLog = new ModernButton { Text = "Exporter les logs" };
-            btnToggleMigrationLog = new ModernButton { Text = "▲ Masquer les logs" };
-            rtbMigrationLog       = new RichTextBox  { ReadOnly = true, BorderStyle = BorderStyle.None };
+            btnOpenMigrationLog   = new ModernButton { Text = "\U0001f4cb Voir les logs" };
 
             btnStartMigration.Click     += BtnStartMigration_Click;
             btnCancelMigration.Click    += BtnCancelMigration_Click;
-            btnExportMigrationLog.Click += (s, e) => ExportLog(rtbMigrationLog, "migration-log.txt");
-            btnToggleMigrationLog.Click += (s, e) => ToggleMigrationLog();
+            btnExportMigrationLog.Click += (s, e) => ExportLog(_logWindowMigration.LogBox, "migration-log.txt");
+            btnOpenMigrationLog.Click   += (s, e) => OpenLogWindow(2);
 
             pageMigration.Controls.AddRange(new Control[] {
                 cardMigrationSource, cardMigrationOptions,
-                btnStartMigration, btnCancelMigration, btnExportMigrationLog,
-                btnToggleMigrationLog, rtbMigrationLog
+                btnStartMigration, btnCancelMigration, btnExportMigrationLog, btnOpenMigrationLog
             });
 
             // ── Assemblage final
