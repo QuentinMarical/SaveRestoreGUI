@@ -100,8 +100,6 @@ namespace SaveRestoreGUI.UI
             if (r.DocumentsOnOneDrive) SetChecked("Documents", false);
             if (r.PicturesOnOneDrive)  SetChecked("Pictures",  false);
 
-            SetChecked("Sap",         r.SapDetected);
-            SetChecked("IpSoftphone", r.IpSoftphoneDetected);
             SetChecked("Outlook",     r.OutlookDetected);
             SetChecked("StickyNotes", r.StickyNotesDetected);
 
@@ -185,7 +183,7 @@ namespace SaveRestoreGUI.UI
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
 
-            // Émoji dans le header (pas de tuile, donc pas d'icône Windows ici)
+            // Émoji dans le header (pas de tuile, donc pas d'icône SVG ici)
             using var emojiFont = new Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
@@ -262,15 +260,18 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône Windows (imageres.dll)
-            //    Zone : de (y + IconZoneTop) jusqu'à (y + IconZoneTop + IconZoneHeight)
-            //    Centrée horizontalement et verticalement dans cette zone.
+            // ── Icône SVG centrée dans la zone dédiée
+            //    Zone verticale : [y + IconZoneTop .. y + IconZoneTop + IconZoneHeight]
+            //    Zone horizontale : centrée sur la largeur w
             int iconAreaTop = y + IconZoneTop;
 
-            Bitmap? bmp = WindowsIcons.Get(item.Key, IconSize);
+            // Couleur de remplissage : accent si coché, texte secondaire sinon
+            Color iconFill = chk ? p.Accent : p.TextSecondary;
+            Bitmap? bmp = SvgIcons.Get(item.Key, IconSize, iconFill);
+
             if (bmp != null)
             {
-                int bx = x + (w         - bmp.Width)  / 2;
+                int bx = x + (w             - bmp.Width)  / 2;
                 int by = iconAreaTop + (IconZoneHeight - bmp.Height) / 2;
 
                 if (chk)
@@ -292,7 +293,7 @@ namespace SaveRestoreGUI.UI
             }
             else
             {
-                // Fallback émoji si imageres échoue
+                // Fallback émoji si SVG indisponible pour cette clé
                 using var emojiFont = new Font("Segoe UI Emoji", 18f);
                 var sf = new StringFormat
                 {
@@ -402,47 +403,40 @@ namespace SaveRestoreGUI.UI
         {
             var userFiles = new List<CheckItem>
             {
-                new("Desktop",    "Bureau",           "🖥️"),
-                new("Documents",  "Documents",        "📄"),
-                new("Pictures",   "Images",           "🗃️"),
-                new("Videos",     "Vidéos",           "🎬"),
-                new("Downloads",  "Téléchargements",  "⬇️"),
-                new("Music",      "Musique",          "🎵"),
-                new("Public",     "Dossier Public",   "📂"),
+                new("Desktop",    "Bureau",          "🖥️"),
+                new("Documents",  "Documents",       "📄"),
+                new("Pictures",   "Images",          "🗃️"),
+                new("Videos",     "Vidéos",          "🎬"),
+                new("Downloads",  "Téléchargements", "⬇️"),
+                new("Music",      "Musique",         "🎵"),
+                new("Public",     "Dossier Public",  "📂"),
             };
             if (includeOldProfile)
                 userFiles.Add(new("OldProfile", "Ancien profil", "👤", false));
 
             var office = new CheckItem[]
             {
-                new("Outlook",         "PST Outlook",    "📧",  false),
-                new("Signatures",      "Signatures",     "✍️",  false),
-                new("OfficeTemplates", "Modèles Office", "📋",  false),
-                new("OneNote",         "OneNote",        "📓",  false),
-                new("StickyNotes",     "Sticky Notes",   "📌",  false),
-                new("ExcelMacros",     "Macros Excel",   "📊",  false),
+                new("Outlook",         "PST Outlook",    "📧", false),
+                new("Signatures",      "Signatures",     "✍️", false),
+                new("OfficeTemplates", "Modèles Office", "📋", false),
+                new("OneNote",         "OneNote",        "📓", false),
+                new("StickyNotes",     "Sticky Notes",   "📌", false),
+                new("ExcelMacros",     "Macros Excel",   "📊", false),
             };
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",    "🖼️",  false),
-                new("NetworkDrives", "Lecteurs réseau", "🔗",  false),
+                new("Wallpaper",     "Fond d'écran",   "🖼️", false),
+                new("NetworkDrives", "Lecteurs réseau", "🔗", false),
             };
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Applications", "🚀"));
-
-            var business = new CheckItem[]
-            {
-                new("Sap",         "SAP GUI",      "🗂️", false),
-                new("IpSoftphone", "IP Softphone", "📞", false),
-            };
 
             return new[]
             {
                 new CheckCategory("Fichiers utilisateur",       "📁", userFiles.ToArray()),
                 new CheckCategory("Bureautique",                "💼", office),
                 new CheckCategory("Système & Personnalisation", "⚙️", systemItems.ToArray()),
-                new CheckCategory("Logiciels métier",           "🏢", business),
             };
         }
     }
