@@ -45,8 +45,8 @@ namespace SaveRestoreGUI.UI
         private const int IconZoneTop    = 28; // offset depuis le haut de la tuile
         private const int IconZoneHeight = 38; // hauteur disponible pour l'icône
 
-        // Taille de l'icône SVG rendue dans chaque tuile
-        private const int IconSize       = 36;
+        // Taille de rendu SVG
+        private const int IconSize = 36;
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
@@ -101,24 +101,21 @@ namespace SaveRestoreGUI.UI
         /// </summary>
         public void ApplyAutoDetect(AutoDetectResult r)
         {
-            // OneDrive
             if (r.DesktopOnOneDrive)   SetChecked("Desktop",   false);
             if (r.DocumentsOnOneDrive) SetChecked("Documents", false);
             if (r.PicturesOnOneDrive)  SetChecked("Pictures",  false);
 
-            // Logiciels métier (présents → coché, absents → décoché)
             SetChecked("Sap",         r.SapDetected);
             SetChecked("IpSoftphone", r.IpSoftphoneDetected);
             SetChecked("Outlook",     r.OutlookDetected);
             SetChecked("StickyNotes", r.StickyNotesDetected);
 
-            // Données bureautique / système (coché uniquement si données présentes)
-            SetChecked("Wallpaper",      r.HasWallpaper);
-            SetChecked("NetworkDrives",  r.HasNetworkDrives);
-            SetChecked("OneNote",        r.HasOneNote);
-            SetChecked("Signatures",     r.HasSignatures);
-            SetChecked("OfficeTemplates",r.HasOfficeTemplates);
-            SetChecked("ExcelMacros",    r.HasExcelMacros);
+            SetChecked("Wallpaper",       r.HasWallpaper);
+            SetChecked("NetworkDrives",   r.HasNetworkDrives);
+            SetChecked("OneNote",         r.HasOneNote);
+            SetChecked("Signatures",      r.HasSignatures);
+            SetChecked("OfficeTemplates", r.HasOfficeTemplates);
+            SetChecked("ExcelMacros",     r.HasExcelMacros);
         }
 
         protected override void OnResize(EventArgs e)
@@ -277,12 +274,14 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Zone icône (centrage parfait)
+            // ── Zone icône : centrage parfait
+            //    L'icône est rendue avec p.Accent (couleur vive, opaque).
+            //    L'opacité est appliquée au DrawImage via ColorMatrix uniquement.
             int iconAreaTop    = y + IconZoneTop;
             int iconAreaHeight = IconZoneHeight;
-            Color iconColor    = Color.FromArgb(chk ? 220 : 160, p.Text);
 
-            var bmp = SvgIcons.Get(item.Key, IconSize, iconColor);
+            // Toujours passer la couleur accent OPAQUE au cache SVG
+            var bmp = SvgIcons.Get(item.Key, IconSize, p.Accent);
             if (bmp != null)
             {
                 int bx = x + (w - bmp.Width)  / 2;
@@ -290,12 +289,14 @@ namespace SaveRestoreGUI.UI
 
                 if (chk)
                 {
+                    // Coché : pleine opacité
                     g.DrawImage(bmp, bx, by, bmp.Width, bmp.Height);
                 }
                 else
                 {
+                    // Non-coché : 55 % opacité via ColorMatrix (alpha multiplier)
                     using var ia = new System.Drawing.Imaging.ImageAttributes();
-                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.63f };
+                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.55f };
                     ia.SetColorMatrix(cm);
                     g.DrawImage(bmp,
                         new Rectangle(bx, by, bmp.Width, bmp.Height),
@@ -305,19 +306,21 @@ namespace SaveRestoreGUI.UI
             }
             else
             {
+                // Fallback émoji si pas de SVG
                 using var emojiFont = new Font("Segoe UI Emoji", 18f);
                 var sf = new StringFormat
                 {
                     Alignment     = StringAlignment.Center,
                     LineAlignment = StringAlignment.Center
                 };
-                using var emojiB = new SolidBrush(iconColor);
+                Color emojiColor = Color.FromArgb(chk ? 220 : 140, p.Text);
+                using var emojiB = new SolidBrush(emojiColor);
                 g.DrawString(item.Icon, emojiFont, emojiB,
                     new RectangleF(x, iconAreaTop, w, iconAreaHeight), sf);
             }
 
             // ── Texte en bas, centré horizontalement
-            using var textFont  = new Font("Segoe UI", 7.5f);
+            using var textFont = new Font("Segoe UI", 7.5f);
             Color textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
                 new Rectangle(x + 2, y + TileH - 22, w - 4, 20),
