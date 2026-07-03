@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
@@ -13,7 +14,6 @@ namespace SaveRestoreGUI.UI
     {
         public string Key            { get; }
         public string Text           { get; }
-        /// <summary>Clé SVG utilisée par <see cref="SvgIcons"/>.</summary>
         public string Icon           { get; }
         public bool   DefaultChecked { get; }
         public CheckItem(string key, string text, string icon, bool defaultChecked = true)
@@ -23,7 +23,6 @@ namespace SaveRestoreGUI.UI
     public class CheckCategory
     {
         public string      Label    { get; }
-        /// <summary>Emoji affiché uniquement dans l'en-tête de catégorie.</summary>
         public string      Icon     { get; }
         public CheckItem[] Items    { get; }
         public bool        Expanded { get; set; } = true;
@@ -34,7 +33,7 @@ namespace SaveRestoreGUI.UI
     [SupportedOSPlatform("windows")]
     public class CategoryCheckPanel : Panel
     {
-        // ── Layout général ────────────────────────────────────────────────────
+        // ── Layout général ──────────────────────────────────────────────────
         private const int HeaderH    = 34;
         private const int TileW      = 100;
         private const int TileH      = 90;
@@ -43,16 +42,21 @@ namespace SaveRestoreGUI.UI
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
-        // ── Zone icône dans la tuile ─────────────────────────────────────────
-        // Checkbox : y+8 .. y+8+16 = y+24. Marge 2px = début zone à y+26.
-        // Texte    : y+TileH-22 = y+68. Zone icône = y+26 .. y+68 → hauteur 42.
+        // ── Zone icône ──────────────────────────────────────────────────
+        // Checkbox :  y+8  .. y+24   (hauteur 16)
+        // Marge   :   y+24 .. y+26   (2 px)
+        // Zone    :   y+26 .. y+68   (hauteur 42)
+        // Texte   :   y+68 .. y+90   (hauteur 22)
         private const int IconZoneTop    = 26;   // relatif à la tuile
-        private const int IconZoneHeight = 42;   // pixels
-        private const int IconSize       = 32;   // taille du bitmap rendu
+        private const int IconZoneHeight = 42;
+        private const int IconSize       = 32;   // taille bitmap rendu
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
         private string?                  _hoverItem;
+
+        // Cache d'icônes natives (WindowsIcons) pour ce panneau
+        private readonly Dictionary<string, Bitmap?> _nativeCache = new();
 
         public event EventHandler? CheckedChanged;
 
@@ -69,12 +73,13 @@ namespace SaveRestoreGUI.UI
             MouseLeave += (_, _) => { _hoverItem = null; Invalidate(); };
         }
 
-        // ── API publique ──────────────────────────────────────────────────────
+        // ── API publique ──────────────────────────────────────────────────
 
         public void SetCategories(IEnumerable<CheckCategory> categories)
         {
             _categories = new List<CheckCategory>(categories);
             _checked.Clear();
+            _nativeCache.Clear();
             foreach (var cat in _categories)
                 foreach (var item in cat.Items)
                     _checked[item.Key] = item.DefaultChecked;
@@ -113,10 +118,11 @@ namespace SaveRestoreGUI.UI
             SetChecked("ExcelMacros",     r.HasExcelMacros);
         }
 
-        // Vide le cache SVG si le thème change.
         public void InvalidateIcons()
         {
+            _nativeCache.Clear();
             SvgIcons.ClearCache();
+            WindowsIcons.ClearCache();
             Invalidate();
         }
 
@@ -125,7 +131,28 @@ namespace SaveRestoreGUI.UI
 
         private void UpdateScrollBounds() => AutoScrollMinSize = new Size(0, CalcTotalHeight());
 
-        // ── Calculs de layout ─────────────────────────────────────────────────
+        // ── Résolution d'icône : WindowsIcons en priorité, SvgIcons en fallback ──
+
+        /// <summary>
+        /// Retourne le bitmap à afficher pour un élément :
+        ///   1. WindowsIcons (SHGetFileInfo, couleurs natives OS)
+        ///   2. SvgIcons (formes GDI+ teintées au thème) si WindowsIcons retourne null
+        /// </summary>
+        private Bitmap GetItemIcon(CheckItem item, Color fallbackColor)
+        {
+            if (!_nativeCache.TryGetValue(item.Icon, out var native))
+            {
+                native = WindowsIcons.Get(item.Icon, IconSize);
+                _nativeCache[item.Icon] = native;
+            }
+            // Icône native trouvée : on la renvoie telle quelle (couleurs OS conservées)
+            if (native != null) return native;
+
+            // Fallback GDI+
+            return SvgIcons.Get(item.Icon, IconSize, fallbackColor);
+        }
+
+        // ── Calculs de layout ───────────────────────────────────────────────
 
         private int ColsActual()
         {
@@ -159,7 +186,7 @@ namespace SaveRestoreGUI.UI
             return h + 4;
         }
 
-        // ── Rendu principal ───────────────────────────────────────────────────
+        // ── Rendu principal ───────────────────────────────────────────────
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -192,7 +219,6 @@ namespace SaveRestoreGUI.UI
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
 
-            // Emoji header (Segoe UI Emoji) — acceptable dans les en-têtes de catégorie uniquement
             using var emojiFont = new Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
@@ -269,27 +295,27 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône SVG imagère — centrée dans la zone dédiée
-            // Couleur de l'icône : accent si coché, texte atténué sinon
-            Color iconColor = chk
+            // ── Icône native Windows (ou fallback GDI+), centrée dans la zone dédiée
+            // Couleur fallback GDI+ uniquement (WindowsIcons = couleurs natives, pas de teinte)
+            Color fallbackColor = chk
                 ? Color.FromArgb(230, p.Accent.R, p.Accent.G, p.Accent.B)
-                : Color.FromArgb(140, p.Text.R, p.Text.G, p.Text.B);
+                : Color.FromArgb(140, p.Text.R,   p.Text.G,   p.Text.B);
 
-            var bmp = SvgIcons.Get(item.Icon, IconSize, iconColor);
+            var bmp = GetItemIcon(item, fallbackColor);
 
-            // Centrage horizontal et vertical dans la zone IconZone
-            int iconX = x + (w - IconSize) / 2;
+            // Centrage horizontal et vertical strict dans la zone dédiée
+            int iconX = x + (w        - IconSize) / 2;
             int iconY = y + IconZoneTop + (IconZoneHeight - IconSize) / 2;
 
-            // Opacité réduite si non coché
+            // Opacité pleine si coché, atténuée sinon (45 %)
             if (chk)
             {
                 g.DrawImage(bmp, iconX, iconY, IconSize, IconSize);
             }
             else
             {
-                using var ia = new System.Drawing.Imaging.ImageAttributes();
-                var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.45f };
+                using var ia = new ImageAttributes();
+                var cm = new ColorMatrix { Matrix33 = 0.45f };
                 ia.SetColorMatrix(cm);
                 g.DrawImage(bmp,
                     new Rectangle(iconX, iconY, IconSize, IconSize),
@@ -306,7 +332,7 @@ namespace SaveRestoreGUI.UI
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
         }
 
-        // ── Interactions ──────────────────────────────────────────────────────
+        // ── Interactions ─────────────────────────────────────────────────
 
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
@@ -408,7 +434,7 @@ namespace SaveRestoreGUI.UI
             var office = new CheckItem[]
             {
                 new("Outlook",         "PST Outlook",    "Outlook",         false),
-                new("Signatures",      "Signatures",     "Documents",       false),
+                new("Signatures",      "Signatures",     "Signatures",      false),
                 new("OfficeTemplates", "Modèles Office", "OfficeTemplates", false),
                 new("OneNote",         "OneNote",        "OneNote",         false),
                 new("StickyNotes",     "Sticky Notes",   "StickyNotes",     false),
@@ -417,7 +443,7 @@ namespace SaveRestoreGUI.UI
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",   "Wallpaper",     false),
+                new("Wallpaper",     "Fond d'écran",    "Wallpaper",     false),
                 new("NetworkDrives", "Lecteurs réseau", "NetworkDrives", false),
             };
             if (includeLaunchApps)
