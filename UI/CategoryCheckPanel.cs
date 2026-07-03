@@ -13,7 +13,7 @@ namespace SaveRestoreGUI.UI
     {
         public string Key            { get; }
         public string Text           { get; }
-        public string Icon           { get; }
+        public string Icon           { get; }  // emoji fallback (headers)
         public bool   DefaultChecked { get; }
         public CheckItem(string key, string text, string icon, bool defaultChecked = true)
         { Key = key; Text = text; Icon = icon; DefaultChecked = defaultChecked; }
@@ -22,7 +22,7 @@ namespace SaveRestoreGUI.UI
     public class CheckCategory
     {
         public string      Label    { get; }
-        public string      Icon     { get; }
+        public string      Icon     { get; }  // emoji (headers)
         public CheckItem[] Items    { get; }
         public bool        Expanded { get; set; } = true;
         public CheckCategory(string label, string icon, CheckItem[] items)
@@ -41,12 +41,12 @@ namespace SaveRestoreGUI.UI
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
-        // ── Zone icône dans la tuile (entre checkbox et texte du bas)
-        private const int IconZoneTop    = 28; // offset depuis le haut de la tuile
-        private const int IconZoneHeight = 38; // hauteur disponible pour l'icône
-
-        // Taille de rendu SVG
-        private const int IconSize = 36;
+        // ── Zone icône dans la tuile
+        //    De y+IconZoneTop jusqu'à y+IconZoneTop+IconZoneHeight
+        //    (entre la checkbox à y+8 et le texte à y+TileH-22)
+        private const int IconZoneTop    = 26;   // pixels depuis le haut de la tuile
+        private const int IconZoneHeight = 42;   // hauteur disponible pour l'icône
+        private const int IconSize       = 36;   // taille du bitmap rendu
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
@@ -67,7 +67,8 @@ namespace SaveRestoreGUI.UI
             MouseLeave += (_, _) => { _hoverItem = null; Invalidate(); };
         }
 
-        // ── API publique
+        // ── API publique ──────────────────────────────────────────────────────
+
         public void SetCategories(IEnumerable<CheckCategory> categories)
         {
             _categories = new List<CheckCategory>(categories);
@@ -93,12 +94,6 @@ namespace SaveRestoreGUI.UI
             CheckedChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>
-        /// Applique les résultats d'auto-détection :
-        /// - Décoche les dossiers synchronisés par OneDrive.
-        /// - Coche les logiciels détectés, décoche ceux qui sont absents.
-        /// - Coche/décoche les éléments dont la présence a été sondée.
-        /// </summary>
         public void ApplyAutoDetect(AutoDetectResult r)
         {
             if (r.DesktopOnOneDrive)   SetChecked("Desktop",   false);
@@ -119,20 +114,17 @@ namespace SaveRestoreGUI.UI
         }
 
         protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-            UpdateScrollBounds();
-        }
+        { base.OnResize(e); UpdateScrollBounds(); }
 
         private void UpdateScrollBounds() => AutoScrollMinSize = new Size(0, CalcTotalHeight());
 
-        // ── Calculs de layout
+        // ── Calculs de layout ─────────────────────────────────────────────────
+
         private int ColsActual()
         {
             int available = Width - HorizPad * 2;
             if (available <= 0) return 5;
-            int n = (available + TileGap) / (TileW + TileGap);
-            return Math.Max(1, n);
+            return Math.Max(1, (available + TileGap) / (TileW + TileGap));
         }
 
         private int ActualTileW()
@@ -142,15 +134,10 @@ namespace SaveRestoreGUI.UI
             return cols <= 1 ? available : (available - TileGap * (cols - 1)) / cols;
         }
 
-        private int RowsForCat(CheckCategory cat)
-        {
-            int cols = ColsActual();
-            return (cat.Items.Length + cols - 1) / cols;
-        }
-
         private int GridHeightForCat(CheckCategory cat)
         {
-            int rows = RowsForCat(cat);
+            int cols = ColsActual();
+            int rows = (cat.Items.Length + cols - 1) / cols;
             return rows * TileH + Math.Max(0, rows - 1) * TileGap;
         }
 
@@ -165,7 +152,8 @@ namespace SaveRestoreGUI.UI
             return h + 4;
         }
 
-        // ── Rendu
+        // ── Rendu principal ───────────────────────────────────────────────────
+
         protected override void OnPaint(PaintEventArgs e)
         {
             var p = ThemeManager.Palette;
@@ -197,6 +185,7 @@ namespace SaveRestoreGUI.UI
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
 
+            // Émoji dans le header (pas de tuile, donc pas d'icône Windows ici)
             using var emojiFont = new Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
@@ -222,7 +211,7 @@ namespace SaveRestoreGUI.UI
                 int col = i % cols;
                 int row = i / cols;
                 int tx  = HorizPad + col * (tileW + TileGap);
-                int ty  = y + row * (TileH + TileGap);
+                int ty  = y + row  * (TileH  + TileGap);
                 if (ty + TileH < 0 || ty > Height) continue;
                 DrawTile(g, p, cat.Items[i], tx, ty, tileW);
             }
@@ -233,6 +222,7 @@ namespace SaveRestoreGUI.UI
             bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
             bool hovered = _hoverItem == item.Key;
 
+            // ── Fond et bordure
             var tileRect = new Rectangle(x, y, w, TileH);
             using var tilePath = RoundRect(tileRect, TileRadius);
 
@@ -243,12 +233,10 @@ namespace SaveRestoreGUI.UI
             using var bgBrush = new SolidBrush(bgColor);
             g.FillPath(bgBrush, tilePath);
 
-            using (var bp = chk
+            using var borderPen = chk
                 ? new Pen(Color.FromArgb(120, p.Accent.R, p.Accent.G, p.Accent.B), 1.5f)
-                : new Pen(Color.FromArgb(40, p.Border.R, p.Border.G, p.Border.B), 1f))
-            {
-                g.DrawPath(bp, tilePath);
-            }
+                : new Pen(Color.FromArgb(40,  p.Border.R, p.Border.G, p.Border.B), 1f);
+            g.DrawPath(borderPen, tilePath);
 
             // ── Checkbox (coin haut-gauche)
             int cbx = x + 8, cby = y + 8;
@@ -274,18 +262,16 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Zone icône : centrage parfait
-            //    L'icône est rendue avec p.Accent (couleur vive, opaque).
-            //    L'opacité est appliquée au DrawImage via ColorMatrix uniquement.
-            int iconAreaTop    = y + IconZoneTop;
-            int iconAreaHeight = IconZoneHeight;
+            // ── Icône Windows (imageres.dll)
+            //    Zone : de (y + IconZoneTop) jusqu'à (y + IconZoneTop + IconZoneHeight)
+            //    Centrée horizontalement et verticalement dans cette zone.
+            int iconAreaTop = y + IconZoneTop;
 
-            // Toujours passer la couleur accent OPAQUE au cache SVG
-            var bmp = SvgIcons.Get(item.Key, IconSize, p.Accent);
+            Bitmap? bmp = WindowsIcons.Get(item.Key, IconSize);
             if (bmp != null)
             {
-                int bx = x + (w - bmp.Width)  / 2;
-                int by = iconAreaTop + (iconAreaHeight - bmp.Height) / 2;
+                int bx = x + (w         - bmp.Width)  / 2;
+                int by = iconAreaTop + (IconZoneHeight - bmp.Height) / 2;
 
                 if (chk)
                 {
@@ -294,7 +280,7 @@ namespace SaveRestoreGUI.UI
                 }
                 else
                 {
-                    // Non-coché : 55 % opacité via ColorMatrix (alpha multiplier)
+                    // Non coché : 55 % d'opacité via ColorMatrix
                     using var ia = new System.Drawing.Imaging.ImageAttributes();
                     var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.55f };
                     ia.SetColorMatrix(cm);
@@ -306,29 +292,30 @@ namespace SaveRestoreGUI.UI
             }
             else
             {
-                // Fallback émoji si pas de SVG
+                // Fallback émoji si imageres échoue
                 using var emojiFont = new Font("Segoe UI Emoji", 18f);
                 var sf = new StringFormat
                 {
                     Alignment     = StringAlignment.Center,
                     LineAlignment = StringAlignment.Center
                 };
-                Color emojiColor = Color.FromArgb(chk ? 220 : 140, p.Text);
+                Color emojiColor = Color.FromArgb(chk ? 220 : 120, p.Text);
                 using var emojiB = new SolidBrush(emojiColor);
                 g.DrawString(item.Icon, emojiFont, emojiB,
-                    new RectangleF(x, iconAreaTop, w, iconAreaHeight), sf);
+                    new RectangleF(x, iconAreaTop, w, IconZoneHeight), sf);
             }
 
-            // ── Texte en bas, centré horizontalement
-            using var textFont = new Font("Segoe UI", 7.5f);
-            Color textColor = chk ? p.Text : p.TextSecondary;
+            // ── Texte en bas, centré
+            using var textFont  = new Font("Segoe UI", 7.5f);
+            Color     textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
                 new Rectangle(x + 2, y + TileH - 22, w - 4, 20),
                 textColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
         }
 
-        // ── Interactions
+        // ── Interactions ──────────────────────────────────────────────────────
+
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
             int y = AutoScrollPosition.Y + 4;
@@ -344,8 +331,7 @@ namespace SaveRestoreGUI.UI
                 }
 
                 y += HeaderH + 6;
-                if (!cat.Expanded)
-                    continue;
+                if (!cat.Expanded) continue;
 
                 int cols  = ColsActual();
                 int tileW = ActualTileW();
@@ -353,8 +339,7 @@ namespace SaveRestoreGUI.UI
                 {
                     int tx = HorizPad + (i % cols) * (tileW + TileGap);
                     int ty = y        + (i / cols) * (TileH  + TileGap);
-                    var tileRect = new Rectangle(tx, ty, tileW, TileH);
-                    if (tileRect.Contains(e.Location))
+                    if (new Rectangle(tx, ty, tileW, TileH).Contains(e.Location))
                     {
                         _checked[cat.Items[i].Key] = !_checked[cat.Items[i].Key];
                         Invalidate();
@@ -370,11 +355,7 @@ namespace SaveRestoreGUI.UI
         private void OnMouseMove(object? sender, MouseEventArgs e)
         {
             var hit = HitTestItem(e.Location);
-            if (hit != _hoverItem)
-            {
-                _hoverItem = hit;
-                Invalidate();
-            }
+            if (hit != _hoverItem) { _hoverItem = hit; Invalidate(); }
         }
 
         private string? HitTestItem(Point pt)
@@ -383,8 +364,7 @@ namespace SaveRestoreGUI.UI
             foreach (var cat in _categories)
             {
                 y += HeaderH + 6;
-                if (!cat.Expanded)
-                    continue;
+                if (!cat.Expanded) continue;
 
                 int cols  = ColsActual();
                 int tileW = ActualTileW();
@@ -392,8 +372,7 @@ namespace SaveRestoreGUI.UI
                 {
                     int tx = HorizPad + (i % cols) * (tileW + TileGap);
                     int ty = y        + (i / cols) * (TileH  + TileGap);
-                    var tileRect = new Rectangle(tx, ty, tileW, TileH);
-                    if (tileRect.Contains(pt))
+                    if (new Rectangle(tx, ty, tileW, TileH).Contains(pt))
                         return cat.Items[i].Key;
                 }
 
