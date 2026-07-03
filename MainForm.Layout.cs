@@ -14,7 +14,7 @@ namespace SaveRestoreGUI
 
         // ── Carte du haut
         private const int TopCardH     = 90;
-        private const int MigTopCardH  = 340;
+        private const int MigTopCardH  = 300;  // réduit : ComboBox profil moins haut qu'une ListBox
 
         // ── Carte options
         private const int CardMinH         = 260;
@@ -39,11 +39,11 @@ namespace SaveRestoreGUI
         private const int MigBitlocY     = 78;
         private const int MigBitlocH     = 34;
         private const int MigLblProfY    = 120;
-        private const int MigListY       = 142;
-        private const int MigListH       = 128;
-        private const int MigBitLockerSY = 278;
+        private const int MigProfCmbY    = 142;   // ComboBox profils (était MigListY)
+        private const int MigProfCmbH    = 30;    // hauteur d'un ComboBox standard
+        private const int MigBitLockerSY = 182;   // décalé pour coller au ComboBox
         private const int MigBitLockerSH = 32;
-        private const int MigInfoY       = 318;
+        private const int MigInfoY       = 222;
         private const int MigInfoH       = 16;
 
         public void ApplyResponsiveLayout()
@@ -131,7 +131,7 @@ namespace SaveRestoreGUI
 
             btnUnlockBitLocker.SetBounds(InnerPad, MigBitlocY, cw - InnerPad * 2, MigBitlocH);
             lblProfiles.SetBounds(InnerPad, MigLblProfY, cw - InnerPad * 2, 20);
-            lstProfiles.SetBounds(InnerPad, MigListY,    cw - InnerPad * 2, MigListH);
+            cmbProfiles.SetBounds(InnerPad, MigProfCmbY, cw - InnerPad * 2, MigProfCmbH);  // ← était lstProfiles
             lblBitLockerStatus.SetBounds(InnerPad, MigBitLockerSY, cw - InnerPad * 2, MigBitLockerSH);
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 

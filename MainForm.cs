@@ -305,7 +305,7 @@ namespace SaveRestoreGUI
             btnMigrateSelectAll.Enabled   = enabled;
             btnMigrateDeselectAll.Enabled = enabled;
             cmbUSBDrives.Enabled  = enabled;
-            lstProfiles.Enabled   = enabled;
+            cmbProfiles.Enabled   = enabled;   // ← était lstProfiles
             btnRefreshUSB.Enabled = enabled;
 
             btnCancelBackup.Enabled    = !enabled;
