@@ -13,7 +13,8 @@ namespace SaveRestoreGUI.UI
     {
         public string Key            { get; }
         public string Text           { get; }
-        public string Icon           { get; }  // emoji Segoe UI Emoji
+        /// <summary>Clé SVG utilisée par <see cref="SvgIcons"/>.</summary>
+        public string Icon           { get; }
         public bool   DefaultChecked { get; }
         public CheckItem(string key, string text, string icon, bool defaultChecked = true)
         { Key = key; Text = text; Icon = icon; DefaultChecked = defaultChecked; }
@@ -22,7 +23,8 @@ namespace SaveRestoreGUI.UI
     public class CheckCategory
     {
         public string      Label    { get; }
-        public string      Icon     { get; }  // emoji (header)
+        /// <summary>Emoji affiché uniquement dans l'en-tête de catégorie.</summary>
+        public string      Icon     { get; }
         public CheckItem[] Items    { get; }
         public bool        Expanded { get; set; } = true;
         public CheckCategory(string label, string icon, CheckItem[] items)
@@ -32,7 +34,7 @@ namespace SaveRestoreGUI.UI
     [SupportedOSPlatform("windows")]
     public class CategoryCheckPanel : Panel
     {
-        // ── Layout général
+        // ── Layout général ────────────────────────────────────────────────────
         private const int HeaderH    = 34;
         private const int TileW      = 100;
         private const int TileH      = 90;
@@ -41,12 +43,12 @@ namespace SaveRestoreGUI.UI
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
-        // ── Zone icône dans la tuile
-        //    checkbox à y+8, texte à y+TileH-22
-        //    IconZoneTop : départ après la checkbox (y + 8 + 16 + 2 = 26)
-        //    IconZoneHeight : espace jusqu'au texte (TileH - 22 - 26 = 42)
-        private const int IconZoneTop    = 26;
-        private const int IconZoneHeight = 42;
+        // ── Zone icône dans la tuile ─────────────────────────────────────────
+        // Checkbox : y+8 .. y+8+16 = y+24. Marge 2px = début zone à y+26.
+        // Texte    : y+TileH-22 = y+68. Zone icône = y+26 .. y+68 → hauteur 42.
+        private const int IconZoneTop    = 26;   // relatif à la tuile
+        private const int IconZoneHeight = 42;   // pixels
+        private const int IconSize       = 32;   // taille du bitmap rendu
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
@@ -109,6 +111,13 @@ namespace SaveRestoreGUI.UI
             SetChecked("Signatures",      r.HasSignatures);
             SetChecked("OfficeTemplates", r.HasOfficeTemplates);
             SetChecked("ExcelMacros",     r.HasExcelMacros);
+        }
+
+        // Vide le cache SVG si le thème change.
+        public void InvalidateIcons()
+        {
+            SvgIcons.ClearCache();
+            Invalidate();
         }
 
         protected override void OnResize(EventArgs e)
@@ -183,6 +192,7 @@ namespace SaveRestoreGUI.UI
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
 
+            // Emoji header (Segoe UI Emoji) — acceptable dans les en-têtes de catégorie uniquement
             using var emojiFont = new Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
@@ -259,23 +269,33 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône emoji centrée dans la zone dédiée
-            //    Zone : [y + IconZoneTop .. y + IconZoneTop + IconZoneHeight]
-            int iconAlpha = chk ? 230 : 120;
-            Color iconColor = Color.FromArgb(iconAlpha, p.Text);
-            using var emojiFont = new Font("Segoe UI Emoji", 18f);
-            using var emojiBrush = new SolidBrush(iconColor);
-            var iconSf = new StringFormat
+            // ── Icône SVG imagère — centrée dans la zone dédiée
+            // Couleur de l'icône : accent si coché, texte atténué sinon
+            Color iconColor = chk
+                ? Color.FromArgb(230, p.Accent.R, p.Accent.G, p.Accent.B)
+                : Color.FromArgb(140, p.Text.R, p.Text.G, p.Text.B);
+
+            var bmp = SvgIcons.Get(item.Icon, IconSize, iconColor);
+
+            // Centrage horizontal et vertical dans la zone IconZone
+            int iconX = x + (w - IconSize) / 2;
+            int iconY = y + IconZoneTop + (IconZoneHeight - IconSize) / 2;
+
+            // Opacité réduite si non coché
+            if (chk)
             {
-                Alignment     = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center
-            };
-            g.DrawString(
-                item.Icon,
-                emojiFont,
-                emojiBrush,
-                new RectangleF(x, y + IconZoneTop, w, IconZoneHeight),
-                iconSf);
+                g.DrawImage(bmp, iconX, iconY, IconSize, IconSize);
+            }
+            else
+            {
+                using var ia = new System.Drawing.Imaging.ImageAttributes();
+                var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.45f };
+                ia.SetColorMatrix(cm);
+                g.DrawImage(bmp,
+                    new Rectangle(iconX, iconY, IconSize, IconSize),
+                    0, 0, IconSize, IconSize,
+                    GraphicsUnit.Pixel, ia);
+            }
 
             // ── Texte en bas, centré
             using var textFont  = new Font("Segoe UI", 7.5f);
@@ -374,34 +394,34 @@ namespace SaveRestoreGUI.UI
         {
             var userFiles = new List<CheckItem>
             {
-                new("Desktop",    "Bureau",          "🖥️"),
-                new("Documents",  "Documents",       "📄"),
-                new("Pictures",   "Images",          "🗃️"),
-                new("Videos",     "Vidéos",          "🎬"),
-                new("Downloads",  "Téléchargements", "⬇️"),
-                new("Music",      "Musique",         "🎵"),
-                new("Public",     "Dossier Public",  "📂"),
+                new("Desktop",   "Bureau",          "Desktop"),
+                new("Documents", "Documents",       "Documents"),
+                new("Pictures",  "Images",          "Pictures"),
+                new("Videos",    "Vidéos",          "Videos"),
+                new("Downloads", "Téléchargements", "Downloads"),
+                new("Music",     "Musique",         "Music"),
+                new("Public",    "Dossier Public",  "Public"),
             };
             if (includeOldProfile)
-                userFiles.Add(new("OldProfile", "Ancien profil", "👤", false));
+                userFiles.Add(new("OldProfile", "Ancien profil", "OldProfile", false));
 
             var office = new CheckItem[]
             {
-                new("Outlook",         "PST Outlook",    "📧", false),
-                new("Signatures",      "Signatures",     "✍️", false),
-                new("OfficeTemplates", "Modèles Office", "📋", false),
-                new("OneNote",         "OneNote",        "📓", false),
-                new("StickyNotes",     "Sticky Notes",   "📌", false),
-                new("ExcelMacros",     "Macros Excel",   "📊", false),
+                new("Outlook",         "PST Outlook",    "Outlook",         false),
+                new("Signatures",      "Signatures",     "Documents",       false),
+                new("OfficeTemplates", "Modèles Office", "OfficeTemplates", false),
+                new("OneNote",         "OneNote",        "OneNote",         false),
+                new("StickyNotes",     "Sticky Notes",   "StickyNotes",     false),
+                new("ExcelMacros",     "Macros Excel",   "ExcelMacros",     false),
             };
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",    "🖼️", false),
-                new("NetworkDrives", "Lecteurs réseau",  "🔗", false),
+                new("Wallpaper",     "Fond d'écran",   "Wallpaper",     false),
+                new("NetworkDrives", "Lecteurs réseau", "NetworkDrives", false),
             };
             if (includeLaunchApps)
-                systemItems.Add(new("LaunchApps", "Applications", "🚀"));
+                systemItems.Add(new("LaunchApps", "Applications", "LaunchApps"));
 
             return new[]
             {
