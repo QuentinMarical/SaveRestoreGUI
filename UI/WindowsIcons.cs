@@ -10,46 +10,25 @@ using System.Runtime.Versioning;
 namespace SaveRestoreGUI.UI
 {
     /// <summary>
-    /// Icônes Windows natives extraites depuis imageres.dll (Win 10) ou
-    /// imageres.dll.mun (Win 11 - ressources MUI externalisées).
-    ///
-    /// Stratégie d'extraction :
-    ///   1. SHDefExtractIcon sur imageres.dll.mun  (Win 11)
-    ///   2. SHDefExtractIcon sur imageres.dll      (Win 10/11)
-    ///   3. SHGetFileInfo sur le dossier shell réel (fallback)
-    ///
-    /// SHDefExtractIcon gère nativement les fichiers .mun et les DLL
-    /// standard, contrairement à ExtractIconEx qui échoue sur .mun.
-    ///
-    /// Index imageres validés Win 10 21H2 / Win 11 23H2 :
-    ///   3   Dossier générique          15  Bureau
-    ///   5   Lecteur réseau             20  Musique
-    ///   25  Images                     26  Vidéos
-    ///   27  Téléchargements            30  Documents
-    ///   34  Profil utilisateur         36  Dossier public
-    ///   112 OneNote                   168  Fond d'écran
-    ///   174 Excel/feuille calcul      175  Word/document
-    ///   176 Sticky Notes              220  Modèles Office
+    /// Icônes Windows natives via SHGetKnownFolderPath + SHGetFileInfo.
+    /// Stratégie par type de clé :
+    ///   - Dossiers shell  → KNOWNFOLDERID GUID  → SHGetFileInfo
+    ///   - Apps Office     → chemin exe          → SHGetFileInfo
+    ///   - Fallback        → dossier générique réel
     /// </summary>
     [SupportedOSPlatform("windows")]
     public static class WindowsIcons
     {
         // ── P/Invoke ──────────────────────────────────────────────────────────
 
-        // SHDefExtractIcon : fonctionne sur .dll et .mun
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = false)]
-        private static extern int SHDefExtractIconW(
-            string pszIconFile,
-            int    iIndex,
-            uint   uFlags,
-            out IntPtr phiconLarge,
-            out IntPtr phiconSmall,
-            uint   nIconSize);   // LOWORD = large size, HIWORD = small size
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        private static extern int SHGetKnownFolderPath(
+            ref Guid rfid, uint dwFlags, IntPtr hToken,
+            out IntPtr ppszPath);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool DestroyIcon(IntPtr hIcon);
+        [DllImport("ole32.dll")]
+        private static extern void CoTaskMemFree(IntPtr ptr);
 
-        // SHGetFileInfo (fallback dossiers shell réels)
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct SHFILEINFO
         {
@@ -60,200 +39,285 @@ namespace SaveRestoreGUI.UI
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]  public string szTypeName;
         }
 
-        private const uint SHGFI_ICON      = 0x000000100;
-        private const uint SHGFI_LARGEICON = 0x000000000;
+        private const uint SHGFI_ICON       = 0x100;
+        private const uint SHGFI_LARGEICON  = 0x000;
+        private const uint SHGFI_USEFILEATTRIBUTES = 0x010;
+        private const uint FILE_ATTRIBUTE_NORMAL = 0x080;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(
             string pszPath, uint dwFileAttributes,
             ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
-        // ── Chemins imageres ──────────────────────────────────────────────────
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
 
-        private static readonly string[] _imageresPaths = BuildPaths();
+        // ── KnownFolder GUIDs (stables sur toutes versions Windows) ───────────
+        // Source : https://learn.microsoft.com/windows/win32/shell/knownfolderid
 
-        private static string[] BuildPaths()
+        private static readonly Guid FOLDERID_Desktop         = new("B4BFCC3A-DB2C-424C-B029-7FE99A87C641");
+        private static readonly Guid FOLDERID_Documents       = new("FDD39AD0-238F-46AF-ADB4-6C85480369C7");
+        private static readonly Guid FOLDERID_Pictures        = new("33E28130-4E1E-4676-835A-98395C3BC3BB");
+        private static readonly Guid FOLDERID_Videos          = new("18989B1D-99B5-455B-841C-AB7C74E4DDFC");
+        private static readonly Guid FOLDERID_Downloads       = new("374DE290-123F-4565-9164-39C4925E467B");
+        private static readonly Guid FOLDERID_Music           = new("4BD8D571-6D19-48D3-BE97-422220080E43");
+        private static readonly Guid FOLDERID_PublicDocuments = new("ED4824AF-DCE4-45A8-81E2-FC7965083634");
+        private static readonly Guid FOLDERID_Profile         = new("5E6C858F-0E22-4760-9AFE-EA3317B67173");
+        private static readonly Guid FOLDERID_Wallpaper       = new("B7BEDE81-DF94-4682-A7D8-57A52620B86F"); // Themes
+        // Lecteurs réseau : on utilise un chemin UNC fictif pour obtenir l'icône réseau
+
+        // ── Table clé → stratégie ─────────────────────────────────────────────
+
+        private enum IconStrategy { KnownFolder, ExePath, NetworkDrive, GenericFolder }
+
+        private class IconSource
         {
-            string sys32 = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            var list = new List<string>();
-
-            // .mun en premier : Win 11 y stocke les vraies ressources
-            string mun = Path.Combine(sys32, "imageres.dll.mun");
-            if (File.Exists(mun)) list.Add(mun);
-
-            string dll = Path.Combine(sys32, "imageres.dll");
-            if (File.Exists(dll)) list.Add(dll);
-
-            return list.ToArray();
+            public IconStrategy Strategy;
+            public Guid         FolderGuid;  // pour KnownFolder
+            public string[]?    ExeCandidates; // pour ExePath
         }
 
-        // ── Table clé → index imageres ────────────────────────────────────────
-
-        private static readonly Dictionary<string, int> _indexMap =
+        private static readonly Dictionary<string, IconSource> _sources =
             new(StringComparer.OrdinalIgnoreCase)
             {
-                // Fichiers utilisateur
-                { "OldProfile",      34  },
-                { "Desktop",         15  },
-                { "Documents",       30  },
-                { "Pictures",        25  },
-                { "Videos",          26  },
-                { "Downloads",       27  },
-                { "Music",           20  },
-                { "Public",          36  },
+                // Dossiers utilisateur via KNOWNFOLDERID
+                { "Desktop",     new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Desktop         } },
+                { "Documents",   new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Documents       } },
+                { "Pictures",    new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Pictures        } },
+                { "Videos",      new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Videos          } },
+                { "Downloads",   new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Downloads       } },
+                { "Music",       new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Music           } },
+                { "Public",      new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_PublicDocuments } },
+                { "OldProfile",  new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Profile         } },
+                { "Wallpaper",   new() { Strategy = IconStrategy.KnownFolder, FolderGuid = FOLDERID_Wallpaper       } },
 
-                // Bureautique
-                { "Outlook",         174 },
-                { "Signatures",      175 },
-                { "OfficeTemplates", 220 },
-                { "OneNote",         112 },
-                { "StickyNotes",     176 },
-                { "ExcelMacros",     174 },
+                // Lecteur réseau
+                { "NetworkDrives", new() { Strategy = IconStrategy.NetworkDrive } },
 
-                // Système
-                { "Wallpaper",       168 },
-                { "NetworkDrives",   5   },
+                // Applications Office via leur exécutable
+                { "Outlook", new() { Strategy = IconStrategy.ExePath, ExeCandidates = new[]
+                    {
+                        @"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+                        @"C:\Program Files (x86)\Microsoft Office\root\Office16\OUTLOOK.EXE",
+                        @"C:\Program Files\Microsoft Office\Office16\OUTLOOK.EXE",
+                    }}},
+                { "Signatures", new() { Strategy = IconStrategy.ExePath, ExeCandidates = new[]
+                    {
+                        @"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+                        @"C:\Program Files (x86)\Microsoft Office\root\Office16\OUTLOOK.EXE",
+                    }}},
+                { "OfficeTemplates", new() { Strategy = IconStrategy.ExePath, ExeCandidates = new[]
+                    {
+                        @"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
+                        @"C:\Program Files (x86)\Microsoft Office\root\Office16\WINWORD.EXE",
+                    }}},
+                { "OneNote", new() { Strategy = IconStrategy.ExePath, ExeCandidates = new[]
+                    {
+                        @"C:\Program Files\Microsoft Office\root\Office16\ONENOTE.EXE",
+                        @"C:\Program Files (x86)\Microsoft Office\root\Office16\ONENOTE.EXE",
+                        // OneNote UWP
+                        @"C:\Windows\SystemApps\Microsoft.MicrosoftOfficeHub_8wekyb3d8bbwe\OneNote.exe",
+                    }}},
+                { "StickyNotes", new() { Strategy = IconStrategy.ExePath, ExeCandidates = new[]
+                    {
+                        // UWP : MicrosoftStickyNotes
+                        @"C:\Program Files\WindowsApps\Microsoft.MicrosoftStickyNotes_6.1.4.0_x64__8wekyb3d8bbwe\Microsoft.Notes.exe",
+                        // Cherché dynamiquement dans WindowsApps si le chemin fixe échoue
+                    }}},
+                { "ExcelMacros", new() { Strategy = IconStrategy.ExePath, ExeCandidates = new[]
+                    {
+                        @"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE",
+                        @"C:\Program Files (x86)\Microsoft Office\root\Office16\EXCEL.EXE",
+                    }}},
 
-                // Logiciels métier – dossier générique
-                { "Sap",             3   },
-                { "IpSoftphone",     3   },
-                { "LaunchApps",      3   },
+                // SAP et IP Softphone : dossier générique
+                { "Sap",         new() { Strategy = IconStrategy.GenericFolder } },
+                { "IpSoftphone", new() { Strategy = IconStrategy.GenericFolder } },
+                { "LaunchApps",  new() { Strategy = IconStrategy.GenericFolder } },
             };
 
-        // ── Cache ─────────────────────────────────────────────────────────────
+        // ── Cache ──────────────────────────────────────────────────────────────
 
         private static readonly Dictionary<(string key, int size), Bitmap> _cache = new();
 
-        /// <summary>
-        /// Retourne un Bitmap <paramref name="size"/>×<paramref name="size"/> de
-        /// l'icône Windows correspondant à la clé, ou null en cas d'échec.
-        /// Le bitmap est mis en cache — ne pas disposer.
-        /// </summary>
         public static Bitmap? Get(string key, int size)
         {
             var cacheKey = (key, size);
-            if (_cache.TryGetValue(cacheKey, out var cached))
-                return cached;
+            if (_cache.TryGetValue(cacheKey, out var cached)) return cached;
 
-            if (!_indexMap.TryGetValue(key, out int index))
-                return null;
+            if (!_sources.TryGetValue(key, out var src)) return null;
 
-            Bitmap? bmp = TryExtractFromImageres(index, size)
-                       ?? TryExtractFromShellFolder(key, size);
+            Bitmap? bmp = src.Strategy switch
+            {
+                IconStrategy.KnownFolder  => BmpFromKnownFolder(src.FolderGuid, size),
+                IconStrategy.ExePath      => BmpFromExe(src.ExeCandidates!, key, size),
+                IconStrategy.NetworkDrive => BmpFromNetworkDrive(size),
+                IconStrategy.GenericFolder => BmpFromGenericFolder(size),
+                _                         => null
+            };
 
-            if (bmp != null)
-                _cache[cacheKey] = bmp;
-
+            if (bmp != null) _cache[cacheKey] = bmp;
             return bmp;
         }
 
-        /// <summary>Vide le cache (changement de thème/DPI).</summary>
         public static void ClearCache()
         {
             foreach (var b in _cache.Values) b.Dispose();
             _cache.Clear();
         }
 
-        // ── Extraction via SHDefExtractIcon ───────────────────────────────────
+        // ── Stratégies ────────────────────────────────────────────────────────
 
-        private static Bitmap? TryExtractFromImageres(int index, int size)
+        private static Bitmap? BmpFromKnownFolder(Guid guid, int size)
         {
-            foreach (string path in _imageresPaths)
+            try
             {
-                Bitmap? bmp = ExtractOne(path, index, size);
-                if (bmp != null) return bmp;
+                Guid g = guid;
+                int hr = SHGetKnownFolderPath(ref g, 0, IntPtr.Zero, out IntPtr ptr);
+                if (hr != 0) return BmpFromPath(null, size); // fallback générique
+                string path;
+                try   { path = Marshal.PtrToStringUni(ptr)!; }
+                finally { CoTaskMemFree(ptr); }
+                return BmpFromPath(path, size);
             }
+            catch { return null; }
+        }
+
+        private static Bitmap? BmpFromExe(string[] candidates, string key, int size)
+        {
+            // Cherche d'abord parmi les chemins fixes
+            foreach (string c in candidates)
+                if (File.Exists(c))
+                    return BmpFromPath(c, size, isFile: true);
+
+            // Pour StickyNotes UWP : cherche dans WindowsApps
+            if (key.Equals("StickyNotes", StringComparison.OrdinalIgnoreCase))
+            {
+                string? exe = FindStickyNotesExe();
+                if (exe != null) return BmpFromPath(exe, size, isFile: true);
+            }
+
+            // Fallback : dossier générique
+            return BmpFromGenericFolder(size);
+        }
+
+        private static string? FindStickyNotesExe()
+        {
+            try
+            {
+                string wa = @"C:\Program Files\WindowsApps";
+                if (!Directory.Exists(wa)) return null;
+                foreach (var dir in Directory.GetDirectories(wa, "Microsoft.MicrosoftStickyNotes*"))
+                {
+                    // Cherche l'exe principal
+                    foreach (string candidate in new[] { "Microsoft.Notes.exe", "StickyNotes.exe" })
+                    {
+                        string p = Path.Combine(dir, candidate);
+                        if (File.Exists(p)) return p;
+                    }
+                }
+            }
+            catch { }
             return null;
         }
 
-        private static Bitmap? ExtractOne(string dllPath, int index, int targetSize)
+        private static Bitmap? BmpFromNetworkDrive(int size)
         {
-            // nIconSize : LOWORD = taille grande icône demandée (ex. 48)
-            // On demande 48 et on redimensionne après si besoin.
-            uint iconSize = (uint)Math.Min(48, Math.Max(16, targetSize));
-            uint nIconSize = iconSize; // LOWORD seulement suffit
+            // Utilise le chemin d'un dossier réseau fictif type UNC pour l'icône
+            // Si échec, repli sur imageres index 5 via SHDefExtractIcon
+            string? anyNet = FindAnyNetworkDrivePath();
+            if (anyNet != null)
+                return BmpFromPath(anyNet, size);
 
-            IntPtr hLarge = IntPtr.Zero;
-            IntPtr hSmall = IntPtr.Zero;
+            // Repli : icône générique réseau depuis shell32.dll index 275
+            return ExtractFromDll(
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "shell32.dll"),
+                275, size);
+        }
+
+        private static string? FindAnyNetworkDrivePath()
+        {
             try
             {
-                // S_OK = 0, S_FALSE = 1, tout autre code = erreur
-                int hr = SHDefExtractIconW(dllPath, index, 0,
-                                           out hLarge, out hSmall, nIconSize);
+                foreach (var di in DriveInfo.GetDrives())
+                    if (di.DriveType == DriveType.Network && Directory.Exists(di.Name))
+                        return di.Name;
+            }
+            catch { }
+            return null;
+        }
+
+        private static Bitmap? BmpFromGenericFolder(int size)
+        {
+            // Icône dossier générique : on fait SHGetFileInfo sur %TEMP%
+            string temp = Path.GetTempPath();
+            return BmpFromPath(temp, size);
+        }
+
+        // ── BmpFromPath (cœur) : SHGetFileInfo sur un chemin réel ──────────────
+
+        private static Bitmap? BmpFromPath(string? path, int size, bool isFile = false)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            try
+            {
+                var sfi  = new SHFILEINFO();
+                uint flags = SHGFI_ICON | SHGFI_LARGEICON;
+                if (isFile) flags |= SHGFI_USEFILEATTRIBUTES;
+                uint attr  = isFile ? FILE_ATTRIBUTE_NORMAL : 0;
+
+                IntPtr res = SHGetFileInfo(path, attr, ref sfi,
+                    (uint)Marshal.SizeOf(sfi), flags);
+
+                if (res == IntPtr.Zero || sfi.hIcon == IntPtr.Zero) return null;
+
+                try
+                {
+                    using var icon  = Icon.FromHandle(sfi.hIcon);
+                    var bmp32 = IconToBitmap(icon);
+                    if (bmp32 == null) return null;
+                    return bmp32.Width == size && bmp32.Height == size
+                        ? bmp32
+                        : Resize(bmp32, size);
+                }
+                finally
+                {
+                    DestroyIcon(sfi.hIcon);
+                }
+            }
+            catch { return null; }
+        }
+
+        // ── ExtractFromDll (fallback shell32) ──────────────────────────────────
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = false)]
+        private static extern int SHDefExtractIconW(
+            string pszIconFile, int iIndex, uint uFlags,
+            out IntPtr phiconLarge, out IntPtr phiconSmall, uint nIconSize);
+
+        private static Bitmap? ExtractFromDll(string dll, int index, int size)
+        {
+            IntPtr hL = IntPtr.Zero, hS = IntPtr.Zero;
+            try
+            {
+                int hr = SHDefExtractIconW(dll, index, 0, out hL, out hS, (uint)size);
                 if (hr != 0 && hr != 1) return null;
-
-                IntPtr hUse = (hLarge != IntPtr.Zero) ? hLarge : hSmall;
-                if (hUse == IntPtr.Zero) return null;
-
-                using var icon = Icon.FromHandle(hUse);
-                var bmp32 = IconToBitmap(icon);
-                if (bmp32 == null) return null;
-
-                if (bmp32.Width == targetSize && bmp32.Height == targetSize)
-                    return bmp32;
-
-                return Resize(bmp32, targetSize);
+                IntPtr h = hL != IntPtr.Zero ? hL : hS;
+                if (h == IntPtr.Zero) return null;
+                using var icon = Icon.FromHandle(h);
+                var bmp = IconToBitmap(icon);
+                if (bmp == null) return null;
+                return bmp.Width == size && bmp.Height == size ? bmp : Resize(bmp, size);
             }
             catch { return null; }
             finally
             {
-                if (hLarge != IntPtr.Zero) try { DestroyIcon(hLarge); } catch { }
-                if (hSmall != IntPtr.Zero && hSmall != hLarge)
-                    try { DestroyIcon(hSmall); } catch { }
+                if (hL != IntPtr.Zero) try { DestroyIcon(hL); } catch { }
+                if (hS != IntPtr.Zero && hS != hL) try { DestroyIcon(hS); } catch { }
             }
         }
 
-        // ── Fallback SHGetFileInfo (dossiers shell réels) ─────────────────────
-
-        private static readonly Dictionary<string, string?> _shellPaths =
-            new(StringComparer.OrdinalIgnoreCase)
-            {
-                { "Desktop",   Environment.GetFolderPath(Environment.SpecialFolder.Desktop)      },
-                { "Documents", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)  },
-                { "Pictures",  Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)   },
-                { "Videos",    Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)     },
-                { "Music",     Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)      },
-                { "Downloads", GetDownloadsPath()                                                },
-                { "Public",    Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments) },
-            };
-
-        private static string? GetDownloadsPath()
-        {
-            try
-            {
-                string dl = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-                return Directory.Exists(dl) ? dl : null;
-            }
-            catch { return null; }
-        }
-
-        private static Bitmap? TryExtractFromShellFolder(string key, int size)
-        {
-            if (!_shellPaths.TryGetValue(key, out string? path) ||
-                string.IsNullOrEmpty(path) || !Directory.Exists(path))
-                return null;
-
-            try
-            {
-                var sfi = new SHFILEINFO();
-                IntPtr res = SHGetFileInfo(path, 0, ref sfi,
-                    (uint)Marshal.SizeOf(sfi), SHGFI_ICON | SHGFI_LARGEICON);
-
-                if (res == IntPtr.Zero || sfi.hIcon == IntPtr.Zero) return null;
-
-                using var icon = Icon.FromHandle(sfi.hIcon);
-                var bmp32 = IconToBitmap(icon);
-                if (bmp32 == null) return null;
-
-                return bmp32.Width == size && bmp32.Height == size
-                    ? bmp32
-                    : Resize(bmp32, size);
-            }
-            catch { return null; }
-        }
-
-        // ── Helpers ───────────────────────────────────────────────────────────
+        // ── Helpers ────────────────────────────────────────────────────────────
 
         private static Bitmap? Resize(Bitmap src, int size)
         {
