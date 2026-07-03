@@ -75,7 +75,7 @@ namespace SaveRestoreGUI
         private ModernButton btnRefreshUSB;
         private ModernButton btnUnlockBitLocker;
         private Label lblProfiles;
-        private ListBox lstProfiles;
+        private ComboBox cmbProfiles;          // ← remplace lstProfiles
         private Label lblMigrationInfo;
         private ModernButton btnBitLocker;
         private Label lblBitLockerStatus;
@@ -238,8 +238,8 @@ namespace SaveRestoreGUI
             cmbUSBDrives        = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
             btnRefreshUSB       = new ModernButton { Text = "\U0001f504 Actualiser" };
             btnUnlockBitLocker  = new ModernButton { Text = "\U0001f512 Vérifier BitLocker" };
-            lblProfiles         = new Label   { Text = "Profils détectés :", AutoSize = true };
-            lstProfiles         = new ListBox();
+            lblProfiles         = new Label   { Text = "Profil à migrer :", AutoSize = true };
+            cmbProfiles         = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
             lblBitLockerStatus  = new Label   { Text = "", AutoSize = false };
             lblMigrationInfo    = new Label   { Text = "", AutoSize = false, Tag = "secondary" };
 
@@ -251,7 +251,7 @@ namespace SaveRestoreGUI
 
             cardMigrationSource.Controls.AddRange(new Control[] {
                 lblUSBDrives, cmbUSBDrives, btnRefreshUSB, btnUnlockBitLocker,
-                lblProfiles, lstProfiles, lblBitLockerStatus, lblMigrationInfo
+                lblProfiles, cmbProfiles, lblBitLockerStatus, lblMigrationInfo
             });
 
             cardMigrationOptions     = new CardPanel();

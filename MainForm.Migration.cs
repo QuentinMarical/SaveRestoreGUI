@@ -71,11 +71,11 @@ namespace SaveRestoreGUI
 
         private void LoadUSBDrives()
         {
-            if (cmbUSBDrives == null || lstProfiles == null || lblBitLockerStatus == null || lblMigrationInfo == null)
+            if (cmbUSBDrives == null || cmbProfiles == null || lblBitLockerStatus == null || lblMigrationInfo == null)
                 return;
 
             cmbUSBDrives.Items.Clear();
-            lstProfiles.Items.Clear();
+            cmbProfiles.Items.Clear();
             lblBitLockerStatus.Text = "";
 
             try
@@ -295,7 +295,7 @@ namespace SaveRestoreGUI
 
         private void CmbUSBDrives_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            lstProfiles.Items.Clear();
+            cmbProfiles.Items.Clear();
             lblBitLockerStatus.Text = "";
 
             if (cmbUSBDrives.SelectedItem is not USBDriveInfo drive) return;
@@ -335,7 +335,7 @@ namespace SaveRestoreGUI
 
         private void LoadProfiles(USBDriveInfo drive)
         {
-            lstProfiles.Items.Clear();
+            cmbProfiles.Items.Clear();
             try
             {
                 var excluded        = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
@@ -361,7 +361,7 @@ namespace SaveRestoreGUI
                     .ThenBy(p => p.Name)
                     .ToList();
 
-                foreach (var p in profiles) lstProfiles.Items.Add(p);
+                foreach (var p in profiles) cmbProfiles.Items.Add(p);
 
                 var currentUsername2 = Environment.UserName;
                 var exactMatch  = profiles.FirstOrDefault(p =>
@@ -370,14 +370,14 @@ namespace SaveRestoreGUI
                     p.Name.StartsWith(currentUsername2 + ".", StringComparison.OrdinalIgnoreCase));
 
                 if (exactMatch != null)
-                    lstProfiles.SelectedItem = exactMatch;
+                    cmbProfiles.SelectedItem = exactMatch;
                 else if (domainMatch != null)
-                    lstProfiles.SelectedItem = domainMatch;
+                    cmbProfiles.SelectedItem = domainMatch;
                 else
                 {
                     var firstMatch = profiles.FirstOrDefault(p => p.IsMatch);
-                    if (firstMatch != null) lstProfiles.SelectedItem = firstMatch;
-                    else if (lstProfiles.Items.Count > 0) lstProfiles.SelectedIndex = 0;
+                    if (firstMatch != null) cmbProfiles.SelectedItem = firstMatch;
+                    else if (cmbProfiles.Items.Count > 0) cmbProfiles.SelectedIndex = 0;
                 }
 
                 if (exactMatch != null && domainMatch != null && chkPanelMigration.IsChecked("OldProfile"))
@@ -494,7 +494,7 @@ namespace SaveRestoreGUI
         // ── Bouton Démarrer la migration ─────────────────────────────────────────────────
         private async void BtnStartMigration_Click(object? sender, EventArgs e)
         {
-            if (lstProfiles.SelectedItem is not UserProfileItem selectedProfile)
+            if (cmbProfiles.SelectedItem is not UserProfileItem selectedProfile)
             {
                 MessageBox.Show(
                     "Veuillez sélectionner un profil à migrer dans la liste.",
@@ -531,7 +531,7 @@ namespace SaveRestoreGUI
 
             if (chkPanelMigration.IsChecked("OldProfile") && selectedDrive.HasUsers)
             {
-                var allProfiles = lstProfiles.Items.Cast<UserProfileItem>().ToList();
+                var allProfiles = cmbProfiles.Items.Cast<UserProfileItem>().ToList();
 
                 domainProfile = allProfiles.FirstOrDefault(p =>
                     p.Name.StartsWith(currentUsername + ".", StringComparison.OrdinalIgnoreCase));
