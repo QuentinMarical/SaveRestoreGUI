@@ -32,7 +32,7 @@ namespace SaveRestoreGUI.UI
     [SupportedOSPlatform("windows")]
     public class CategoryCheckPanel : Panel
     {
-        // ── Dimensions
+        // ── Layout général
         private const int HeaderH    = 34;
         private const int TileW      = 100;
         private const int TileH      = 90;
@@ -41,8 +41,12 @@ namespace SaveRestoreGUI.UI
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
+        // ── Zone icône dans la tuile (entre checkbox et texte du bas)
+        private const int IconZoneTop    = 28; // offset depuis le haut de la tuile
+        private const int IconZoneHeight = 38; // hauteur disponible pour l'icône
+
         // Taille de l'icône SVG rendue dans chaque tuile
-        private const int IconSize   = 36;
+        private const int IconSize       = 36;
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
@@ -117,7 +121,11 @@ namespace SaveRestoreGUI.UI
             SetChecked("ExcelMacros",    r.HasExcelMacros);
         }
 
-        protected override void OnResize(EventArgs e) { base.OnResize(e); UpdateScrollBounds(); }
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            UpdateScrollBounds();
+        }
 
         private void UpdateScrollBounds() => AutoScrollMinSize = new Size(0, CalcTotalHeight());
 
@@ -238,14 +246,10 @@ namespace SaveRestoreGUI.UI
             using var bgBrush = new SolidBrush(bgColor);
             g.FillPath(bgBrush, tilePath);
 
-            if (chk)
+            using (var bp = chk
+                ? new Pen(Color.FromArgb(120, p.Accent.R, p.Accent.G, p.Accent.B), 1.5f)
+                : new Pen(Color.FromArgb(40, p.Border.R, p.Border.G, p.Border.B), 1f))
             {
-                using var bp = new Pen(Color.FromArgb(120, p.Accent.R, p.Accent.G, p.Accent.B), 1.5f);
-                g.DrawPath(bp, tilePath);
-            }
-            else
-            {
-                using var bp = new Pen(Color.FromArgb(40, p.Border.R, p.Border.G, p.Border.B), 1f);
                 g.DrawPath(bp, tilePath);
             }
 
@@ -269,37 +273,27 @@ namespace SaveRestoreGUI.UI
             {
                 using var eb = new SolidBrush(p.InputBackground);
                 g.FillPath(eb, boxPath);
-                using var bp = new Pen(p.Border, 1.2f);
-                g.DrawPath(bp, boxPath);
+                using var bp2 = new Pen(p.Border, 1.2f);
+                g.DrawPath(bp2, boxPath);
             }
 
-            // ── Zone disponible pour l'icône (entre checkbox+marge et texte du bas)
-            // Checkbox : y+8 à y+8+CheckBoxW = y+24
-            // Texte bas : y+TileH-22 à y+TileH
-            // Zone icône disponible : de y+28 à y+TileH-24
-            const int iconTopMargin    = 28; // offset depuis le haut de la tuile
-            const int iconBottomMargin = 24; // espace réservé pour le texte du bas
-            int iconAreaTop    = y + iconTopMargin;
-            int iconAreaHeight = TileH - iconTopMargin - iconBottomMargin; // = 38 px
+            // ── Zone icône (centrage parfait)
+            int iconAreaTop    = y + IconZoneTop;
+            int iconAreaHeight = IconZoneHeight;
+            Color iconColor    = Color.FromArgb(chk ? 220 : 160, p.Text);
 
-            Color iconColor = Color.FromArgb(chk ? 220 : 160, p.Text);
-
-            // Tente le rendu SVG officiel
             var bmp = SvgIcons.Get(item.Key, IconSize, iconColor);
             if (bmp != null)
             {
-                // Centre le bitmap dans la zone icône
                 int bx = x + (w - bmp.Width)  / 2;
                 int by = iconAreaTop + (iconAreaHeight - bmp.Height) / 2;
 
                 if (chk)
                 {
-                    // Rendu avec transparence normale
                     g.DrawImage(bmp, bx, by, bmp.Width, bmp.Height);
                 }
                 else
                 {
-                    // Rendu semi-transparent quand non coché
                     using var ia = new System.Drawing.Imaging.ImageAttributes();
                     var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.63f };
                     ia.SetColorMatrix(cm);
@@ -311,7 +305,6 @@ namespace SaveRestoreGUI.UI
             }
             else
             {
-                // Fallback émoji centré dans la même zone
                 using var emojiFont = new Font("Segoe UI Emoji", 18f);
                 var sf = new StringFormat
                 {
@@ -338,39 +331,47 @@ namespace SaveRestoreGUI.UI
             int y = AutoScrollPosition.Y + 4;
             foreach (var cat in _categories)
             {
-                if (new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH).Contains(e.Location))
+                var headerRect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
+                if (headerRect.Contains(e.Location))
                 {
                     cat.Expanded = !cat.Expanded;
                     UpdateScrollBounds();
                     Invalidate();
                     return;
                 }
+
                 y += HeaderH + 6;
-                if (cat.Expanded)
+                if (!cat.Expanded)
+                    continue;
+
+                int cols  = ColsActual();
+                int tileW = ActualTileW();
+                for (int i = 0; i < cat.Items.Length; i++)
                 {
-                    int cols  = ColsActual();
-                    int tileW = ActualTileW();
-                    for (int i = 0; i < cat.Items.Length; i++)
+                    int tx = HorizPad + (i % cols) * (tileW + TileGap);
+                    int ty = y        + (i / cols) * (TileH  + TileGap);
+                    var tileRect = new Rectangle(tx, ty, tileW, TileH);
+                    if (tileRect.Contains(e.Location))
                     {
-                        int tx = HorizPad + (i % cols) * (tileW + TileGap);
-                        int ty = y        + (i / cols) * (TileH  + TileGap);
-                        if (new Rectangle(tx, ty, tileW, TileH).Contains(e.Location))
-                        {
-                            _checked[cat.Items[i].Key] = !_checked[cat.Items[i].Key];
-                            Invalidate();
-                            CheckedChanged?.Invoke(this, EventArgs.Empty);
-                            return;
-                        }
+                        _checked[cat.Items[i].Key] = !_checked[cat.Items[i].Key];
+                        Invalidate();
+                        CheckedChanged?.Invoke(this, EventArgs.Empty);
+                        return;
                     }
-                    y += GridHeightForCat(cat) + 8;
                 }
+
+                y += GridHeightForCat(cat) + 8;
             }
         }
 
         private void OnMouseMove(object? sender, MouseEventArgs e)
         {
             var hit = HitTestItem(e.Location);
-            if (hit != _hoverItem) { _hoverItem = hit; Invalidate(); }
+            if (hit != _hoverItem)
+            {
+                _hoverItem = hit;
+                Invalidate();
+            }
         }
 
         private string? HitTestItem(Point pt)
@@ -379,19 +380,21 @@ namespace SaveRestoreGUI.UI
             foreach (var cat in _categories)
             {
                 y += HeaderH + 6;
-                if (cat.Expanded)
+                if (!cat.Expanded)
+                    continue;
+
+                int cols  = ColsActual();
+                int tileW = ActualTileW();
+                for (int i = 0; i < cat.Items.Length; i++)
                 {
-                    int cols  = ColsActual();
-                    int tileW = ActualTileW();
-                    for (int i = 0; i < cat.Items.Length; i++)
-                    {
-                        int tx = HorizPad + (i % cols) * (tileW + TileGap);
-                        int ty = y        + (i / cols) * (TileH  + TileGap);
-                        if (new Rectangle(tx, ty, tileW, TileH).Contains(pt))
-                            return cat.Items[i].Key;
-                    }
-                    y += GridHeightForCat(cat) + 8;
+                    int tx = HorizPad + (i % cols) * (tileW + TileGap);
+                    int ty = y        + (i / cols) * (TileH  + TileGap);
+                    var tileRect = new Rectangle(tx, ty, tileW, TileH);
+                    if (tileRect.Contains(pt))
+                        return cat.Items[i].Key;
                 }
+
+                y += GridHeightForCat(cat) + 8;
             }
             return null;
         }
