@@ -10,45 +10,65 @@ using System.Runtime.Versioning;
 namespace SaveRestoreGUI.UI
 {
     /// <summary>
-    /// Fournit des icônes Windows natives extraites depuis imageres.dll
-    /// (ou imageres.dll.mun) pour chaque élément sauvegardable.
+    /// Icônes Windows natives extraites depuis imageres.dll (Win 10) ou
+    /// imageres.dll.mun (Win 11 - ressources MUI externalisées).
     ///
-    /// Index imageres.dll de référence (Win 10/11) :
-    ///   3   – Dossier générique
-    ///   4   – Dossier ouvert
-    ///   5   – Lecteur réseau
-    ///   15  – Bureau
-    ///   20  – Musique
-    ///   25  – Images
-    ///   26  – Vidéos
-    ///   27  – Téléchargements
-    ///   30  – Documents
-    ///   34  – Profil utilisateur
-    ///   36  – Dossier public
-    ///   112 – OneNote (icône dossier magenta)
-    ///   168 – Fond d'écran / Personnalisation
-    ///   174 – Excel / feuille de calcul
-    ///   175 – Word / document Office
-    ///   176 – Sticky Notes
-    ///   220 – Modèles Office
+    /// Stratégie d'extraction :
+    ///   1. SHDefExtractIcon sur imageres.dll.mun  (Win 11)
+    ///   2. SHDefExtractIcon sur imageres.dll      (Win 10/11)
+    ///   3. SHGetFileInfo sur le dossier shell réel (fallback)
+    ///
+    /// SHDefExtractIcon gère nativement les fichiers .mun et les DLL
+    /// standard, contrairement à ExtractIconEx qui échoue sur .mun.
+    ///
+    /// Index imageres validés Win 10 21H2 / Win 11 23H2 :
+    ///   3   Dossier générique          15  Bureau
+    ///   5   Lecteur réseau             20  Musique
+    ///   25  Images                     26  Vidéos
+    ///   27  Téléchargements            30  Documents
+    ///   34  Profil utilisateur         36  Dossier public
+    ///   112 OneNote                   168  Fond d'écran
+    ///   174 Excel/feuille calcul      175  Word/document
+    ///   176 Sticky Notes              220  Modèles Office
     /// </summary>
     [SupportedOSPlatform("windows")]
     public static class WindowsIcons
     {
-        // ── P/Invoke ─────────────────────────────────────────────────────────
+        // ── P/Invoke ──────────────────────────────────────────────────────────
 
-        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        private static extern int ExtractIconEx(
-            string lpszFile,
-            int    nIconIndex,
-            IntPtr[]? phiconLarge,
-            IntPtr[]? phiconSmall,
-            int nIcons);
+        // SHDefExtractIcon : fonctionne sur .dll et .mun
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = false)]
+        private static extern int SHDefExtractIconW(
+            string pszIconFile,
+            int    iIndex,
+            uint   uFlags,
+            out IntPtr phiconLarge,
+            out IntPtr phiconSmall,
+            uint   nIconSize);   // LOWORD = large size, HIWORD = small size
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
 
-        // ── Chemins imageres ─────────────────────────────────────────────────
+        // SHGetFileInfo (fallback dossiers shell réels)
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct SHFILEINFO
+        {
+            public IntPtr hIcon;
+            public int    iIcon;
+            public uint   dwAttributes;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]  public string szTypeName;
+        }
+
+        private const uint SHGFI_ICON      = 0x000000100;
+        private const uint SHGFI_LARGEICON = 0x000000000;
+
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SHGetFileInfo(
+            string pszPath, uint dwFileAttributes,
+            ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
+
+        // ── Chemins imageres ──────────────────────────────────────────────────
 
         private static readonly string[] _imageresPaths = BuildPaths();
 
@@ -57,11 +77,10 @@ namespace SaveRestoreGUI.UI
             string sys32 = Environment.GetFolderPath(Environment.SpecialFolder.System);
             var list = new List<string>();
 
-            // imageres.dll.mun (Windows 11 — ressources externalisées)
+            // .mun en premier : Win 11 y stocke les vraies ressources
             string mun = Path.Combine(sys32, "imageres.dll.mun");
             if (File.Exists(mun)) list.Add(mun);
 
-            // imageres.dll classique
             string dll = Path.Combine(sys32, "imageres.dll");
             if (File.Exists(dll)) list.Add(dll);
 
@@ -69,51 +88,46 @@ namespace SaveRestoreGUI.UI
         }
 
         // ── Table clé → index imageres ────────────────────────────────────────
-        //
-        // Indices validés sur Windows 10 21H2 / Windows 11 23H2.
-        // En cas de doute, utiliser Resource Hacker ou IconViewer pour vérifier.
 
         private static readonly Dictionary<string, int> _indexMap =
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            new(StringComparer.OrdinalIgnoreCase)
             {
                 // Fichiers utilisateur
-                { "OldProfile",      34  },  // Profil utilisateur
-                { "Desktop",         15  },  // Bureau
-                { "Documents",       30  },  // Documents
-                { "Pictures",        25  },  // Images
-                { "Videos",          26  },  // Vidéos
-                { "Downloads",       27  },  // Téléchargements
-                { "Music",           20  },  // Musique
-                { "Public",          36  },  // Dossier public
+                { "OldProfile",      34  },
+                { "Desktop",         15  },
+                { "Documents",       30  },
+                { "Pictures",        25  },
+                { "Videos",          26  },
+                { "Downloads",       27  },
+                { "Music",           20  },
+                { "Public",          36  },
 
                 // Bureautique
-                { "Outlook",         174 },  // Enveloppe / Outlook (approx.)
-                { "Signatures",      175 },  // Document Word
-                { "OfficeTemplates", 220 },  // Modèles Office
-                { "OneNote",         112 },  // Dossier OneNote
-                { "StickyNotes",     176 },  // Sticky Notes
-                { "ExcelMacros",     174 },  // Feuille de calcul
+                { "Outlook",         174 },
+                { "Signatures",      175 },
+                { "OfficeTemplates", 220 },
+                { "OneNote",         112 },
+                { "StickyNotes",     176 },
+                { "ExcelMacros",     174 },
 
                 // Système
-                { "Wallpaper",       168 },  // Personnalisation / Bureau
-                { "NetworkDrives",   5   },  // Lecteur réseau
+                { "Wallpaper",       168 },
+                { "NetworkDrives",   5   },
 
-                // Logiciels métier — pas d'icône dédiée, dossier générique
+                // Logiciels métier – dossier générique
                 { "Sap",             3   },
                 { "IpSoftphone",     3   },
                 { "LaunchApps",      3   },
             };
 
-        // ── Cache Bitmap ──────────────────────────────────────────────────────
+        // ── Cache ─────────────────────────────────────────────────────────────
 
-        private static readonly Dictionary<(string key, int size), Bitmap> _cache =
-            new();
+        private static readonly Dictionary<(string key, int size), Bitmap> _cache = new();
 
         /// <summary>
         /// Retourne un Bitmap <paramref name="size"/>×<paramref name="size"/> de
-        /// l'icône Windows correspondant à la clé.
+        /// l'icône Windows correspondant à la clé, ou null en cas d'échec.
         /// Le bitmap est mis en cache — ne pas disposer.
-        /// Retourne null si l'extraction échoue sur toutes les sources.
         /// </summary>
         public static Bitmap? Get(string key, int size)
         {
@@ -133,15 +147,14 @@ namespace SaveRestoreGUI.UI
             return bmp;
         }
 
-        /// <summary>Vide le cache (à appeler lors d'un changement de thème/DPI).</summary>
+        /// <summary>Vide le cache (changement de thème/DPI).</summary>
         public static void ClearCache()
         {
-            foreach (var b in _cache.Values)
-                b.Dispose();
+            foreach (var b in _cache.Values) b.Dispose();
             _cache.Clear();
         }
 
-        // ── Extraction imageres.dll ───────────────────────────────────────────
+        // ── Extraction via SHDefExtractIcon ───────────────────────────────────
 
         private static Bitmap? TryExtractFromImageres(int index, int size)
         {
@@ -155,78 +168,65 @@ namespace SaveRestoreGUI.UI
 
         private static Bitmap? ExtractOne(string dllPath, int index, int targetSize)
         {
-            // On demande la grande icône (32×32 ou 48×48 selon le système).
-            var large = new IntPtr[1];
+            // nIconSize : LOWORD = taille grande icône demandée (ex. 48)
+            // On demande 48 et on redimensionne après si besoin.
+            uint iconSize = (uint)Math.Min(48, Math.Max(16, targetSize));
+            uint nIconSize = iconSize; // LOWORD seulement suffit
+
+            IntPtr hLarge = IntPtr.Zero;
+            IntPtr hSmall = IntPtr.Zero;
             try
             {
-                int count = ExtractIconEx(dllPath, index, large, null, 1);
-                if (count < 1 || large[0] == IntPtr.Zero)
-                    return null;
+                // S_OK = 0, S_FALSE = 1, tout autre code = erreur
+                int hr = SHDefExtractIconW(dllPath, index, 0,
+                                           out hLarge, out hSmall, nIconSize);
+                if (hr != 0 && hr != 1) return null;
 
-                using var icon = Icon.FromHandle(large[0]);
-                // Convertir en Bitmap 32bpp ARGB pour avoir la transparence
+                IntPtr hUse = (hLarge != IntPtr.Zero) ? hLarge : hSmall;
+                if (hUse == IntPtr.Zero) return null;
+
+                using var icon = Icon.FromHandle(hUse);
                 var bmp32 = IconToBitmap(icon);
                 if (bmp32 == null) return null;
 
-                // Redimensionner si nécessaire
                 if (bmp32.Width == targetSize && bmp32.Height == targetSize)
                     return bmp32;
 
                 return Resize(bmp32, targetSize);
             }
-            catch
-            {
-                return null;
-            }
+            catch { return null; }
             finally
             {
-                if (large[0] != IntPtr.Zero)
-                    try { DestroyIcon(large[0]); } catch { }
+                if (hLarge != IntPtr.Zero) try { DestroyIcon(hLarge); } catch { }
+                if (hSmall != IntPtr.Zero && hSmall != hLarge)
+                    try { DestroyIcon(hSmall); } catch { }
             }
         }
 
-        // ── Fallback : SHGetFileInfo sur le dossier shell réel ────────────────
+        // ── Fallback SHGetFileInfo (dossiers shell réels) ─────────────────────
 
         private static readonly Dictionary<string, string?> _shellPaths =
-            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            new(StringComparer.OrdinalIgnoreCase)
             {
-                { "Desktop",     Environment.GetFolderPath(Environment.SpecialFolder.Desktop)     },
-                { "Documents",   Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)  },
-                { "Pictures",    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)   },
-                { "Videos",      Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)     },
-                { "Music",       Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)      },
-                { "Downloads",   GetDownloadsPath()                                                },
-                { "Public",      Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments) },
+                { "Desktop",   Environment.GetFolderPath(Environment.SpecialFolder.Desktop)      },
+                { "Documents", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)  },
+                { "Pictures",  Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)   },
+                { "Videos",    Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)     },
+                { "Music",     Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)      },
+                { "Downloads", GetDownloadsPath()                                                },
+                { "Public",    Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments) },
             };
 
         private static string? GetDownloadsPath()
         {
             try
             {
-                string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                string dl   = Path.Combine(home, "Downloads");
+                string dl = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
                 return Directory.Exists(dl) ? dl : null;
             }
             catch { return null; }
         }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private struct SHFILEINFO
-        {
-            public IntPtr hIcon;
-            public int    iIcon;
-            public uint   dwAttributes;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]  public string szTypeName;
-        }
-
-        private const uint SHGFI_ICON      = 0x100;
-        private const uint SHGFI_LARGEICON = 0x000;
-
-        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SHGetFileInfo(
-            string pszPath, uint dwFileAttributes,
-            ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
         private static Bitmap? TryExtractFromShellFolder(string key, int size)
         {
@@ -246,16 +246,16 @@ namespace SaveRestoreGUI.UI
                 var bmp32 = IconToBitmap(icon);
                 if (bmp32 == null) return null;
 
-                var result = bmp32.Width == size && bmp32.Height == size
+                return bmp32.Width == size && bmp32.Height == size
                     ? bmp32
-                    : Resize(bmp32);
-
-                return result;
+                    : Resize(bmp32, size);
             }
             catch { return null; }
         }
 
-        private static Bitmap? Resize(Bitmap src, int size = 36)
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        private static Bitmap? Resize(Bitmap src, int size)
         {
             try
             {
@@ -272,7 +272,6 @@ namespace SaveRestoreGUI.UI
             catch { src.Dispose(); return null; }
         }
 
-        /// <summary>Convertit une Icon en Bitmap 32bpp ARGB (conserve la transparence).</summary>
         private static Bitmap? IconToBitmap(Icon icon)
         {
             try
