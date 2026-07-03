@@ -7,36 +7,36 @@ using Svg;
 
 namespace SaveRestoreGUI.UI
 {
-    /// &lt;summary&gt;
+    /// <summary>
     /// Fournit les icônes SVG originales pour chaque élément sauvegardable.
     /// Les SVG monochromes utilisent le placeholder #FILL remplacé à la volée.
     /// StickyNotes a ses couleurs figées (jaune Office).
-    /// &lt;/summary&gt;
+    /// </summary>
     [SupportedOSPlatform("windows")]
     public static class SvgIcons
     {
         // ── Ancien profil ─────────────────────────────────────────────────────
         public const string OldProfile =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m956 913 c42 -22 101 -82 164 -166 l35 -46 576 -1 576 0 34 -23 c18 -12 39 -34 46 -47" +
             " c10 -19 13 -178 13 -691 l0 -666 -23 -34 c-12 -18 -34 -39 -47 -46 c-20 -10 -250 -13 -1051 -13" +
             " l-1026 0 -34 23 c-18 12 -39 34 -46 47 c-10 19 -13 202 -13 811 l0 786 23 34 c40 60 40 60 402 57" +
-            " c318 -3 331 -4 371 -25z\"/&gt;" +
-            "&lt;path d=\"M1750 1189 c-19 -12 -44 -31 -55 -43 c-11 -12 -24 -22 -28 -23 c-5 0 -22 -10 -38 -22" +
+            " c318 -3 331 -4 371 -25z\"/>" +
+            "<path d=\"M1750 1189 c-19 -12 -44 -31 -55 -43 c-11 -12 -24 -22 -28 -23 c-5 0 -22 -10 -38 -22" +
             " c-24 -18 -29 -29 -29 -62 c0 -116 -105 -198 -266 -207 c-76 -4 -85 -7 -120 -38 c-22 -18 -42 -34" +
             " -45 -34 c-3 0 -18 -11 -33 -24 l-28 -23 29 -8 c128 -33 253 -22 359 30 c167 82 266 227 289 423" +
-            " c3 28 4 52 3 52 c-2 0 -19 -10 -38 -21z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c3 28 4 52 3 52 c-2 0 -19 -10 -38 -21z\"/>" +
+            "</g></svg>";
 
         // ── Bureau ────────────────────────────────────────────────────────────
         public const string Desktop =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m2335 644 c63 -30 65 -42 65 -429 c0 -264 -3 -349 -12 -359 c-16 -15 -100 -56 -116 -56" +
             " c-7 0 -12 -4 -12 -10 c0 -5 -3 -9 -7 -9 c-21 3 -34 -2 -28 -11 c4 -6 3 -10 -2 -9" +
             " c-17 3 -72 -14 -68 -21 c3 -4 -2 -11 -11 -14 c-10 -4 -13 -2 -8 7 c4 6 -1 5 -12 -4" +
@@ -47,15 +47,15 @@ namespace SaveRestoreGUI.UI
             " c-6 -10 -11 -15 -11 -10 c0 11 -60 -22 -60 -33 c0 -6 -11 -10 -24 -10 c-13 0 -29 -7 -36 -15" +
             " c-7 -8 -16 -13 -20 -10 c-4 2 -16 -3 -26 -13 c-11 -9 -26 -19 -34 -22 c-8 -3 -288 -6 -622 -8" +
             " l-608 -3 0 556 c0 600 0 597 53 627 c16 10 117 14 387 18 l365 5 55 26 c30 15 73 41 95 58" +
-            " l40 30 573 1 c502 0 578 -2 607 -16z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " l40 30 573 1 c502 0 578 -2 607 -16z\"/>" +
+            "</g></svg>";
 
         // ── Documents ─────────────────────────────────────────────────────────
         public const string Documents =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m447 925 c0 -8 -4 -12 -9 -9 c-4 3 -8 1 -8 -5 c0 -5 -20 -23 -44 -39 c-34 -23 -47 -27 -56 -18" +
             " c-10 8 -11 8 -6 -1 c4 -8 1 -13 -8 -13 c-9 0 -16 -7 -16 -15 c0 -11 -5 -12 -23 -6" +
             " c-15 6 -29 4 -42 -5 c-10 -8 -14 -14 -9 -14 c6 0 15 5 21 11 c7 7 13 7 17 1 c3 -5 -5 -13" +
@@ -63,15 +63,15 @@ namespace SaveRestoreGUI.UI
             " c0 62 12 99 41 129 c34 34 47 37 160 39 c69 1 86 -2 86 -14z" +
             " m1888 -281 c69 -32 66 -8 63 -709 l-3 -630 -23 -32 c-14 -20 -37 -36 -60 -43" +
             " c-24 -6 -385 -10 -1045 -10 c-1107 0 -1053 -3 -1090 59 c-15 27 -17 80 -17 610" +
-            " l0 581 29 32 29 33 374 5 373 5 55 26 c30 15 73 41 95 58 l40 30 573 1 c499 0 578 -2 607 -16z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " l0 581 29 32 29 33 374 5 373 5 55 26 c30 15 73 41 95 58 l40 30 573 1 c499 0 578 -2 607 -16z\"/>" +
+            "</g></svg>";
 
         // ── Macros Excel ──────────────────────────────────────────────────────
         public const string ExcelMacros =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m2015 859 c84 -15 181 -68 241 -131 c60 -62 84 -102 110 -178 c18 -51 19 -95 19 -655" +
             " c0 -595 0 -600 -22 -640 c-24 -46 -54 -75 -103 -101 c-33 -18 -70 -19 -577 -22 l-543 -3" +
             " 0 253 c0 153 -4 269 -11 293 c-31 110 -97 145 -281 145 c-60 0 -135 -7 -172 -15" +
@@ -81,19 +81,19 @@ namespace SaveRestoreGUI.UI
             " m-1439 -1330 c25 -50 48 -88 52 -85 c3 4 27 44 52 89 l46 82 72 3 c39 2 72 0 72 -3" +
             " c0 -3 -34 -64 -76 -136 c-66 -110 -75 -133 -67 -152 c6 -12 42 -77 81 -144 l71 -123" +
             " -77 0 -77 0 -48 90 c-26 49 -52 92 -57 95 c-5 3 -32 -38 -60 -90 l-51 -95 -76 0 -75 0" +
-            " 14 23 c8 12 47 75 87 140 l72 117 -77 133 c-42 72 -78 135 -81 140 c-2 4 32 7 76 7 l81 0 46 -91z\"/&gt;" +
-            "&lt;path d=\"M1752 1542 c-1 -7 -14 -24 -28 -37 c-26 -25 -30 -25 -205 -25 c-174 0 -179 -1 -206 -24" +
+            " 14 23 c8 12 47 75 87 140 l72 117 -77 133 c-42 72 -78 135 -81 140 c-2 4 32 7 76 7 l81 0 46 -91z\"/>" +
+            "<path d=\"M1752 1542 c-1 -7 -14 -24 -28 -37 c-26 -25 -30 -25 -205 -25 c-174 0 -179 -1 -206 -24" +
             " c-28 -24 -28 -25 -33 -169 c-5 -136 -7 -147 -29 -171 c-13 -14 -36 -28 -51 -31 l-27 -6 23 -57" +
             " c21 -51 24 -73 24 -199 l0 -143 199 0 198 0 38 34 c28 26 44 33 66 31 c25 -4 29 0 34 28" +
-            " c3 18 4 201 3 407 c-2 206 -4 369 -6 362z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c3 18 4 201 3 407 c-2 206 -4 369 -6 362z\"/>" +
+            "</g></svg>";
 
         // ── Images ────────────────────────────────────────────────────────────
         public const string Pictures =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m2341 637 c55 -37 59 -53 59 -253 l0 -182 -26 -17 c-14 -9 -40 -18 -57 -21" +
             " c-40 -4 -108 -34 -102 -44 c3 -4 -3 -14 -13 -21 c-15 -13 -16 -12 -3 4 c12 15 11 17 -8 17" +
             " c-11 0 -21 -5 -21 -11 c0 -6 -9 -9 -20 -6 c-11 3 -18 0 -17 -6 c1 -6 -4 -12 -10 -13" +
@@ -114,15 +114,15 @@ namespace SaveRestoreGUI.UI
             " c-14 5 -16 67 -16 546 c0 581 0 580 53 610 c16 10 118 14 392 18 c411 6 392 3 495 79" +
             " l55 40 576 1 576 0 34 -23z" +
             " m-997 -640 c63 -65 681 -741 694 -759 c13 -17 -14 -18 -778 -18 l-791 0 113 123" +
-            " c62 67 203 221 313 342 c330 362 312 345 369 345 c41 0 53 -5 80 -33z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c62 67 203 221 313 342 c330 362 312 345 369 345 c41 0 53 -5 80 -33z\"/>" +
+            "</g></svg>";
 
         // ── Lecteur réseau ────────────────────────────────────────────────────
         public const string NetworkDrives =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m1962 463 c33 -32 145 -147 249 -255 l189 -197 0 -301 0 -301 -25 -24 c-23 -24 -29 -25 -166 -25" +
             " c-137 0 -142 -1 -126 -18 c10 -10 17 -24 17 -30 c0 -9 37 -12 130 -12 c175 0 170 5 170 -175" +
             " c0 -131 -1 -137 -25 -160 c-23 -24 -30 -25 -143 -25 c-115 0 -120 1 -127 23 c-8 21 -8 21 -12 -5" +
@@ -130,20 +130,20 @@ namespace SaveRestoreGUI.UI
             " -709 0 -709 0 -4 -27 c-2 -16 -5 -1 -7 32 c-2 40 -5 49 -7 28 c-4 -31 -7 -33 -43 -33" +
             " c-21 0 -41 -6 -43 -12 c-3 -8 -6 -6 -6 5 c-1 15 -14 17 -125 17 c-110 0 -126 2 -150 21" +
             " c-26 20 -26 21 -26 160 c0 185 -5 179 170 179 c93 0 130 3 130 12 c0 6 7 20 17 30" +
-            " c16 17 11 18 -126 18 c-137 0 -143 1 -166 25 l-25 24 0 303 0 304 248 252 247 253 623 -1 623 0 61 -57z\"/&gt;" +
-            "&lt;path d=\"M190 1310 c-17 -17 -20 -33 -20 -125 l0 -105 30 0 30 0 0 -164 0 -165 26 -20" +
+            " c16 17 11 18 -126 18 c-137 0 -143 1 -166 25 l-25 24 0 303 0 304 248 252 247 253 623 -1 623 0 61 -57z\"/>" +
+            "<path d=\"M190 1310 c-17 -17 -20 -33 -20 -125 l0 -105 30 0 30 0 0 -164 0 -165 26 -20" +
             " c27 -21 30 -21 1024 -21 c994 0 997 0 1024 21 l26 20 0 165 0 164 30 0 30 0 0 105" +
             " c0 92 -3 108 -20 125 c-20 20 -33 20 -1090 20 c-1057 0 -1070 0 -1090 -20z" +
             " m444 -214 c65 -27 69 -129 5 -161 c-15 -8 -35 -15 -44 -15 c-9 0 -29 7 -44 15" +
-            " c-62 32 -60 133 3 161 c39 17 40 17 80 0z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c-62 32 -60 133 3 161 c39 17 40 17 80 0z\"/>" +
+            "</g></svg>";
 
         // ── Modèles Office ────────────────────────────────────────────────────
         public const string OfficeTemplates =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m1771 1110 c158 -30 294 -145 352 -298 c22 -57 22 -63 25 -857 c2 -440 0 -824 -3 -852" +
             " c-8 -69 -55 -140 -115 -173 l-45 -25 -449 -3 -449 -3 15 23 c32 50 38 115 38 416" +
             " c0 330 -5 368 -60 434 c-16 20 -51 47 -77 60 c-45 22 -61 23 -278 26 c-216 3 -234 2 -285 -18" +
@@ -155,17 +155,17 @@ namespace SaveRestoreGUI.UI
             " c2 1 17 79 35 172 c17 94 32 171 34 173 c1 2 29 2 62 0 l59 -3 -60 -277 -59 -278 -73 0" +
             " c-61 0 -73 3 -78 18 c-2 9 -17 77 -33 150 c-15 72 -30 132 -33 132 c-4 0 -21 -67 -40 -150" +
             " l-33 -150 -73 0 c-60 0 -74 3 -78 18 c-3 9 -28 125 -56 257 c-27 132 -52 250 -55 263" +
-            " c-5 21 -3 22 58 22 l63 0 34 -177z\"/&gt;" +
-            "&lt;path d=\"M1743 1141 c-20 -55 -51 -61 -327 -61 l-244 0 24 -57 c21 -52 24 -74 24 -200" +
-            " l0 -143 220 0 c331 0 322 -9 318 296 c-3 163 -5 190 -15 165z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c-5 21 -3 22 58 22 l63 0 34 -177z\"/>" +
+            "<path d=\"M1743 1141 c-20 -55 -51 -61 -327 -61 l-244 0 24 -57 c21 -52 24 -74 24 -200" +
+            " l0 -143 220 0 c331 0 322 -9 318 296 c-3 163 -5 190 -15 165z\"/>" +
+            "</g></svg>";
 
         // ── Musique ───────────────────────────────────────────────────────────
         public const string Music =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m518 913 c2 -26 2 -26 -20 -7 c-13 10 -20 15 -16 10 c10 -12 -30 -46 -55 -46 c-11 0 -18 -3" +
             " -14 -6 c8 -8 -18 -34 -33 -34 c-7 0 -9 7 -6 16 c5 14 4 15 -9 4 c-8 -7 -15 -18 -15 -26" +
             " c0 -7 -5 -16 -12 -20 c-8 -5 -9 -2 -5 10 c5 14 3 15 -13 6 c-11 -6 -17 -16 -14 -25" +
@@ -184,39 +184,39 @@ namespace SaveRestoreGUI.UI
             " -93 -36 c-8 2 -11 0 -8 -5 c6 -10 -64 -57 -77 -52 c-5 1 -8 -3 -8 -9 c0 -6 -8 -8 -19 -4" +
             " c-20 6 -23 -8 -7 -34 c7 -10 3 -12 -14 -6 c-16 5 -20 4 -16 -4 c6 -8 -186 -11 -733 -9" +
             " l-741 3 -32 33 -33 32 -3 590 -2 589 29 33 29 33 374 6 c265 4 383 9 409 18 c19 7 62 33 95 57" +
-            " l59 43 587 -2 588 -2 32 -33z\"/&gt;" +
-            "&lt;path d=\"M1350 1389 c0 -47 1 -49 16 -34 c11 10 26 14 43 10 c14 -3 35 -7 46 -10" +
+            " l59 43 587 -2 588 -2 32 -33z\"/>" +
+            "<path d=\"M1350 1389 c0 -47 1 -49 16 -34 c11 10 26 14 43 10 c14 -3 35 -7 46 -10" +
             " c11 -2 51 -13 90 -24 c86 -26 117 -26 138 -3 c22 24 24 50 3 33 c-11 -10 -46 -2 -164 33" +
-            " c-83 26 -155 46 -161 46 c-7 0 -11 -21 -11 -51z\"/&gt;" +
-            "&lt;path d=\"M1351 899 c-1 -126 -20 -172 -90 -223 c-39 -28 -49 -31 -121 -31 c-71 0 -82 3" +
+            " c-83 26 -155 46 -161 46 c-7 0 -11 -21 -11 -51z\"/>" +
+            "<path d=\"M1351 899 c-1 -126 -20 -172 -90 -223 c-39 -28 -49 -31 -121 -31 c-71 0 -82 3" +
             " -122 30 c-23 17 -53 49 -65 70 l-23 40 6 -35 c15 -82 76 -148 158 -174 c119 -38 198 -3 256 112" +
-            " c24 48 28 157 11 262 c-8 51 -9 48 -10 -51z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c24 48 28 157 11 262 c-8 51 -9 48 -10 -51z\"/>" +
+            "</g></svg>";
 
         // ── OneNote ───────────────────────────────────────────────────────────
         public const string OneNote =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m1782 1109 c129 -27 266 -135 321 -252 c47 -97 48 -131 45 -987 c-3 -764 -4 -807 -22 -840" +
             " c-26 -49 -55 -79 -101 -103 c-39 -21 -51 -22 -487 -25 c-247 -2 -448 -1 -448 1 c0 2 10 23 23 48" +
             " c21 42 22 55 25 362 c4 370 -1 400 -69 468 c-72 72 -80 73 -386 77 l-273 3 0 532 c0 351 4 545" +
             " 11 571 c14 50 83 123 134 141 c33 12 144 14 607 15 c379 0 585 -4 620 -11z" +
             " m-1156 -1671 l119 -182 3 182 2 182 60 0 60 0 0 -280 0 -280 -64 0 -63 0 -124 187 -124 186" +
-            " -3 -186 -2 -187 -60 0 -60 0 0 280 0 280 69 0 69 0 118 -182z\"/&gt;" +
-            "&lt;path d=\"M1723 1513 c-31 -32 -33 -33 -122 -33 c-86 0 -92 -1 -123 -29 l-33 -29 -5 -141" +
+            " -3 -186 -2 -187 -60 0 -60 0 0 280 0 280 69 0 69 0 118 -182z\"/>" +
+            "<path d=\"M1723 1513 c-31 -32 -33 -33 -122 -33 c-86 0 -92 -1 -123 -29 l-33 -29 -5 -141" +
             " c-5 -137 -6 -141 -33 -168 c-26 -26 -33 -28 -131 -31 l-103 -4 23 -56 c21 -50 24 -73 24 -199" +
             " l0 -143 220 0 c330 0 320 -9 320 297 c-1 180 -2 195 -15 165 c-15 -35 -63 -62 -109 -62" +
-            " c-25 0 -25 1 -11 34 c8 19 42 90 75 157 c60 121 61 124 58 198 l-3 76 -32 -32z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c-25 0 -25 1 -11 34 c8 19 42 90 75 157 c60 121 61 124 58 198 l-3 76 -32 -32z\"/>" +
+            "</g></svg>";
 
         // ── Dossier public ────────────────────────────────────────────────────
         public const string Public =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m956 913 c42 -22 101 -82 164 -166 l35 -46 576 -1 576 0 34 -23 c18 -12 39 -34 46 -47" +
             " c10 -19 13 -148 13 -537 l0 -512 41 -11 c101 -28 127 -135 64 -266 c-40 -82 -68 -100 -172 -107" +
             " c-17 -1 -29 1 -27 4 c2 4 -5 5 -16 2 c-11 -3 -20 -8 -20 -12 c0 -9 -111 -6 -133 3" +
@@ -226,42 +226,42 @@ namespace SaveRestoreGUI.UI
             " -7 -42 c32 -65 36 -66 159 -66 c119 0 155 -8 192 -42 c31 -30 41 -75 30 -143 c-32 -204 -228 -317" +
             " -523 -302 c-177 9 -306 61 -376 150 c-63 79 -87 194 -54 257 l16 30 -399 0 c-399 0 -399 0 -433 23" +
             " c-18 12 -39 34 -46 47 c-10 19 -13 202 -13 811 l0 786 23 34 c40 60 40 60 402 57" +
-            " c318 -3 331 -4 371 -25z\"/&gt;" +
-            "&lt;path d=\"M2255 1093 c-11 -2 -27 -7 -35 -10 c-24 -10 -34 -9 -42 2 c-5 6 -8 6 -8 -2" +
+            " c318 -3 331 -4 371 -25z\"/>" +
+            "<path d=\"M2255 1093 c-11 -2 -27 -7 -35 -10 c-24 -10 -34 -9 -42 2 c-5 6 -8 6 -8 -2" +
             " c0 -13 -51 -32 -107 -40 c-71 -9 -78 -10 -106 -22 c-16 -6 -36 -11 -45 -12 c-9 0 3 -10 27 -21" +
-            " c55 -25 134 -33 187 -19 c51 14 128 64 155 102 c21 29 18 32 -26 22z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c55 -25 134 -33 187 -19 c51 14 128 64 155 102 c21 29 18 32 -26 22z\"/>" +
+            "</g></svg>";
 
         // ── Sticky Notes : couleurs figées (pas de #FILL) ─────────────────────
         public const string StickyNotes =
-            "&lt;svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"256\" height=\"256\"&gt;" +
-            "&lt;path d=\"M0 0 C84.67 0 169.33 0 256 0 C256 64.35 256 128.69 256 195 C232 219 208 243 184 267" +
-            " C122.88 267 61.75 267 0 267 C0 178 0 89 0 0 Z\" fill=\"#FDD300\" transform=\"translate(0,0)\" /&gt;" +
-            "&lt;path d=\"M0 0 C13.2 13.53 26.73 26.73 40 40 C26.4 40 12.8 40 -1 40 C-0.67 26.4 -0.33 12.8 0 0 Z\"" +
-            " fill=\"#EBAB03\" transform=\"translate(216,227)\" /&gt;" +
-            "&lt;rect x=\"44\" y=\"72\" width=\"140\" height=\"11\" rx=\"4\" fill=\"#c8a600\" /&gt;" +
-            "&lt;rect x=\"44\" y=\"100\" width=\"124\" height=\"11\" rx=\"4\" fill=\"#c8a600\" /&gt;" +
-            "&lt;rect x=\"44\" y=\"128\" width=\"132\" height=\"11\" rx=\"4\" fill=\"#c8a600\" /&gt;" +
-            "&lt;rect x=\"44\" y=\"156\" width=\"108\" height=\"11\" rx=\"4\" fill=\"#c8a600\" /&gt;" +
-            "&lt;/svg&gt;";
+            "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" width=\"256\" height=\"256\">" +
+            "<path d=\"M0 0 C84.67 0 169.33 0 256 0 C256 64.35 256 128.69 256 195 C232 219 208 243 184 267" +
+            " C122.88 267 61.75 267 0 267 C0 178 0 89 0 0 Z\" fill=\"#FDD300\" transform=\"translate(0,0)\" />" +
+            "<path d=\"M0 0 C13.2 13.53 26.73 26.73 40 40 C26.4 40 12.8 40 -1 40 C-0.67 26.4 -0.33 12.8 0 0 Z\"" +
+            " fill=\"#EBAB03\" transform=\"translate(216,227)\" />" +
+            "<rect x=\"44\" y=\"72\" width=\"140\" height=\"11\" rx=\"4\" fill=\"#c8a600\" />" +
+            "<rect x=\"44\" y=\"100\" width=\"124\" height=\"11\" rx=\"4\" fill=\"#c8a600\" />" +
+            "<rect x=\"44\" y=\"128\" width=\"132\" height=\"11\" rx=\"4\" fill=\"#c8a600\" />" +
+            "<rect x=\"44\" y=\"156\" width=\"108\" height=\"11\" rx=\"4\" fill=\"#c8a600\" />" +
+            "</svg>";
 
         // ── Téléchargements ───────────────────────────────────────────────────
         public const string Downloads =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m2362 622 l33 -32 3 -633 c2 -586 1 -635 -15 -667 c-38 -74 32 -70 -1109 -70 l-1021 0" +
             " -34 23 c-18 12 -39 34 -46 47 c-10 19 -13 159 -13 593 c0 613 0 609 53 639 c16 10 118 14" +
-            " 392 18 c411 6 392 3 495 79 l55 40 587 -2 588 -2 32 -33z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " 392 18 c411 6 392 3 495 79 l55 40 587 -2 588 -2 32 -33z\"/>" +
+            "</g></svg>";
 
         // ── Vidéos ────────────────────────────────────────────────────────────
         public const string Videos =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M0 1280 l0 -1280 1280 0 1280 0 0 1280 0 1280 -1280 0 -1280 0 0 -1280z" +
             " m2362 622 l33 -32 3 -282 c3 -278 1 -298 -30 -304 c-73 -13 -107 -16 -196 -18" +
             " c-79 -1 -106 -5 -116 -16 c-17 -22 -55 -42 -67 -34 c-5 3 -16 0 -24 -6 c-12 -10 -15 -10 -15 1" +
             " c-1 10 -4 10 -13 -3 c-8 -9 -22 -15 -33 -14 c-10 2 -23 1 -29 -2 c-5 -3 -27 -7 -50 -8" +
@@ -277,21 +277,21 @@ namespace SaveRestoreGUI.UI
             " c-5 3 -10 2 -10 -3 c0 -6 -7 -13 -16 -16 c-8 -3 -12 -2 -9 4 c8 13 3 13 -30 0 c-19 -7 -24 -7" +
             " -19 1 c4 8 1 8 -12 1 c-11 -5 -30 -9 -44 -8 c-14 1 -30 -1 -35 -5 c-6 -4 -22 -10 -35 -12" +
             " c-14 -3 -32 -7 -40 -9 c-13 -3 -15 51 -18 425 c-2 462 -2 469 51 499 c16 10 118 14 392 18" +
-            " c411 6 392 3 495 79 l55 40 587 -2 588 -2 32 -33z\"/&gt;" +
-            "&lt;path d=\"M282 1678 c-16 -16 -16 -190 0 -206 c8 -8 46 -12 103 -12 c57 0 95 4 103 12" +
-            " c16 16 16 190 0 206 c-8 8 -46 12 -103 12 c-57 0 -95 -4 -103 -12z\"/&gt;" +
-            "&lt;path d=\"M2062 1678 c-8 -8 -12 -46 -12 -103 c0 -57 4 -95 12 -103 c8 -8 46 -12 103 -12" +
-            " c57 0 95 4 103 12 c8 8 12 46 12 103 c0 57 -4 95 -12 103 c-8 8 -46 12 -103 12 c-57 0 -95 -4 -103 -12z\"/&gt;" +
-            "&lt;path d=\"M282 1248 c-16 -16 -16 -190 0 -206 c16 -16 190 -16 206 0 c16 16 16 190 0 206" +
-            " c-8 8 -46 12 -103 12 c-57 0 -95 -4 -103 -12z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c411 6 392 3 495 79 l55 40 587 -2 588 -2 32 -33z\"/>" +
+            "<path d=\"M282 1678 c-16 -16 -16 -190 0 -206 c8 -8 46 -12 103 -12 c57 0 95 4 103 12" +
+            " c16 16 16 190 0 206 c-8 8 -46 12 -103 12 c-57 0 -95 -4 -103 -12z\"/>" +
+            "<path d=\"M2062 1678 c-8 -8 -12 -46 -12 -103 c0 -57 4 -95 12 -103 c8 -8 46 -12 103 -12" +
+            " c57 0 95 4 103 12 c8 8 12 46 12 103 c0 57 -4 95 -12 103 c-8 8 -46 12 -103 12 c-57 0 -95 -4 -103 -12z\"/>" +
+            "<path d=\"M282 1248 c-16 -16 -16 -190 0 -206 c16 -16 190 -16 206 0 c16 16 16 190 0 206" +
+            " c-8 8 -46 12 -103 12 c-57 0 -95 -4 -103 -12z\"/>" +
+            "</g></svg>";
 
         // ── Fond d'écran ──────────────────────────────────────────────────────
         public const string Wallpaper =
-            "&lt;svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
-            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\"&gt;" +
-            "&lt;g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\"&gt;" +
-            "&lt;path d=\"M222 1703 l3 -676 555 -184 c674 -222 682 -225 1104 -368 c187 -63 343 -115 348 -115" +
+            "<svg version=\"1.0\" xmlns=\"http://www.w3.org/2000/svg\"" +
+            " width=\"256\" height=\"256\" viewBox=\"0 0 256 256\">" +
+            "<g transform=\"translate(0,256) scale(0.1,-0.1)\" fill=\"#FILL\" stroke=\"none\">" +
+            "<path d=\"M222 1703 l3 -676 555 -184 c674 -222 682 -225 1104 -368 c187 -63 343 -115 348 -115" +
             " c4 0 8 303 8 673 l0 673 -101 33 c-82 27 -98 35 -89 46 c7 8 21 17 33 21 c29 9 159 93 175 112" +
             " c6 9 12 27 12 40 c0 19 -4 23 -17 18 c-41 -16 -933 -502 -933 -508 c0 -4 12 -21 28 -38 l27 -30" +
             " 180 96 c99 53 235 130 303 170 c68 41 131 74 140 74 c9 0 59 -14 109 -31 l93 -31 0 -454" +
@@ -306,15 +306,15 @@ namespace SaveRestoreGUI.UI
             " c0 4 -367 129 -815 279 l-815 271 2 -675z" +
             " m708 -594 c0 -5 5 -7 10 -4 c6 4 272 -80 593 -185 c320 -106 600 -198 622 -204 l40 -12 3 -111" +
             " 3 -111 -73 23 c-167 53 -1015 338 -1043 350 c-16 7 -82 29 -145 50 c-63 21 -119 41 -124 46" +
-            " c-6 5 17 35 56 74 c35 36 59 65 53 65 c-7 0 -18 7 -25 15 c-10 13 -9 15 9 15 c11 0 21 -5 21 -11z\"/&gt;" +
-            "&lt;path d=\"M690 449 c0 -15 6 -31 13 -36 c6 -6 191 -70 410 -143 c290 -96 412 -132 447 -132" +
+            " c-6 5 17 35 56 74 c35 36 59 65 53 65 c-7 0 -18 7 -25 15 c-10 13 -9 15 9 15 c11 0 21 -5 21 -11z\"/>" +
+            "<path d=\"M690 449 c0 -15 6 -31 13 -36 c6 -6 191 -70 410 -143 c290 -96 412 -132 447 -132" +
             " c32 0 106 19 219 57 c183 61 211 79 211 136 l0 28 -24 -22 c-30 -28 -358 -137 -412 -137" +
-            " c-25 0 -196 52 -452 138 l-412 137 0 -26z\"/&gt;" +
-            "&lt;/g&gt;&lt;/svg&gt;";
+            " c-25 0 -196 52 -452 138 l-412 137 0 -26z\"/>" +
+            "</g></svg>";
 
         // ── Mapping clé → SVG string ──────────────────────────────────────────
-        private static readonly Dictionary&lt;string, string&gt; _svgMap =
-            new Dictionary&lt;string, string&gt;(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string> _svgMap =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { "OldProfile",      OldProfile      },
                 { "Desktop",         Desktop         },
@@ -333,18 +333,18 @@ namespace SaveRestoreGUI.UI
             };
 
         // ── Cache Bitmap (clé + taille + couleur RGB opaque) ──────────────────
-        private static readonly Dictionary&lt;(string key, int size, int rgb), Bitmap&gt; _cache =
-            new Dictionary&lt;(string key, int size, int rgb), Bitmap&gt;();
+        private static readonly Dictionary<(string key, int size, int rgb), Bitmap> _cache =
+            new Dictionary<(string key, int size, int rgb), Bitmap>();
 
-        /// &lt;summary&gt;
+        /// <summary>
         /// Retourne un Bitmap rendu du SVG associé à la clé, à la taille indiquée.
         /// fillColor doit être OPAQUE — l'alpha est ignoré (géré côté appelant via ColorMatrix).
         /// Retourne null si la clé est inconnue ou si le rendu échoue.
         /// Le bitmap est mis en cache — ne pas disposer.
-        /// &lt;/summary&gt;
+        /// </summary>
         public static Bitmap? Get(string key, int size, Color fillColor)
         {
-            int rgb      = (fillColor.R &lt;&lt; 16) | (fillColor.G &lt;&lt; 8) | fillColor.B;
+            int rgb      = (fillColor.R << 16) | (fillColor.G << 8) | fillColor.B;
             var cacheKey = (key, size, rgb);
             if (_cache.TryGetValue(cacheKey, out var cached))
                 return cached;
@@ -358,7 +358,7 @@ namespace SaveRestoreGUI.UI
                 string svgText = svgSource.Replace("#FILL", hex);
 
                 using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(svgText));
-                var doc = SvgDocument.Open&lt;SvgDocument&gt;(stream);
+                var doc = SvgDocument.Open<SvgDocument>(stream);
                 doc.Width  = new SvgUnit(SvgUnitType.Pixel, size);
                 doc.Height = new SvgUnit(SvgUnitType.Pixel, size);
 
@@ -372,10 +372,10 @@ namespace SaveRestoreGUI.UI
             }
         }
 
-        /// &lt;summary&gt;Vide le cache (à appeler lors d'un changement de thème).&lt;/summary&gt;
-        public static void ClearCache() =&gt; _cache.Clear();
+        /// <summary>Vide le cache (à appeler lors d'un changement de thème).</summary>
+        public static void ClearCache() => _cache.Clear();
 
-        /// &lt;summary&gt;Retourne true si une icône SVG existe pour cette clé.&lt;/summary&gt;
-        public static bool Has(string key) =&gt; _svgMap.ContainsKey(key);
+        /// <summary>Retourne true si une icône SVG existe pour cette clé.</summary>
+        public static bool Has(string key) => _svgMap.ContainsKey(key);
     }
 }
