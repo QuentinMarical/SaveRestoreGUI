@@ -42,20 +42,33 @@ namespace SaveRestoreGUI.UI
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
-        // ── Zone icône ──────────────────────────────────────────────────
-        // Checkbox :  y+8  .. y+24   (hauteur 16)
-        // Marge   :   y+24 .. y+26   (2 px)
-        // Zone    :   y+26 .. y+68   (hauteur 42)
-        // Texte   :   y+68 .. y+90   (hauteur 22)
-        private const int IconZoneTop    = 26;   // relatif à la tuile
-        private const int IconZoneHeight = 42;
-        private const int IconSize       = 32;   // taille bitmap rendu
+        // ── Zone icône ──────────────────────────────────────────────────────
+        // Répartition verticale dans TileH=90 :
+        //   y+6  .. y+26  → Checkbox (hauteur 20, avec marge 6)
+        //   y+26 .. y+68  → Zone icône (hauteur 42) ← CENTRAGE ICI
+        //   y+68 .. y+90  → Texte (hauteur 22)
+        private const int IconZoneTop    = 26;   // offset depuis le bord haut de la tuile
+        private const int IconZoneHeight = 42;   // hauteur de la zone allouée à l'icône
+        private const int IconSize       = 32;   // taille du bitmap rendu
+
+        // ── Couleurs de fallback fixes par app ──────────────────────────────
+        // Utilisées UNIQUEMENT si imageres.dll ne fournit pas d'icône native.
+        // Ces couleurs correspondent aux palettes officielles des apps.
+        private static readonly Dictionary<string, Color> _appColors = new()
+        {
+            { "Outlook",         Color.FromArgb(  0, 120, 212) },  // bleu Microsoft
+            { "OneNote",         Color.FromArgb(119,  25, 170) },  // violet OneNote
+            { "ExcelMacros",     Color.FromArgb( 33, 115,  70) },  // vert Excel
+            { "OfficeTemplates", Color.FromArgb(216,  59,   1) },  // orange Office
+            { "Signatures",      Color.FromArgb( 70, 100, 140) },  // bleu-gris
+            // StickyNotes : géré intégralement dans FbStickyNotes (jaune fixe)
+        };
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
         private string?                  _hoverItem;
 
-        // Cache d'icônes natives (WindowsIcons) pour ce panneau
+        // Cache d'icônes natives (WindowsIcons)
         private readonly Dictionary<string, Bitmap?> _nativeCache = new();
 
         public event EventHandler? CheckedChanged;
@@ -131,28 +144,35 @@ namespace SaveRestoreGUI.UI
 
         private void UpdateScrollBounds() => AutoScrollMinSize = new Size(0, CalcTotalHeight());
 
-        // ── Résolution d'icône : WindowsIcons en priorité, SvgIcons en fallback ──
+        // ── Résolution d'icône ────────────────────────────────────────────
 
         /// <summary>
-        /// Retourne le bitmap à afficher pour un élément :
+        /// Retourne le bitmap à afficher pour un item :
         ///   1. WindowsIcons (SHGetFileInfo, couleurs natives OS)
-        ///   2. SvgIcons (formes GDI+ teintées au thème) si WindowsIcons retourne null
+        ///   2. SvgIcons fallback GDI+ avec couleur fixe par app
+        ///
+        /// Aucune teinte n'est appliquée sur le bitmap retourné.
+        /// L'opacité est gérée au moment du DrawImage selon l'état coché.
         /// </summary>
-        private Bitmap GetItemIcon(CheckItem item, Color fallbackColor)
+        private Bitmap GetItemIcon(CheckItem item)
         {
+            // 1. Icône native Windows
             if (!_nativeCache.TryGetValue(item.Icon, out var native))
             {
                 native = WindowsIcons.Get(item.Icon, IconSize);
                 _nativeCache[item.Icon] = native;
             }
-            // Icône native trouvée : on la renvoie telle quelle (couleurs OS conservées)
             if (native != null) return native;
 
-            // Fallback GDI+
-            return SvgIcons.Get(item.Icon, IconSize, fallbackColor);
+            // 2. Fallback GDI+ — couleur fixe par app, ou gris neutre pour dossiers
+            Color fallback = _appColors.TryGetValue(item.Icon, out var ac)
+                ? ac
+                : Color.FromArgb(100, 120, 140);  // gris-bleu neutre pour dossiers
+
+            return SvgIcons.Get(item.Icon, IconSize, fallback);
         }
 
-        // ── Calculs de layout ───────────────────────────────────────────────
+        // ── Calculs de layout ────────────────────────────────────────────
 
         private int ColsActual()
         {
@@ -186,7 +206,7 @@ namespace SaveRestoreGUI.UI
             return h + 4;
         }
 
-        // ── Rendu principal ───────────────────────────────────────────────
+        // ── Rendu principal ──────────────────────────────────────────────
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -255,7 +275,7 @@ namespace SaveRestoreGUI.UI
             bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
             bool hovered = _hoverItem == item.Key;
 
-            // ── Fond et bordure
+            // ── Fond et bordure ──────────────────────────────────────────
             var tileRect = new Rectangle(x, y, w, TileH);
             using var tilePath = RoundRect(tileRect, TileRadius);
 
@@ -271,8 +291,8 @@ namespace SaveRestoreGUI.UI
                 : new Pen(Color.FromArgb(40,  p.Border.R, p.Border.G, p.Border.B), 1f);
             g.DrawPath(borderPen, tilePath);
 
-            // ── Checkbox (coin haut-gauche)
-            int cbx = x + 8, cby = y + 8;
+            // ── Checkbox (coin haut-gauche) ──────────────────────────────
+            int cbx = x + 8, cby = y + 6;
             var boxRect = new Rectangle(cbx, cby, CheckBoxW, CheckBoxW);
             using var boxPath = RoundRect(boxRect, 4);
             if (chk)
@@ -295,25 +315,22 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône native Windows (ou fallback GDI+), centrée dans la zone dédiée
-            // Couleur fallback GDI+ uniquement (WindowsIcons = couleurs natives, pas de teinte)
-            Color fallbackColor = chk
-                ? Color.FromArgb(230, p.Accent.R, p.Accent.G, p.Accent.B)
-                : Color.FromArgb(140, p.Text.R,   p.Text.G,   p.Text.B);
-
-            var bmp = GetItemIcon(item, fallbackColor);
-
-            // Centrage horizontal et vertical strict dans la zone dédiée
-            int iconX = x + (w        - IconSize) / 2;
+            // ── Icône — centrage strict dans la zone dédiée ──────────────
+            // Zone icône : de (y + IconZoneTop) à (y + IconZoneTop + IconZoneHeight)
+            // Centrage horizontal  : (tileW - IconSize) / 2
+            // Centrage vertical    : IconZoneTop + (IconZoneHeight - IconSize) / 2
+            var bmp  = GetItemIcon(item);
+            int iconX = x + (w        - IconSize)      / 2;
             int iconY = y + IconZoneTop + (IconZoneHeight - IconSize) / 2;
 
-            // Opacité pleine si coché, atténuée sinon (45 %)
             if (chk)
             {
+                // Icône à pleine opacité quand coché
                 g.DrawImage(bmp, iconX, iconY, IconSize, IconSize);
             }
             else
             {
+                // Icône atténuée à 45 % quand non coché
                 using var ia = new ImageAttributes();
                 var cm = new ColorMatrix { Matrix33 = 0.45f };
                 ia.SetColorMatrix(cm);
@@ -323,7 +340,7 @@ namespace SaveRestoreGUI.UI
                     GraphicsUnit.Pixel, ia);
             }
 
-            // ── Texte en bas, centré
+            // ── Texte en bas, centré ─────────────────────────────────────
             using var textFont  = new Font("Segoe UI", 7.5f);
             Color     textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
