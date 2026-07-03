@@ -13,7 +13,7 @@ namespace SaveRestoreGUI.UI
     {
         public string Key            { get; }
         public string Text           { get; }
-        public string Icon           { get; }  // emoji fallback (headers)
+        public string Icon           { get; }  // emoji Segoe UI Emoji
         public bool   DefaultChecked { get; }
         public CheckItem(string key, string text, string icon, bool defaultChecked = true)
         { Key = key; Text = text; Icon = icon; DefaultChecked = defaultChecked; }
@@ -22,7 +22,7 @@ namespace SaveRestoreGUI.UI
     public class CheckCategory
     {
         public string      Label    { get; }
-        public string      Icon     { get; }  // emoji (headers)
+        public string      Icon     { get; }  // emoji (header)
         public CheckItem[] Items    { get; }
         public bool        Expanded { get; set; } = true;
         public CheckCategory(string label, string icon, CheckItem[] items)
@@ -42,11 +42,11 @@ namespace SaveRestoreGUI.UI
         private const int TileRadius = 8;
 
         // ── Zone icône dans la tuile
-        //    De y+IconZoneTop jusqu'à y+IconZoneTop+IconZoneHeight
-        //    (entre la checkbox à y+8 et le texte à y+TileH-22)
-        private const int IconZoneTop    = 26;   // pixels depuis le haut de la tuile
-        private const int IconZoneHeight = 42;   // hauteur disponible pour l'icône
-        private const int IconSize       = 36;   // taille du bitmap rendu
+        //    checkbox à y+8, texte à y+TileH-22
+        //    IconZoneTop : départ après la checkbox (y + 8 + 16 + 2 = 26)
+        //    IconZoneHeight : espace jusqu'au texte (TileH - 22 - 26 = 42)
+        private const int IconZoneTop    = 26;
+        private const int IconZoneHeight = 42;
 
         private List<CheckCategory>      _categories = new();
         private Dictionary<string, bool> _checked    = new();
@@ -183,7 +183,6 @@ namespace SaveRestoreGUI.UI
             using var accentBrush = new SolidBrush(p.Accent);
             g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
 
-            // Émoji dans le header (pas de tuile, donc pas d'icône SVG ici)
             using var emojiFont = new Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
@@ -260,51 +259,23 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône SVG centrée dans la zone dédiée
-            //    Zone verticale : [y + IconZoneTop .. y + IconZoneTop + IconZoneHeight]
-            //    Zone horizontale : centrée sur la largeur w
-            int iconAreaTop = y + IconZoneTop;
-
-            // Couleur de remplissage : accent si coché, texte secondaire sinon
-            Color iconFill = chk ? p.Accent : p.TextSecondary;
-            Bitmap? bmp = SvgIcons.Get(item.Key, IconSize, iconFill);
-
-            if (bmp != null)
+            // ── Icône emoji centrée dans la zone dédiée
+            //    Zone : [y + IconZoneTop .. y + IconZoneTop + IconZoneHeight]
+            int iconAlpha = chk ? 230 : 120;
+            Color iconColor = Color.FromArgb(iconAlpha, p.Text);
+            using var emojiFont = new Font("Segoe UI Emoji", 18f);
+            using var emojiBrush = new SolidBrush(iconColor);
+            var iconSf = new StringFormat
             {
-                int bx = x + (w             - bmp.Width)  / 2;
-                int by = iconAreaTop + (IconZoneHeight - bmp.Height) / 2;
-
-                if (chk)
-                {
-                    // Coché : pleine opacité
-                    g.DrawImage(bmp, bx, by, bmp.Width, bmp.Height);
-                }
-                else
-                {
-                    // Non coché : 55 % d'opacité via ColorMatrix
-                    using var ia = new System.Drawing.Imaging.ImageAttributes();
-                    var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = 0.55f };
-                    ia.SetColorMatrix(cm);
-                    g.DrawImage(bmp,
-                        new Rectangle(bx, by, bmp.Width, bmp.Height),
-                        0, 0, bmp.Width, bmp.Height,
-                        GraphicsUnit.Pixel, ia);
-                }
-            }
-            else
-            {
-                // Fallback émoji si SVG indisponible pour cette clé
-                using var emojiFont = new Font("Segoe UI Emoji", 18f);
-                var sf = new StringFormat
-                {
-                    Alignment     = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-                Color emojiColor = Color.FromArgb(chk ? 220 : 120, p.Text);
-                using var emojiB = new SolidBrush(emojiColor);
-                g.DrawString(item.Icon, emojiFont, emojiB,
-                    new RectangleF(x, iconAreaTop, w, IconZoneHeight), sf);
-            }
+                Alignment     = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+            g.DrawString(
+                item.Icon,
+                emojiFont,
+                emojiBrush,
+                new RectangleF(x, y + IconZoneTop, w, IconZoneHeight),
+                iconSf);
 
             // ── Texte en bas, centré
             using var textFont  = new Font("Segoe UI", 7.5f);
@@ -426,8 +397,8 @@ namespace SaveRestoreGUI.UI
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",   "🖼️", false),
-                new("NetworkDrives", "Lecteurs réseau", "🔗", false),
+                new("Wallpaper",     "Fond d'écran",    "🖼️", false),
+                new("NetworkDrives", "Lecteurs réseau",  "🔗", false),
             };
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Applications", "🚀"));
