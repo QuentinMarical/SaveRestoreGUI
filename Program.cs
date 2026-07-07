@@ -33,7 +33,8 @@ namespace SaveRestoreGUI
 
             // Fermeture du splash et affichage de MainForm
             splash.UpdateProgress(100, "Prêt !");
-            System.Threading.Thread.Sleep(350); // bref délai pour que le 100% soit visible
+            // Laisser le message pump traiter l'affichage du 100% sans bloquer le thread UI
+            Application.DoEvents();
             splash.Close();
             splash.Dispose();
 
