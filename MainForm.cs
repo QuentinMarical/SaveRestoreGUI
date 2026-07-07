@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text;
-using System.Threading;
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
 
@@ -12,7 +11,14 @@ namespace SaveRestoreGUI
     /// </summary>
     public partial class MainForm : Form
     {
-        private CancellationTokenSource? _cancellationTokenSource;
+        // Un CancellationTokenSource distinct par onglet pour éviter les race conditions
+        private CancellationTokenSource? _ctsBackup;
+        private CancellationTokenSource? _ctsRestore;
+        private CancellationTokenSource? _ctsMigration;
+
+        /// <summary>Profils système exclus de toutes les détections de profils.</summary>
+        internal static readonly string[] ExcludedProfiles =
+            ["Public", "Default", "Default User", "All Users", "defaultuser0"];
 
         private string? _logFilePath;
         private readonly Lock _logLock = new();
@@ -227,7 +233,7 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ───────────────────────────── Helpers UI ────────────────────────────
+        // ───────────────────────────── Helpers UI ────────────────────
 
         private void Log(RichTextBox rtb, string message, Color? color = null, bool toast = false, ToastKind kind = ToastKind.Info)
         {
@@ -247,8 +253,19 @@ namespace SaveRestoreGUI
             lock (_logLock) { logPath = _logFilePath; }
             if (!string.IsNullOrEmpty(logPath))
             {
-                try { lock (_logLock) { File.AppendAllText(logPath, fullMsg, Encoding.UTF8); } }
-                catch { }
+                try
+                {
+                    lock (_logLock) { File.AppendAllText(logPath, fullMsg, Encoding.UTF8); }
+                }
+                catch (Exception ex)
+                {
+                    // Trace l'erreur d'ecriture directement dans la RichTextBox (sans boucle recursive)
+                    var warn = $"[{DateTime.Now:HH:mm:ss}] ⚠ Impossible d'écrire dans le log fichier : {ex.Message}\n";
+                    rtb.SelectionStart = rtb.TextLength;
+                    rtb.SelectionColor = Color.FromArgb(241, 250, 140);
+                    rtb.AppendText(warn);
+                    rtb.ScrollToCaret();
+                }
             }
 
             if (toast) ToastService.Show(this, message, kind);
@@ -305,7 +322,7 @@ namespace SaveRestoreGUI
             btnMigrateSelectAll.Enabled   = enabled;
             btnMigrateDeselectAll.Enabled = enabled;
             cmbUSBDrives.Enabled  = enabled;
-            cmbProfiles.Enabled   = enabled;   // ← était lstProfiles
+            cmbProfiles.Enabled   = enabled;
             btnRefreshUSB.Enabled = enabled;
 
             btnCancelBackup.Enabled    = !enabled;
@@ -316,10 +333,20 @@ namespace SaveRestoreGUI
         private void ExportLog(RichTextBox rtb, string defaultName)
         {
             using var sfd = new SaveFileDialog { Filter = "Fichier texte|*.txt", FileName = defaultName };
-            if (sfd.ShowDialog() == DialogResult.OK)
+            if (sfd.ShowDialog() != DialogResult.OK) return;
+
+            try
             {
                 File.WriteAllText(sfd.FileName, rtb.Text, Encoding.UTF8);
                 ToastService.Show(this, $"Log exporté : {Path.GetFileName(sfd.FileName)}", ToastKind.Success);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Impossible d'écrire le fichier log :\n{ex.Message}",
+                    "Erreur d'exportation",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
 
@@ -341,13 +368,12 @@ namespace SaveRestoreGUI
 
             if (!hasOldProfile)
             {
-                string[] excluded = ["Public", "Default", "Default User", "All Users", "defaultuser0"];
                 hasOldProfile = Directory.GetDirectories(usersDir)
                     .Select(Path.GetFileName)
                     .Any(name =>
                         !string.IsNullOrWhiteSpace(name)
                         && !name!.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
-                        && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase)
+                        && !ExcludedProfiles.Contains(name, StringComparer.OrdinalIgnoreCase)
                         && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase));
             }
 
@@ -362,15 +388,13 @@ namespace SaveRestoreGUI
 
             if (usersDir == null) return;
 
-            string[] excluded = ["Public", "Default", "Default User", "All Users", "defaultuser0"];
-
             var oldProfiles = Directory.GetDirectories(usersDir)
                 .Where(d =>
                 {
                     var name = Path.GetFileName(d);
                     return name != null
                         && !name.Equals(currentUser, StringComparison.OrdinalIgnoreCase)
-                        && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase)
+                        && !ExcludedProfiles.Contains(name, StringComparer.OrdinalIgnoreCase)
                         && name.StartsWith(currentUser + ".", StringComparison.OrdinalIgnoreCase);
                 })
                 .ToList();
@@ -388,9 +412,15 @@ namespace SaveRestoreGUI
 
         private void CancelCurrentOperation(RichTextBox rtb)
         {
-            if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+            // Annule l'operation de l'onglet correspondant selon le rtb transmis
+            var cts = ReferenceEquals(rtb, BackupLogBox)    ? _ctsBackup
+                    : ReferenceEquals(rtb, RestoreLogBox)   ? _ctsRestore
+                    : ReferenceEquals(rtb, MigrationLogBox) ? _ctsMigration
+                    : null;
+
+            if (cts != null && !cts.IsCancellationRequested)
             {
-                _cancellationTokenSource.Cancel();
+                cts.Cancel();
                 LogWarning(rtb, "Annulation en cours...");
             }
         }
