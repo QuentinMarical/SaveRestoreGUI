@@ -26,7 +26,8 @@ namespace SaveRestoreGUI.Services
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 });
-                process!.WaitForExit(5000);
+                if (process == null) return false;
+                process.WaitForExit(5000);
                 return process.ExitCode == 0;
             }
             catch { return false; }
@@ -47,7 +48,8 @@ namespace SaveRestoreGUI.Services
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 });
-                process!.WaitForExit(10000);
+                if (process == null) return false;
+                process.WaitForExit(10000);
                 return process.ExitCode == 0 && File.Exists(regFilePath);
             }
             catch { return false; }
@@ -75,7 +77,12 @@ namespace SaveRestoreGUI.Services
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 });
-                process!.WaitForExit(10000);
+                if (process == null)
+                {
+                    log?.Invoke("Impossible de démarrer reg.exe pour l'import.");
+                    return false;
+                }
+                process.WaitForExit(10000);
                 bool success = process.ExitCode == 0;
                 if (!success)
                 {
