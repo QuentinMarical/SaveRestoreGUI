@@ -46,8 +46,8 @@ namespace SaveRestoreGUI
             }
 
             RestoreLogBox.Clear();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var ct = _cancellationTokenSource.Token;
+            _ctsRestore = new CancellationTokenSource();
+            var ct = _ctsRestore.Token;
             var errorList = new List<string>();
 
             SetControlsEnabled(false);
@@ -176,8 +176,8 @@ namespace SaveRestoreGUI
                 SetControlsEnabled(true);
                 HideProgress();
                 lock (_logLock) { _logFilePath = null; }
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                _ctsRestore?.Dispose();
+                _ctsRestore = null;
             }
         }
 
@@ -330,22 +330,33 @@ namespace SaveRestoreGUI
             }
         }
 
+        /// <summary>
+        /// Restaure la base Sticky Notes (plum.sqlite) ainsi que ses fichiers WAL et SHM
+        /// pour éviter une base corrompue si SQLite était en mode WAL lors de la sauvegarde.
+        /// </summary>
         private async Task RestoreStickyNotesAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
         {
-            var stickyBackup = Path.Combine(restoreRoot, "StickyNotes.sqlite");
-            if (File.Exists(stickyBackup))
+            var stickyDest = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
+            Directory.CreateDirectory(stickyDest);
+
+            bool restored = false;
+            foreach (var suffix in new[] { "", "-wal", "-shm" })
             {
-                var stickyDest = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
-                Directory.CreateDirectory(stickyDest);
-                await Task.Run(() => File.Copy(stickyBackup, Path.Combine(stickyDest, "plum.sqlite"), true), ct);
-                LogSuccess(rtb, "Sticky Notes restaurés");
+                var src  = Path.Combine(restoreRoot, "StickyNotes.sqlite" + suffix);
+                var dest = Path.Combine(stickyDest,  "plum.sqlite" + suffix);
+                if (File.Exists(src))
+                {
+                    await Task.Run(() => File.Copy(src, dest, overwrite: true), ct);
+                    restored = true;
+                }
             }
+
+            if (restored)
+                LogSuccess(rtb, "Sticky Notes restaurés (sqlite + WAL/SHM si présents)");
             else
-            {
                 LogInfo(rtb, "Pas de Sticky Notes à restaurer.");
-            }
         }
 
         private async Task RestoreEdgeProfileAsync(string restoreRoot, RichTextBox rtb,
@@ -365,20 +376,24 @@ namespace SaveRestoreGUI
                 "Profil Edge", rtb, progress, errorList, ct);
         }
 
-        private async Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
+        /// <summary>
+        /// Affiche les lecteurs réseau sauvegardés pour reconfiguration manuelle.
+        /// Cette méthode est intentionnellement synchrone (aucune opération I/O async).
+        /// </summary>
+        private Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
         {
             var networkDrivesFile = Path.Combine(restoreRoot, "NetworkDrives.txt");
             if (!File.Exists(networkDrivesFile))
             {
                 LogInfo(rtb, "Pas de fichier de lecteurs réseau trouvé.");
-                return;
+                return Task.CompletedTask;
             }
 
             var entries = NetworkDriveParser.ParseFile(networkDrivesFile);
             if (entries.Count == 0)
             {
                 LogInfo(rtb, "Aucun lecteur réseau dans la sauvegarde.");
-                return;
+                return Task.CompletedTask;
             }
 
             LogTitle(rtb, "Lecteurs réseau de l'ancien poste");
@@ -399,6 +414,7 @@ namespace SaveRestoreGUI
             }
 
             LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
+            return Task.CompletedTask;
         }
 
         private async Task RestoreWallpaperAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
