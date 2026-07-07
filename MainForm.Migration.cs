@@ -1,7 +1,6 @@
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 
 namespace SaveRestoreGUI
 {
@@ -49,9 +48,9 @@ namespace SaveRestoreGUI
                 => IsMatch ? $"★ {Name} (correspond à l'utilisateur actuel)" : Name;
         }
 
-        // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         //  DÉTECTION DES LECTEURS
-        // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
 
         [LibraryImport("kernel32.dll", EntryPoint = "GetDriveTypeW", StringMarshalling = StringMarshalling.Utf16)]
         private static partial uint GetDriveType(string lpRootPathName);
@@ -181,23 +180,12 @@ namespace SaveRestoreGUI
         }
 
         // ── Helpers PowerShell BitLocker ─────────────────────────────────────────────
-
-        /// <summary>
-        /// Lettre de lecteur valide : exactement une lettre majuscule suivie de ':'.
-        /// </summary>
-        [GeneratedRegex(@"^[A-Z]:$", RegexOptions.Compiled)]
-        private static partial Regex DriveLetterRegex();
-
         private static BitLockerState GetBitLockerStatePowerShell(string drivePath)
         {
             try
             {
                 var letter = drivePath.Replace("/", "\\").TrimEnd('\\').ToUpperInvariant();
                 if (!letter.EndsWith(':')) letter += ":";
-
-                // Validation stricte avant injection dans le script PowerShell
-                if (!DriveLetterRegex().IsMatch(letter))
-                    return BitLockerState.Unknown;
 
                 var script =
                     $"$v = Get-BitLockerVolume -MountPoint '{letter}' -ErrorAction SilentlyContinue; " +
@@ -293,9 +281,9 @@ namespace SaveRestoreGUI
             return output;
         }
 
-        // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         //  ÉVÉNEMENTS UI
-        // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         private void BtnRefreshUSB_Click(object? sender, EventArgs e)
         {
             LoadUSBDrives();
@@ -350,7 +338,6 @@ namespace SaveRestoreGUI
             cmbProfiles.Items.Clear();
             try
             {
-                // Utilise la constante partagee ExcludedProfiles (definie dans MainForm.cs)
                 var currentUsername = Environment.UserName;
 
                 if (!Directory.Exists(drive.UsersPath)) return;
@@ -407,9 +394,9 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
         //  CONSTRUCTION DE LA LISTE DES ÉTAPES DE MIGRATION
-        // ═════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
 
         private List<(string Name, Func<Task> Action)> BuildMigrationSteps(
             string sourceProfile,
