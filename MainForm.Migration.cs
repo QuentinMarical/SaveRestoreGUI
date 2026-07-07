@@ -338,14 +338,13 @@ namespace SaveRestoreGUI
             cmbProfiles.Items.Clear();
             try
             {
-                var excluded        = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
                 var currentUsername = Environment.UserName;
 
                 if (!Directory.Exists(drive.UsersPath)) return;
 
                 var profiles = Directory.GetDirectories(drive.UsersPath)
                     .Select(p => new DirectoryInfo(p))
-                    .Where(d => !excluded.Contains(d.Name, StringComparer.OrdinalIgnoreCase) && !d.Name.StartsWith('.'))
+                    .Where(d => !ExcludedProfiles.Contains(d.Name, StringComparer.OrdinalIgnoreCase) && !d.Name.StartsWith('.'))
                     .Where(d => Directory.Exists(Path.Combine(d.FullName, "Documents"))
                              || Directory.Exists(Path.Combine(d.FullName, "Desktop")))
                     .Select(d =>
@@ -561,8 +560,8 @@ namespace SaveRestoreGUI
             if (confirm != DialogResult.Yes) return;
 
             MigrationLogBox.Clear();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var ct        = _cancellationTokenSource.Token;
+            _ctsMigration = new CancellationTokenSource();
+            var ct        = _ctsMigration.Token;
             var errorList = new List<string>();
 
             SetControlsEnabled(false);
@@ -683,8 +682,8 @@ namespace SaveRestoreGUI
                 SetControlsEnabled(true);
                 HideProgress();
                 lock (_logLock) { _logFilePath = null; }
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                _ctsMigration?.Dispose();
+                _ctsMigration = null;
             }
         }
 

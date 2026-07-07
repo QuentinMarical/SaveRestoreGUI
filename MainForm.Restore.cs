@@ -46,8 +46,8 @@ namespace SaveRestoreGUI
             }
 
             RestoreLogBox.Clear();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var ct = _cancellationTokenSource.Token;
+            _ctsRestore = new CancellationTokenSource();
+            var ct = _ctsRestore.Token;
             var errorList = new List<string>();
 
             SetControlsEnabled(false);
@@ -176,8 +176,8 @@ namespace SaveRestoreGUI
                 SetControlsEnabled(true);
                 HideProgress();
                 lock (_logLock) { _logFilePath = null; }
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                _ctsRestore?.Dispose();
+                _ctsRestore = null;
             }
         }
 
