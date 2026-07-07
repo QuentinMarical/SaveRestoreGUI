@@ -1,6 +1,7 @@
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace SaveRestoreGUI
 {
@@ -48,9 +49,9 @@ namespace SaveRestoreGUI
                 => IsMatch ? $"★ {Name} (correspond à l'utilisateur actuel)" : Name;
         }
 
-        // ═══════════════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════════
         //  DÉTECTION DES LECTEURS
-        // ═══════════════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════════
 
         [LibraryImport("kernel32.dll", EntryPoint = "GetDriveTypeW", StringMarshalling = StringMarshalling.Utf16)]
         private static partial uint GetDriveType(string lpRootPathName);
@@ -180,12 +181,23 @@ namespace SaveRestoreGUI
         }
 
         // ── Helpers PowerShell BitLocker ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Lettre de lecteur valide : exactement une lettre majuscule suivie de ':'.
+        /// </summary>
+        [GeneratedRegex(@"^[A-Z]:$", RegexOptions.Compiled)]
+        private static partial Regex DriveLetterRegex();
+
         private static BitLockerState GetBitLockerStatePowerShell(string drivePath)
         {
             try
             {
                 var letter = drivePath.Replace("/", "\\").TrimEnd('\\').ToUpperInvariant();
                 if (!letter.EndsWith(':')) letter += ":";
+
+                // Validation stricte avant injection dans le script PowerShell
+                if (!DriveLetterRegex().IsMatch(letter))
+                    return BitLockerState.Unknown;
 
                 var script =
                     $"$v = Get-BitLockerVolume -MountPoint '{letter}' -ErrorAction SilentlyContinue; " +
@@ -281,9 +293,9 @@ namespace SaveRestoreGUI
             return output;
         }
 
-        // ═══════════════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════════
         //  ÉVÉNEMENTS UI
-        // ═══════════════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════════
         private void BtnRefreshUSB_Click(object? sender, EventArgs e)
         {
             LoadUSBDrives();
@@ -338,14 +350,14 @@ namespace SaveRestoreGUI
             cmbProfiles.Items.Clear();
             try
             {
-                var excluded        = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
+                // Utilise la constante partagee ExcludedProfiles (definie dans MainForm.cs)
                 var currentUsername = Environment.UserName;
 
                 if (!Directory.Exists(drive.UsersPath)) return;
 
                 var profiles = Directory.GetDirectories(drive.UsersPath)
                     .Select(p => new DirectoryInfo(p))
-                    .Where(d => !excluded.Contains(d.Name, StringComparer.OrdinalIgnoreCase) && !d.Name.StartsWith('.'))
+                    .Where(d => !ExcludedProfiles.Contains(d.Name, StringComparer.OrdinalIgnoreCase) && !d.Name.StartsWith('.'))
                     .Where(d => Directory.Exists(Path.Combine(d.FullName, "Documents"))
                              || Directory.Exists(Path.Combine(d.FullName, "Desktop")))
                     .Select(d =>
@@ -395,9 +407,9 @@ namespace SaveRestoreGUI
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════════
         //  CONSTRUCTION DE LA LISTE DES ÉTAPES DE MIGRATION
-        // ═══════════════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════════
 
         private List<(string Name, Func<Task> Action)> BuildMigrationSteps(
             string sourceProfile,
@@ -561,8 +573,8 @@ namespace SaveRestoreGUI
             if (confirm != DialogResult.Yes) return;
 
             MigrationLogBox.Clear();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var ct        = _cancellationTokenSource.Token;
+            _ctsMigration = new CancellationTokenSource();
+            var ct        = _ctsMigration.Token;
             var errorList = new List<string>();
 
             SetControlsEnabled(false);
@@ -683,8 +695,8 @@ namespace SaveRestoreGUI
                 SetControlsEnabled(true);
                 HideProgress();
                 lock (_logLock) { _logFilePath = null; }
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                _ctsMigration?.Dispose();
+                _ctsMigration = null;
             }
         }
 
