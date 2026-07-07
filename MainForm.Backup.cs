@@ -51,8 +51,8 @@ namespace SaveRestoreGUI
             }
 
             BackupLogBox.Clear();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var ct = _cancellationTokenSource.Token;
+            _ctsBackup = new CancellationTokenSource();
+            var ct = _ctsBackup.Token;
             var errorList = new List<string>();
 
             SetControlsEnabled(false);
@@ -85,15 +85,13 @@ namespace SaveRestoreGUI
 
                     if (usersDir != null)
                     {
-                        var excluded = new[] { "Public", "Default", "Default User", "All Users", "defaultuser0" };
-
                         domainProfilePath = Directory.GetDirectories(usersDir)
                             .FirstOrDefault(d =>
                             {
                                 var name = Path.GetFileName(d);
                                 return name != null
                                     && name.StartsWith(currentUsername + ".", StringComparison.OrdinalIgnoreCase)
-                                    && !excluded.Contains(name, StringComparer.OrdinalIgnoreCase);
+                                    && !ExcludedProfiles.Contains(name, StringComparer.OrdinalIgnoreCase);
                             });
 
                         var exactDir = Path.Combine(usersDir, currentUsername);
@@ -184,8 +182,8 @@ namespace SaveRestoreGUI
                 SetControlsEnabled(true);
                 HideProgress();
                 lock (_logLock) { _logFilePath = null; }
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+                _ctsBackup?.Dispose();
+                _ctsBackup = null;
             }
         }
 
@@ -439,23 +437,40 @@ namespace SaveRestoreGUI
             });
         }
 
+        /// <summary>
+        /// Sauvegarde la base Sticky Notes (plum.sqlite) ainsi que ses fichiers
+        /// WAL et SHM afin d'éviter une base corrompue si SQLite était en mode WAL.
+        /// </summary>
         private async Task BackupStickyNotesAsync(string backupRoot, RichTextBox rtb, CancellationToken ct)
         {
-            var stickyPath = Path.Combine(
+            var localState = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState", "plum.sqlite");
+                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
 
-            if (File.Exists(stickyPath))
-            {
-                await Task.Run(() => File.Copy(stickyPath, Path.Combine(backupRoot, "StickyNotes.sqlite"), true), ct);
-                LogSuccess(rtb, "Sticky Notes sauvegardés");
-            }
-            else
+            var stickyPath = Path.Combine(localState, "plum.sqlite");
+
+            if (!File.Exists(stickyPath))
             {
                 LogInfo(rtb, "Aucune donnée Sticky Notes trouvée.");
+                return;
             }
+
+            // Copier plum.sqlite + plum.sqlite-wal + plum.sqlite-shm (mode WAL SQLite)
+            foreach (var suffix in new[] { "", "-wal", "-shm" })
+            {
+                var src  = Path.Combine(localState, "plum.sqlite" + suffix);
+                var dest = Path.Combine(backupRoot,  "StickyNotes.sqlite" + suffix);
+                if (File.Exists(src))
+                    await Task.Run(() => File.Copy(src, dest, overwrite: true), ct);
+            }
+
+            LogSuccess(rtb, "Sticky Notes sauvegardés (sqlite + WAL/SHM)");
         }
 
+        /// <summary>
+        /// Sauvegarde le profil Edge. Les processus msedge recuperes dans la boucle
+        /// de polling sont correctement disposes pour eviter les fuites.
+        /// </summary>
         private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
@@ -483,7 +498,11 @@ namespace SaveRestoreGUI
                 {
                     ct.ThrowIfCancellationRequested();
                     await Task.Delay(300, ct);
-                    if (System.Diagnostics.Process.GetProcessesByName("msedge").Length == 0) break;
+                    // Disposer le tableau retourne par GetProcessesByName pour eviter les fuites
+                    var remaining = System.Diagnostics.Process.GetProcessesByName("msedge");
+                    bool done = remaining.Length == 0;
+                    foreach (var p in remaining) p.Dispose();
+                    if (done) break;
                 }
                 LogInfo(rtb, "Edge fermé — démarrage de la copie du profil.");
             }
