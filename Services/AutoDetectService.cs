@@ -29,6 +29,12 @@ namespace SaveRestoreGUI.Services
         public bool HasSignatures       { get; set; }
         public bool HasOfficeTemplates  { get; set; }
         public bool HasExcelMacros      { get; set; }
+
+        /// <summary>
+        /// Ensemble des clés de navigateurs à pré-cocher (profil présent sur le poste).
+        /// Exémple : { "BrowserEdge", "BrowserFirefox" }
+        /// </summary>
+        public HashSet<string> BrowsersToPreCheck { get; set; } = new(StringComparer.Ordinal);
     }
 
     public static class AutoDetectService
@@ -46,10 +52,13 @@ namespace SaveRestoreGUI.Services
             progress?.Invoke("Détection des données utilisateur...");
             DetectPresence(r);
 
+            progress?.Invoke("Détection des navigateurs...");
+            DetectBrowsers(r);
+
             return r;
         }
 
-        // ── OneDrive ──────────────────────────────────────────────────────────────
+        // ── OneDrive ────────────────────────────────────────────────────────────
         private static void DetectOneDrive(AutoDetectResult r)
         {
             try
@@ -81,7 +90,7 @@ namespace SaveRestoreGUI.Services
             catch { }
         }
 
-        // ── Logiciels ─────────────────────────────────────────────────────────────
+        // ── Logiciels ──────────────────────────────────────────────────────
         private static void DetectSoftware(AutoDetectResult r)
         {
             var appDataRoaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -105,48 +114,54 @@ namespace SaveRestoreGUI.Services
                 "LocalState", "plum.sqlite"));
         }
 
-        // ── Présence des données (pour pré-cocher intelligemment) ─────────────────
+        // ── Présence des données (pour pré-cocher intelligemment) ────────────────
         private static void DetectPresence(AutoDetectResult r)
         {
             try
             {
                 var appDataRoaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-                // Fond d'écran personnalisé : la valeur WallPaper dans le registre
-                // diffère du fond Windows par défaut uniquement si l'utilisateur en a choisi un.
-                using (var key = Registry.CurrentUser.OpenSubKey(
-                    @"Control Panel\Desktop"))
+                using (var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop"))
                 {
                     var wp = key?.GetValue("WallPaper") as string;
                     r.HasWallpaper = !string.IsNullOrEmpty(wp) &&
                         !wp!.Contains("Windows", StringComparison.OrdinalIgnoreCase);
                 }
 
-                // Lecteurs réseau : sous-clés de HKCU\Network
                 using (var netKey = Registry.CurrentUser.OpenSubKey("Network"))
                     r.HasNetworkDrives = netKey != null && (netKey.GetSubKeyNames().Length > 0);
 
-                // OneNote : dossiers de blocs-notes dans %AppData%\Microsoft\OneNote
                 var oneNoteDir = Path.Combine(appDataRoaming, "Microsoft", "OneNote");
                 r.HasOneNote = Directory.Exists(oneNoteDir) &&
                     Directory.EnumerateDirectories(oneNoteDir).Any();
 
-                // Signatures Outlook : dossier non vide
                 var sigDir = Path.Combine(appDataRoaming, "Microsoft", "Signatures");
                 r.HasSignatures = Directory.Exists(sigDir) &&
                     Directory.EnumerateFiles(sigDir).Any();
 
-                // Modèles Office : %AppData%\Microsoft\Templates non vide
                 var tplDir = Path.Combine(appDataRoaming, "Microsoft", "Templates");
                 r.HasOfficeTemplates = Directory.Exists(tplDir) &&
                     Directory.EnumerateFiles(tplDir, "*", SearchOption.AllDirectories).Any(f =>
                         !Path.GetFileName(f).Equals("Normal.dotm", StringComparison.OrdinalIgnoreCase) &&
                         !Path.GetFileName(f).Equals("NormalEmail.dotm", StringComparison.OrdinalIgnoreCase));
 
-                // Macros Excel : %AppData%\Microsoft\Excel\XLSTART non vide
                 var xlStartDir = Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART");
                 r.HasExcelMacros = Directory.Exists(xlStartDir) &&
                     Directory.EnumerateFiles(xlStartDir).Any();
+            }
+            catch { }
+        }
+
+        // ── Navigateurs ──────────────────────────────────────────────────────
+        private static void DetectBrowsers(AutoDetectResult r)
+        {
+            try
+            {
+                foreach (var browser in BrowserService.All)
+                {
+                    if (BrowserService.ShouldPreCheck(browser))
+                        r.BrowsersToPreCheck.Add(browser.Key);
+                }
             }
             catch { }
         }
