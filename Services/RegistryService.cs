@@ -107,7 +107,8 @@ namespace SaveRestoreGUI.Services
             var exported = new List<string>();
             bool foundAny = false;
 
-            foreach (var version in OfficeVersions.Concat(new[] { "13.0" }).Distinct().OrderBy(v => v))
+            // Office 13.0 n'existe pas (Microsoft a sauté de 12.0 à 14.0) — on itère uniquement OfficeVersions.
+            foreach (var version in OfficeVersions.OrderBy(v => v))
             {
                 var oneNoteRoot = $"HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\{version}\\OneNote";
                 if (!RegKeyExists(oneNoteRoot)) continue;
@@ -171,7 +172,7 @@ namespace SaveRestoreGUI.Services
         {
             foreach (var version in SignatureVersions)
             {
-                var keyPath = $"HKCU\\Software\\Microsoft\\Office\\{version}\\Common\\MailSettings";
+                var keyPath = $"HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\{version}\\Common\\MailSettings";
                 var regFile = Path.Combine(backupRoot, $"Outlook_Signature_Settings_{version}.reg");
                 if (ExportKey(keyPath, regFile))
                     log($"Paramètres signatures Outlook {version} exportés.");
@@ -185,7 +186,7 @@ namespace SaveRestoreGUI.Services
         {
             foreach (var version in new[] { "14.0", "15.0", "16.0" })
             {
-                var keyPath = $"HKCU\\Software\\Microsoft\\Office\\{version}\\Outlook";
+                var keyPath = $"HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\{version}\\Outlook";
                 var regFile = Path.Combine(outlookBackupDir, $"Outlook_Profile_{version}.reg");
                 if (ExportKey(keyPath, regFile))
                     log($"Profil Outlook {version} exporté.");
