@@ -197,7 +197,7 @@ namespace SaveRestoreGUI.UI
 
         private int CalcTotalHeight()
         {
-            int h = 4;
+            int h = 2;
             foreach (var cat in _categories)
             {
                 h += HeaderH + 6;
@@ -216,7 +216,7 @@ namespace SaveRestoreGUI.UI
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(p.Surface);
 
-            int y = AutoScrollPosition.Y + 4;
+            int y = AutoScrollPosition.Y + 2;
             foreach (var cat in _categories)
             {
                 DrawCategoryHeader(g, p, cat, y);
@@ -353,7 +353,7 @@ namespace SaveRestoreGUI.UI
 
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
-            int y = AutoScrollPosition.Y + 4;
+            int y = AutoScrollPosition.Y + 2;
             foreach (var cat in _categories)
             {
                 var headerRect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
@@ -395,7 +395,7 @@ namespace SaveRestoreGUI.UI
 
         private string? HitTestItem(Point pt)
         {
-            int y = AutoScrollPosition.Y + 4;
+            int y = AutoScrollPosition.Y + 2;
             foreach (var cat in _categories)
             {
                 y += HeaderH + 6;
