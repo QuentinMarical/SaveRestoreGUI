@@ -52,6 +52,9 @@ namespace SaveRestoreGUI
                 => IsMatch ? $"★ {Name} (correspond à l'utilisateur actuel)" : Name;
         }
 
+        private UserProfileItem? _autoSelectedProfile;
+        private List<UserProfileItem> _allLoadedProfiles = [];
+
         // ═══════════════════════════════════════════════════════════════════
         //  DÉTECTION DES LECTEURS
         // ═══════════════════════════════════════════════════════════════════
@@ -75,11 +78,12 @@ namespace SaveRestoreGUI
 
         private void LoadUSBDrives()
         {
-            if (cmbUSBDrives == null || cmbProfiles == null || lblBitLockerStatus == null || lblMigrationInfo == null)
+            if (cmbUSBDrives == null || lblBitLockerStatus == null || lblMigrationInfo == null || lblSelectedProfile == null)
                 return;
 
             cmbUSBDrives.Items.Clear();
-            cmbProfiles.Items.Clear();
+            _allLoadedProfiles.Clear();
+            _autoSelectedProfile = null;
             lblBitLockerStatus.Text = "";
 
             try
@@ -302,7 +306,9 @@ namespace SaveRestoreGUI
 
         private void CmbUSBDrives_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            cmbProfiles.Items.Clear();
+            _allLoadedProfiles.Clear();
+            _autoSelectedProfile = null;
+            lblSelectedProfile.Text = "";
             lblBitLockerStatus.Text = "";
 
             if (cmbUSBDrives.SelectedItem is not USBDriveInfo drive) return;
@@ -342,12 +348,17 @@ namespace SaveRestoreGUI
 
         private void LoadProfiles(USBDriveInfo drive)
         {
-            cmbProfiles.Items.Clear();
+            _allLoadedProfiles.Clear();
+            _autoSelectedProfile = null;
             try
             {
                 var currentUsername = Environment.UserName;
 
-                if (!Directory.Exists(drive.UsersPath)) return;
+                if (!Directory.Exists(drive.UsersPath))
+                {
+                    lblSelectedProfile.Text = "❌ Dossier Users introuvable sur ce lecteur.";
+                    return;
+                }
 
                 var profiles = Directory.GetDirectories(drive.UsersPath)
                     .Select(p => new DirectoryInfo(p))
@@ -367,37 +378,34 @@ namespace SaveRestoreGUI
                     .ThenBy(p => p.Name)
                     .ToList();
 
-                foreach (var p in profiles) cmbProfiles.Items.Add(p);
+                _allLoadedProfiles.AddRange(profiles);
 
-                var currentUsername2 = Environment.UserName;
                 var exactMatch  = profiles.FirstOrDefault(p =>
-                    p.Name.Equals(currentUsername2, StringComparison.OrdinalIgnoreCase));
+                    p.Name.Equals(currentUsername, StringComparison.OrdinalIgnoreCase));
                 var domainMatch = profiles.FirstOrDefault(p =>
-                    p.Name.StartsWith(currentUsername2 + ".", StringComparison.OrdinalIgnoreCase));
+                    p.Name.StartsWith(currentUsername + ".", StringComparison.OrdinalIgnoreCase));
 
-                if (exactMatch != null)
-                    cmbProfiles.SelectedItem = exactMatch;
-                else if (domainMatch != null)
-                    cmbProfiles.SelectedItem = domainMatch;
+                _autoSelectedProfile = exactMatch ?? domainMatch ?? profiles.FirstOrDefault(p => p.IsMatch);
+
+                if (_autoSelectedProfile != null)
+                    lblSelectedProfile.Text = $"✅ Profil sélectionné : {_autoSelectedProfile.Name}\n{_autoSelectedProfile.Path}";
+                else if (profiles.Count > 0)
+                    lblSelectedProfile.Text = $"⚠️ Aucune correspondance pour « {currentUsername} ».\n" +
+                        $"{profiles.Count} profil(s) disponible(s) : {string.Join(", ", profiles.Select(p => p.Name))}";
                 else
-                {
-                    var firstMatch = profiles.FirstOrDefault(p => p.IsMatch);
-                    if (firstMatch != null) cmbProfiles.SelectedItem = firstMatch;
-                    else if (cmbProfiles.Items.Count > 0) cmbProfiles.SelectedIndex = 0;
-                }
+                    lblSelectedProfile.Text = $"❌ Aucun profil utilisateur trouvé sur {drive.Letter}.";
 
                 if (exactMatch != null && domainMatch != null && chkPanelMigration.IsChecked("OldProfile"))
                     lblMigrationInfo.Text =
-                        $"{profiles.Count} profil(s) trouvé(s).\n" +
                         $"⚠️ Double profil détecté ({domainMatch.Name} + {exactMatch.Name}).\n" +
                         "La migration copiera d'abord l'ancien profil domaine, puis le profil actuel.";
                 else
-                    lblMigrationInfo.Text = $"{profiles.Count} profil(s) trouvé(s). Sélectionnez le profil à migrer.";
+                    lblMigrationInfo.Text = $"{profiles.Count} profil(s) trouvé(s) sur ce lecteur.";
             }
             catch (Exception ex)
             {
                 LogError(MigrationLogBox, $"Erreur chargement profils : {ex.Message}");
-                lblMigrationInfo.Text = "Erreur lors du chargement des profils.";
+                lblSelectedProfile.Text = "Erreur lors du chargement des profils.";
             }
         }
 
@@ -500,10 +508,11 @@ namespace SaveRestoreGUI
         // ── Bouton Démarrer la migration ─────────────────────────────────────────────────
         private async void BtnStartMigration_Click(object? sender, EventArgs e)
         {
-            if (cmbProfiles.SelectedItem is not UserProfileItem selectedProfile)
+            if (_autoSelectedProfile is not UserProfileItem selectedProfile)
             {
                 MessageBox.Show(
-                    "Veuillez sélectionner un profil à migrer dans la liste.",
+                    "Aucun profil correspondant à l'utilisateur actuel n'a été détecté.\n" +
+                    "Vérifiez que le disque source contient bien un dossier Users.",
                     "Aucun profil sélectionné",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
@@ -537,7 +546,7 @@ namespace SaveRestoreGUI
 
             if (chkPanelMigration.IsChecked("OldProfile") && selectedDrive.HasUsers)
             {
-                var allProfiles = cmbProfiles.Items.Cast<UserProfileItem>().ToList();
+                var allProfiles = _allLoadedProfiles;
 
                 domainProfile = allProfiles.FirstOrDefault(p =>
                     p.Name.StartsWith(currentUsername + ".", StringComparison.OrdinalIgnoreCase));
