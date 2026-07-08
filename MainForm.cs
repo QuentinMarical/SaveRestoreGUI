@@ -60,7 +60,13 @@ namespace SaveRestoreGUI
                 SyncPageSizes();
                 ApplyAutoDetect();
             };
-            this.Resize += (_, _) => SyncPageSizes();
+            this.Resize += (_, _) =>
+            {
+                if (WindowState == FormWindowState.Normal)
+                    WindowState = FormWindowState.Maximized;
+                else if (WindowState == FormWindowState.Maximized)
+                    SyncPageSizes();
+            };
 
             ApplyTheme();
             UpdateOldProfileOptionState();
@@ -322,7 +328,6 @@ namespace SaveRestoreGUI
             btnMigrateSelectAll.Enabled   = enabled;
             btnMigrateDeselectAll.Enabled = enabled;
             cmbUSBDrives.Enabled  = enabled;
-            cmbProfiles.Enabled   = enabled;
             btnRefreshUSB.Enabled = enabled;
 
             btnCancelBackup.Enabled    = !enabled;
