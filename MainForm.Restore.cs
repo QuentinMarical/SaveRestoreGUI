@@ -89,7 +89,7 @@ namespace SaveRestoreGUI
                     Path.Combine(restoreRoot, "Videos"), Path.Combine(userProfile, "Videos"),
                     "Vidéos", RestoreLogBox, progress, errorList, ct)));
 
-                if (chkPanelRestore.IsChecked("OneNote")) steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, RestoreLogBox)));
+                if (chkPanelRestore.IsChecked("OneNote"))        steps.Add(("Clés registre OneNote", () => RestoreOneNoteAsync(restoreRoot, RestoreLogBox)));
 
                 if (chkPanelRestore.IsChecked("Signatures")) steps.Add(("Signatures Outlook", () => RestoreStep(
                     Path.Combine(restoreRoot, "Signatures"),
@@ -118,10 +118,20 @@ namespace SaveRestoreGUI
 
                 if (chkPanelRestore.IsChecked("Outlook"))      steps.Add(("Données Outlook",      () => RestoreOutlookDataAsync(restoreRoot, RestoreLogBox, ct)));
                 if (chkPanelRestore.IsChecked("StickyNotes"))  steps.Add(("Sticky Notes",         () => RestoreStickyNotesAsync(restoreRoot, RestoreLogBox, ct)));
-                if (chkPanelRestore.IsChecked("BrowserEdge"))  steps.Add(("Profil Edge",           () => RestoreEdgeProfileAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
-                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",      () => RestoreNetworkDrivesInfoAsync(restoreRoot, RestoreLogBox)));
+                if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",     () => RestoreNetworkDrivesInfoAsync(restoreRoot, RestoreLogBox)));
                 if (chkPanelRestore.IsChecked("Wallpaper"))    steps.Add(("Fond d'écran",          () => RestoreWallpaperAsync(restoreRoot, RestoreLogBox, ct)));
                 if (chkPanelRestore.IsChecked("IpSoftphone"))  steps.Add(("IP Desktop Softphone",  () => RestoreIpDesktopSoftphoneAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
+
+                // Navigateurs — boucle générique sur BrowserService.All
+                foreach (var browser in BrowserService.All)
+                {
+                    if (chkPanelRestore.IsChecked(browser.Key))
+                    {
+                        var b = browser; // capture locale
+                        steps.Add(($"{b.DisplayName}",
+                            () => RestoreBrowserAsync(b, restoreRoot, RestoreLogBox, progress, errorList, ct)));
+                    }
+                }
 
                 int totalSteps = steps.Count;
                 int currentStep = 0;
@@ -365,21 +375,89 @@ namespace SaveRestoreGUI
             LogSuccess(rtb, "Sticky Notes restaurés (sqlite + WAL/SHM)");
         }
 
-        private async Task RestoreEdgeProfileAsync(string restoreRoot, RichTextBox rtb,
-            IProgress<int> progress, List<string> errorList, CancellationToken ct)
+        /// <summary>
+        /// Restauration générique du profil d'un navigateur depuis la sauvegarde.
+        /// Vérifie que le navigateur n'est pas actif, copie le profil, relance si nécessaire.
+        /// </summary>
+        private async Task RestoreBrowserAsync(
+            BrowserDef browser,
+            string restoreRoot,
+            RichTextBox rtb,
+            IProgress<int> progress,
+            List<string> errorList,
+            CancellationToken ct)
         {
-            var edgeDest = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Edge", "User Data", "Default");
-
-            if (System.Diagnostics.Process.GetProcessesByName("msedge").Length > 0)
+            var backupFolder = Path.Combine(restoreRoot, browser.BackupSubFolder);
+            if (!Directory.Exists(backupFolder))
             {
-                LogWarning(rtb, "Microsoft Edge est ouvert. Fermez-le avant de restaurer le profil.");
+                LogInfo(rtb, $"{browser.DisplayName} : aucune sauvegarde trouvée dans {browser.BackupSubFolder}, ignoré.");
                 return;
             }
 
-            await RestoreStep(Path.Combine(restoreRoot, "EdgeProfile"), edgeDest,
-                "Profil Edge", rtb, progress, errorList, ct);
+            var profileDest = browser.ProfilePathFactory();
+            if (profileDest == null)
+            {
+                // Fallback : on déduit la destination depuis BackupSubFolder
+                // (ex. "Browsers\\Edge" → %LocalAppData%\Microsoft\Edge\User Data\Default)
+                // Pour les navigateurs sans profil existant, on refuse silencieusement
+                LogWarning(rtb, $"{browser.DisplayName} : impossible de déterminer le dossier de profil cible — restauration ignorée.");
+                return;
+            }
+
+            // ── Fermeture du navigateur si actif ────────────────────────
+            var procs = System.Diagnostics.Process.GetProcessesByName(browser.ProcessName);
+            bool wasRunning = procs.Length > 0;
+
+            if (wasRunning)
+            {
+                LogWarning(rtb, $"{browser.DisplayName} est ouvert — fermeture avant restauration...");
+                await Task.Run(() =>
+                {
+                    foreach (var proc in procs)
+                    {
+                        try { proc.Kill(entireProcessTree: true); } catch { }
+                        finally { proc.Dispose(); }
+                    }
+                }, ct);
+
+                var deadline = DateTime.UtcNow.AddSeconds(6);
+                while (DateTime.UtcNow < deadline)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await Task.Delay(300, ct);
+                    var remaining = System.Diagnostics.Process.GetProcessesByName(browser.ProcessName);
+                    bool done = remaining.Length == 0;
+                    foreach (var p in remaining) p.Dispose();
+                    if (done) break;
+                }
+                LogInfo(rtb, $"{browser.DisplayName} fermé — démarrage de la restauration.");
+            }
+            else
+            {
+                foreach (var p in procs) p.Dispose();
+            }
+
+            // ── Copie du profil sauvegardé → destination ────────────────
+            await RestoreStep(backupFolder, profileDest,
+                $"Profil {browser.DisplayName}", rtb, progress, errorList, ct);
+
+            // ── Relance si nécessaire ───────────────────────────────────
+            if (wasRunning)
+            {
+                var exe = browser.ExecutableCandidates.FirstOrDefault(File.Exists);
+                if (exe != null)
+                {
+                    await Task.Run(() =>
+                        System.Diagnostics.Process.Start(
+                            new System.Diagnostics.ProcessStartInfo { FileName = exe, UseShellExecute = true }),
+                        CancellationToken.None);
+                    LogInfo(rtb, $"{browser.DisplayName} relancé.");
+                }
+                else
+                {
+                    LogWarning(rtb, $"{browser.DisplayName} : impossible de relancer — exécutable introuvable.");
+                }
+            }
         }
 
         private Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
@@ -403,65 +481,71 @@ namespace SaveRestoreGUI
             int wLetter = entries.Max(e => e.Letter.Length);
             int wPath   = Math.Min(60, entries.Max(e => e.UncPath.Length));
 
-            Log(rtb, $"  {"Lettre".PadRight(wLetter + 2)}{"Chemin UNC".PadRight(wPath + 2)}Libellé",
+            Log(rtb, $"  {\"Lettre\".PadRight(wLetter + 2)}{\"Chemin UNC\".PadRight(wPath + 2)}Libellé",
                 Color.FromArgb(241, 250, 140));
             Log(rtb, $"  {new string('─', wLetter + 2)}{new string('─', wPath + 2)}{new string('─', 20)}",
-                Color.FromArgb(241, 250, 140));
+                Color.FromArgb(100, 100, 100));
 
             foreach (var e in entries)
-            {
-                Log(rtb,
-                    $"  {e.Letter.PadRight(wLetter + 2)}{e.UncPath.PadRight(wPath + 2)}{e.Label}",
-                    Color.FromArgb(139, 233, 253));
-            }
+                Log(rtb, $"  {e.Letter.PadRight(wLetter + 2)}{e.UncPath.PadRight(wPath + 2)}{e.Label}",
+                    Color.FromArgb(200, 200, 200));
 
-            LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
+            LogInfo(rtb, "");
+            LogInfo(rtb, "Pour recréer ces lecteurs, allez dans l'Explorateur > Ce PC > Connecter un lecteur réseau.");
             return Task.CompletedTask;
         }
 
         private async Task RestoreWallpaperAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
         {
-            var wallpaperFiles = Directory.GetFiles(restoreRoot, "Wallpaper.*");
-            if (wallpaperFiles.Length > 0)
+            var candidates = Directory.GetFiles(restoreRoot, "Wallpaper.*")
+                .Where(f => !Path.GetFileName(f).Equals("Wallpaper.log", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            if (candidates.Length == 0)
             {
-                var wallpaperDest = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", "Windows", "Themes");
-                Directory.CreateDirectory(wallpaperDest);
-                await Task.Run(() => File.Copy(wallpaperFiles[0], Path.Combine(wallpaperDest, "TranscodedWallpaper"), true), ct);
-                LogSuccess(rtb, "Fond d'écran restauré (visible après reconnexion)");
+                LogInfo(rtb, "Aucun fond d'écran sauvegardé.");
+                return;
             }
-            else
+
+            var wallpaperFile = candidates[0];
+            var destDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Microsoft", "Windows", "Themes");
+            Directory.CreateDirectory(destDir);
+            var dest = Path.Combine(destDir, Path.GetFileName(wallpaperFile));
+
+            await Task.Run(() => File.Copy(wallpaperFile, dest, true), ct);
+
+            await Task.Run(() =>
             {
-                LogInfo(rtb, "Pas de fond d'écran à restaurer.");
-            }
+                try
+                {
+                    NativeMethods.SystemParametersInfo(
+                        NativeMethods.SPI_SETDESKWALLPAPER, 0, dest,
+                        NativeMethods.SPIF_UPDATEINIFILE | NativeMethods.SPIF_SENDCHANGE);
+                    LogSuccess(rtb, $"Fond d'écran restauré : {Path.GetFileName(dest)}");
+                }
+                catch (Exception ex) { LogError(rtb, $"Erreur application fond d'écran : {ex.Message}"); }
+            }, ct);
         }
 
         private async Task RestoreIpDesktopSoftphoneAsync(string restoreRoot, RichTextBox rtb,
             IProgress<int> progress, List<string> errorList, CancellationToken ct)
         {
-            var backupDir = Path.Combine(restoreRoot, "IpDesktopSoftphone");
-            if (!Directory.Exists(backupDir))
+            var appDataRoaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var ipDir = Path.Combine(restoreRoot, "IpDesktopSoftphone");
+            if (!Directory.Exists(ipDir))
             {
-                LogInfo(rtb, "IP Desktop Softphone : aucune sauvegarde trouvée.");
+                LogInfo(rtb, "IP Desktop Softphone : aucune sauvegarde.");
                 return;
             }
 
-            var vendorDirs = Directory.GetDirectories(backupDir);
-            if (vendorDirs.Length == 0)
+            foreach (var vendorDir in Directory.GetDirectories(ipDir))
             {
-                LogInfo(rtb, "IP Desktop Softphone : dossier de sauvegarde vide.");
-                return;
-            }
-
-            foreach (var vendorDir in vendorDirs)
-            {
-                var vendorName = Path.GetFileName(vendorDir);
-                var destRoaming = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    vendorName, "IP Desktop Softphone");
-                await RestoreStep(vendorDir, destRoaming,
-                    $"IP Desktop Softphone ({vendorName})", rtb, progress, errorList, ct);
+                ct.ThrowIfCancellationRequested();
+                var vendor = Path.GetFileName(vendorDir);
+                var dest   = Path.Combine(appDataRoaming, vendor, "IP Desktop Softphone");
+                await RestoreStep(vendorDir, dest, $"IP Desktop Softphone ({vendor})",
+                    rtb, progress, errorList, ct);
             }
         }
     }

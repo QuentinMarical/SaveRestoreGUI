@@ -53,7 +53,6 @@ namespace SaveRestoreGUI.UI
 
         // ── Couleurs de fallback fixes par app ──────────────────────────────
         // Utilisées UNIQUEMENT si imageres.dll ne fournit pas d'icône native.
-        // Ces couleurs correspondent aux palettes officielles des apps.
         private static readonly Dictionary<string, Color> _appColors = new()
         {
             { "Outlook",         Color.FromArgb(  0, 120, 212) },  // bleu Microsoft
@@ -61,7 +60,20 @@ namespace SaveRestoreGUI.UI
             { "ExcelMacros",     Color.FromArgb( 33, 115,  70) },  // vert Excel
             { "OfficeTemplates", Color.FromArgb(216,  59,   1) },  // orange Office
             { "Signatures",      Color.FromArgb( 70, 100, 140) },  // bleu-gris
-            // StickyNotes : géré intégralement dans FbStickyNotes (jaune fixe)
+            // Navigateurs
+            { "BrowserEdge",     Color.FromArgb(  0, 120, 215) },  // bleu Edge
+            { "BrowserChrome",   Color.FromArgb( 66, 133,  44) },  // vert Chrome
+            { "BrowserBrave",    Color.FromArgb(251, 116,  77) },  // orange Brave
+            { "BrowserVivaldi",  Color.FromArgb(239,  64,  64) },  // rouge Vivaldi
+            { "BrowserOpera",    Color.FromArgb(255,  24,  24) },  // rouge Opera
+            { "BrowserOperaGX",  Color.FromArgb(220,  20,  60) },  // cramoisie Opera GX
+            { "BrowserFirefox",  Color.FromArgb(255, 103,   0) },  // orange Firefox
+            { "BrowserLibreWolf",Color.FromArgb(  0, 170, 255) },  // bleu LibreWolf
+            { "BrowserPaleMoon", Color.FromArgb( 73,  97, 165) },  // bleu Pale Moon
+            { "BrowserTor",      Color.FromArgb(126,  56, 178) },  // violet Tor
+            { "BrowserDDG",      Color.FromArgb(222,  88,  48) },  // orange DDG
+            { "BrowserArc",      Color.FromArgb( 90,  90, 220) },  // bleu-violet Arc
+            { "BrowserComet",    Color.FromArgb( 32, 178, 170) },  // teal Comet
         };
 
         private List<CheckCategory>      _categories = new();
@@ -129,6 +141,13 @@ namespace SaveRestoreGUI.UI
             SetChecked("Signatures",      r.HasSignatures);
             SetChecked("OfficeTemplates", r.HasOfficeTemplates);
             SetChecked("ExcelMacros",     r.HasExcelMacros);
+
+            // Navigateurs : pré-cocher uniquement si des données de profil existent
+            foreach (var browser in BrowserService.All)
+            {
+                bool shouldCheck = r.BrowsersToPreCheck.Contains(browser.Key);
+                SetChecked(browser.Key, shouldCheck);
+            }
         }
 
         public void InvalidateIcons()
@@ -150,9 +169,6 @@ namespace SaveRestoreGUI.UI
         /// Retourne le bitmap à afficher pour un item :
         ///   1. WindowsIcons (SHGetFileInfo, couleurs natives OS)
         ///   2. SvgIcons fallback GDI+ avec couleur fixe par app
-        ///
-        /// Aucune teinte n'est appliquée sur le bitmap retourné.
-        /// L'opacité est gérée au moment du DrawImage selon l'état coché.
         /// </summary>
         private Bitmap GetItemIcon(CheckItem item)
         {
@@ -167,7 +183,7 @@ namespace SaveRestoreGUI.UI
             // 2. Fallback GDI+ — couleur fixe par app, ou gris neutre pour dossiers
             Color fallback = _appColors.TryGetValue(item.Icon, out var ac)
                 ? ac
-                : Color.FromArgb(100, 120, 140);  // gris-bleu neutre pour dossiers
+                : Color.FromArgb(100, 120, 140);
 
             return SvgIcons.Get(item.Icon, IconSize, fallback);
         }
@@ -315,22 +331,17 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône — centrage strict dans la zone dédiée ──────────────
-            // Zone icône : de (y + IconZoneTop) à (y + IconZoneTop + IconZoneHeight)
-            // Centrage horizontal  : (tileW - IconSize) / 2
-            // Centrage vertical    : IconZoneTop + (IconZoneHeight - IconSize) / 2
+            // ── Icône ────────────────────────────────────────────────────
             var bmp  = GetItemIcon(item);
             int iconX = x + (w        - IconSize)      / 2;
             int iconY = y + IconZoneTop + (IconZoneHeight - IconSize) / 2;
 
             if (chk)
             {
-                // Icône à pleine opacité quand coché
                 g.DrawImage(bmp, iconX, iconY, IconSize, IconSize);
             }
             else
             {
-                // Icône atténuée à 45 % quand non coché
                 using var ia = new ImageAttributes();
                 var cm = new ColorMatrix { Matrix33 = 0.45f };
                 ia.SetColorMatrix(cm);
@@ -466,10 +477,17 @@ namespace SaveRestoreGUI.UI
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Applications", "LaunchApps"));
 
+            // Navigateurs — générés depuis BrowserService.All
+            // DefaultChecked = false : ApplyAutoDetect() pré-cochera selon présence profil
+            var browserItems = BrowserService.All
+                .Select(b => new CheckItem(b.Key, b.DisplayName, b.Key, defaultChecked: false))
+                .ToArray();
+
             return new[]
             {
                 new CheckCategory("Fichiers utilisateur",       "📁", userFiles.ToArray()),
                 new CheckCategory("Bureautique",                "💼", office),
+                new CheckCategory("Navigateurs",                "🌐", browserItems),
                 new CheckCategory("Système & Personnalisation", "⚙️", systemItems.ToArray()),
             };
         }

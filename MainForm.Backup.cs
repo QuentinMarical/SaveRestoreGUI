@@ -195,9 +195,9 @@ namespace SaveRestoreGUI
 
             long total = 0;
 
-            static long SizeOf(string path)
+            static long SizeOf(string? path)
             {
-                if (!Directory.Exists(path)) return 0;
+                if (path == null || !Directory.Exists(path)) return 0;
                 try
                 {
                     return new DirectoryInfo(path)
@@ -217,9 +217,18 @@ namespace SaveRestoreGUI
             if (chkPanelBackup.IsChecked("OfficeTemplates")) total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Templates"));
             if (chkPanelBackup.IsChecked("ExcelMacros"))     total += SizeOf(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"));
             if (chkPanelBackup.IsChecked("Sap"))             total += SizeOf(Path.Combine(appDataRoaming, "SAP"));
-            if (chkPanelBackup.IsChecked("BrowserEdge"))     total += SizeOf(Path.Combine(appDataLocal, "Microsoft", "Edge", "User Data", "Default"));
             if (chkPanelBackup.IsChecked("StickyNotes"))     total += SizeOf(Path.Combine(appDataLocal, "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState"));
             if (chkPanelBackup.IsChecked("Public"))          total += SizeOf(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments));
+
+            // Navigateurs — utilise ProfilePathFactory pour la taille réelle
+            foreach (var browser in BrowserService.All)
+            {
+                if (chkPanelBackup.IsChecked(browser.Key))
+                {
+                    try { total += SizeOf(browser.ProfilePathFactory()); }
+                    catch { }
+                }
+            }
 
             return total;
         }
@@ -277,17 +286,27 @@ namespace SaveRestoreGUI
                     ? Path.Combine(sourceProfileOverride, "AppData", "Roaming")
                     : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-                if (chkPanelBackup.IsChecked("Signatures"))     steps.Add(("Signatures Outlook",    () => BackupSignaturesAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office",        () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),     Path.Combine(backupRoot, "Templates"),        "Modèles Office",        BackupLogBox, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("ExcelMacros"))    steps.Add(("Macros Excel (XLSTART)", () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"), Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", BackupLogBox, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Sap"))            steps.Add(("SAP GUI",               () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                          Path.Combine(backupRoot, "SAP"),              "SAP GUI",                BackupLogBox, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Outlook"))        steps.Add(("Données Outlook",       () => BackupOutlookDataAsync(backupRoot, BackupLogBox, ct)));
-                if (chkPanelBackup.IsChecked("OneNote"))        steps.Add(("OneNote (registre)",    () => BackupOneNoteAsync(backupRoot, BackupLogBox)));
-                if (chkPanelBackup.IsChecked("StickyNotes"))    steps.Add(("Sticky Notes",          () => BackupStickyNotesAsync(backupRoot, BackupLogBox, ct)));
-                if (chkPanelBackup.IsChecked("BrowserEdge"))    steps.Add(("Profil Edge",           () => BackupEdgeProfileAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
-                if (chkPanelBackup.IsChecked("Wallpaper"))      steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, BackupLogBox)));
-                if (chkPanelBackup.IsChecked("NetworkDrives"))  steps.Add(("Lecteurs réseau",       () => BackupNetworkDrivesAsync(backupRoot, BackupLogBox)));
-                if (chkPanelBackup.IsChecked("IpSoftphone"))    steps.Add(("IP Desktop Softphone",  () => BackupIpDesktopSoftphoneAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Signatures"))      steps.Add(("Signatures Outlook",    () => BackupSignaturesAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("OfficeTemplates")) steps.Add(("Modèles Office",        () => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Templates"),      Path.Combine(backupRoot, "Templates"),        "Modèles Office",        BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("ExcelMacros"))     steps.Add(("Macros Excel (XLSTART)",() => CopyStep(Path.Combine(appDataRoaming, "Microsoft", "Excel", "XLSTART"),Path.Combine(backupRoot, "Excel", "XLSTART"), "Macros Excel (XLSTART)", BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Sap"))             steps.Add(("SAP GUI",               () => CopyStep(Path.Combine(appDataRoaming, "SAP"),                           Path.Combine(backupRoot, "SAP"),              "SAP GUI",                BackupLogBox, progress, errorList, ct)));
+                if (chkPanelBackup.IsChecked("Outlook"))         steps.Add(("Données Outlook",       () => BackupOutlookDataAsync(backupRoot, BackupLogBox, ct)));
+                if (chkPanelBackup.IsChecked("OneNote"))         steps.Add(("OneNote (registre)",    () => BackupOneNoteAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("StickyNotes"))     steps.Add(("Sticky Notes",          () => BackupStickyNotesAsync(backupRoot, BackupLogBox, ct)));
+                if (chkPanelBackup.IsChecked("Wallpaper"))       steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("NetworkDrives"))   steps.Add(("Lecteurs réseau",       () => BackupNetworkDrivesAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("IpSoftphone"))     steps.Add(("IP Desktop Softphone",  () => BackupIpDesktopSoftphoneAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
+
+                // Navigateurs — boucle générique sur BrowserService.All
+                foreach (var browser in BrowserService.All)
+                {
+                    if (chkPanelBackup.IsChecked(browser.Key))
+                    {
+                        var b = browser; // capture locale
+                        steps.Add(($"{b.DisplayName}",
+                            () => BackupBrowserAsync(b, backupRoot, BackupLogBox, progress, errorList, ct)));
+                    }
+                }
             }
 
             if (includePublic && chkPanelBackup.IsChecked("Public")) steps.Add(("Dossier Public", () => CopyStep(
@@ -437,10 +456,6 @@ namespace SaveRestoreGUI
             });
         }
 
-        /// <summary>
-        /// Sauvegarde la base Sticky Notes (plum.sqlite) ainsi que ses fichiers
-        /// WAL et SHM afin d'éviter une base corrompue si SQLite était en mode WAL.
-        /// </summary>
         private async Task BackupStickyNotesAsync(string backupRoot, RichTextBox rtb, CancellationToken ct)
         {
             var localState = Path.Combine(
@@ -455,7 +470,6 @@ namespace SaveRestoreGUI
                 return;
             }
 
-            // Copier plum.sqlite + plum.sqlite-wal + plum.sqlite-shm (mode WAL SQLite)
             foreach (var suffix in new[] { "", "-wal", "-shm" })
             {
                 var src  = Path.Combine(localState, "plum.sqlite" + suffix);
@@ -468,66 +482,80 @@ namespace SaveRestoreGUI
         }
 
         /// <summary>
-        /// Sauvegarde le profil Edge. Les processus msedge recuperes dans la boucle
-        /// de polling sont correctement disposes pour eviter les fuites.
+        /// Sauvegarde générique du profil d'un navigateur :
+        ///   1. Tue le processus si actif
+        ///   2. Copie le dossier de profil
+        ///   3. Relance le navigateur s'il était ouvert
         /// </summary>
-        private async Task BackupEdgeProfileAsync(string backupRoot, RichTextBox rtb,
-            IProgress<int> progress, List<string> errorList, CancellationToken ct)
+        private async Task BackupBrowserAsync(
+            BrowserDef browser,
+            string backupRoot,
+            RichTextBox rtb,
+            IProgress<int> progress,
+            List<string> errorList,
+            CancellationToken ct)
         {
-            var edgeDefault = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "Edge", "User Data", "Default");
-
-            var edgeProcesses = System.Diagnostics.Process.GetProcessesByName("msedge");
-            bool edgeWasRunning = edgeProcesses.Length > 0;
-
-            if (edgeWasRunning)
+            var profilePath = browser.ProfilePathFactory();
+            if (profilePath == null || !Directory.Exists(profilePath))
             {
-                LogInfo(rtb, $"Edge détecté ({edgeProcesses.Length} processus) — fermeture avant copie...");
+                LogInfo(rtb, $"{browser.DisplayName} : aucun profil trouvé, ignoré.");
+                return;
+            }
+
+            // ── Fermeture du navigateur si actif ────────────────────────
+            var procs = System.Diagnostics.Process.GetProcessesByName(browser.ProcessName);
+            bool wasRunning = procs.Length > 0;
+
+            if (wasRunning)
+            {
+                LogInfo(rtb, $"{browser.DisplayName} : {procs.Length} processus détecté(s) — fermeture avant copie...");
                 await Task.Run(() =>
                 {
-                    foreach (var proc in edgeProcesses)
+                    foreach (var proc in procs)
                     {
                         try { proc.Kill(entireProcessTree: true); } catch { }
                         finally { proc.Dispose(); }
                     }
                 }, ct);
 
-                var deadline = DateTime.UtcNow.AddSeconds(5);
+                // Attente extinction (max 6 s)
+                var deadline = DateTime.UtcNow.AddSeconds(6);
                 while (DateTime.UtcNow < deadline)
                 {
                     ct.ThrowIfCancellationRequested();
                     await Task.Delay(300, ct);
-                    // Disposer le tableau retourne par GetProcessesByName pour eviter les fuites
-                    var remaining = System.Diagnostics.Process.GetProcessesByName("msedge");
+                    var remaining = System.Diagnostics.Process.GetProcessesByName(browser.ProcessName);
                     bool done = remaining.Length == 0;
                     foreach (var p in remaining) p.Dispose();
                     if (done) break;
                 }
-                LogInfo(rtb, "Edge fermé — démarrage de la copie du profil.");
+                LogInfo(rtb, $"{browser.DisplayName} fermé — démarrage de la copie.");
+            }
+            else
+            {
+                foreach (var p in procs) p.Dispose();
             }
 
-            await CopyStep(edgeDefault, Path.Combine(backupRoot, "EdgeProfile"), "Profil Edge",
-                rtb, progress, errorList, ct);
+            // ── Copie du profil ─────────────────────────────────────────
+            var dest = Path.Combine(backupRoot, browser.BackupSubFolder);
+            await CopyStep(profilePath, dest, $"Profil {browser.DisplayName}", rtb, progress, errorList, ct);
 
-            if (edgeWasRunning)
+            // ── Relance si nécessaire ───────────────────────────────────
+            if (wasRunning)
             {
-                await Task.Run(() =>
+                var exe = browser.ExecutableCandidates.FirstOrDefault(File.Exists);
+                if (exe != null)
                 {
-                    var candidates = new[]
-                    {
-                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                            "Microsoft", "Edge", "Application", "msedge.exe"),
-                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                            "Microsoft", "Edge", "Application", "msedge.exe")
-                    };
-                    var edgeExe = candidates.FirstOrDefault(File.Exists);
-                    if (edgeExe != null)
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                            { FileName = edgeExe, UseShellExecute = true });
-                    else
-                        LogWarning(rtb, "Impossible de relancer Edge : exécutable introuvable.");
-                }, CancellationToken.None);
+                    await Task.Run(() =>
+                        System.Diagnostics.Process.Start(
+                            new System.Diagnostics.ProcessStartInfo { FileName = exe, UseShellExecute = true }),
+                        CancellationToken.None);
+                    LogInfo(rtb, $"{browser.DisplayName} relancé.");
+                }
+                else
+                {
+                    LogWarning(rtb, $"{browser.DisplayName} : impossible de relancer — exécutable introuvable.");
+                }
             }
         }
 
