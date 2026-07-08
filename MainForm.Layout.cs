@@ -14,7 +14,7 @@ namespace SaveRestoreGUI
 
         // ── Carte du haut
         private const int TopCardH     = 90;
-        private const int MigTopCardH  = 300;  // réduit : ComboBox profil moins haut qu'une ListBox
+        private const int MigTopCardH  = 260;  // plus de ComboBox profil, layout resserré
 
         // ── Carte options
         private const int CardMinH         = 260;
@@ -38,13 +38,12 @@ namespace SaveRestoreGUI
         private const int MigCmbH        = 30;
         private const int MigBitlocY     = 78;
         private const int MigBitlocH     = 34;
-        private const int MigLblProfY    = 120;
-        private const int MigProfCmbY    = 142;   // ComboBox profils (était MigListY)
-        private const int MigProfCmbH    = 30;    // hauteur d'un ComboBox standard
-        private const int MigBitLockerSY = 182;   // décalé pour coller au ComboBox
+        private const int MigBitLockerSY = 120;   // juste après le bouton BitLocker (112 + 8)
         private const int MigBitLockerSH = 32;
-        private const int MigInfoY       = 222;
-        private const int MigInfoH       = 16;
+        private const int MigSelProfY    = 160;   // label profil auto-sélectionné
+        private const int MigSelProfH    = 48;    // 2-3 lignes
+        private const int MigInfoY       = 216;
+        private const int MigInfoH       = 30;
 
         public void ApplyResponsiveLayout()
         {
@@ -130,9 +129,8 @@ namespace SaveRestoreGUI
             btnRefreshUSB.SetBounds(InnerPad + cmbW + ChkColGap, MigCmbY, refreshW, MigCmbH + 2);
 
             btnUnlockBitLocker.SetBounds(InnerPad, MigBitlocY, cw - InnerPad * 2, MigBitlocH);
-            lblProfiles.SetBounds(InnerPad, MigLblProfY, cw - InnerPad * 2, 20);
-            cmbProfiles.SetBounds(InnerPad, MigProfCmbY, cw - InnerPad * 2, MigProfCmbH);  // ← était lstProfiles
             lblBitLockerStatus.SetBounds(InnerPad, MigBitLockerSY, cw - InnerPad * 2, MigBitLockerSH);
+            lblSelectedProfile.SetBounds(InnerPad, MigSelProfY, cw - InnerPad * 2, MigSelProfH);
             lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
 
             int optY = Margin + MigTopCardH + CardGap;
