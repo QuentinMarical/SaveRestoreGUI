@@ -231,7 +231,7 @@ namespace SaveRestoreGUI
             if (pstFiles.Length > 0)
             {
                 var docsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                string[] possibleDirs = { Path.Combine(docsPath, "Outlook Files"), Path.Combine(docsPath, "Fichiers Outlook") };
+                string[] possibleDirs = [Path.Combine(docsPath, "Outlook Files"), Path.Combine(docsPath, "Fichiers Outlook")];
                 string mainOutlookDir = possibleDirs.FirstOrDefault(Directory.Exists) ?? possibleDirs[0];
                 Directory.CreateDirectory(mainOutlookDir);
 
@@ -397,9 +397,6 @@ namespace SaveRestoreGUI
             var profileDest = browser.ProfilePathFactory();
             if (profileDest == null)
             {
-                // Fallback : on déduit la destination depuis BackupSubFolder
-                // (ex. "Browsers\\Edge" → %LocalAppData%\Microsoft\Edge\User Data\Default)
-                // Pour les navigateurs sans profil existant, on refuse silencieusement
                 LogWarning(rtb, $"{browser.DisplayName} : impossible de déterminer le dossier de profil cible — restauration ignorée.");
                 return;
             }
@@ -481,9 +478,9 @@ namespace SaveRestoreGUI
             int wLetter = entries.Max(e => e.Letter.Length);
             int wPath   = Math.Min(60, entries.Max(e => e.UncPath.Length));
 
-            Log(rtb, $"  {\"Lettre\".PadRight(wLetter + 2)}{\"Chemin UNC\".PadRight(wPath + 2)}Libellé",
+            Log(rtb, $"  {"Lettre".PadRight(wLetter + 2)}{"Chemin UNC".PadRight(wPath + 2)}Libellé",
                 Color.FromArgb(241, 250, 140));
-            Log(rtb, $"  {new string('─', wLetter + 2)}{new string('─', wPath + 2)}{new string('─', 20)}",
+            Log(rtb, $"  {new string('\u2500', wLetter + 2)}{new string('\u2500', wPath + 2)}{new string('\u2500', 20)}",
                 Color.FromArgb(100, 100, 100));
 
             foreach (var e in entries)
