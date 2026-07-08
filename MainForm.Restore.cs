@@ -332,20 +332,37 @@ namespace SaveRestoreGUI
 
         private async Task RestoreStickyNotesAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
         {
-            var stickyBackup = Path.Combine(restoreRoot, "StickyNotes.sqlite");
-            if (File.Exists(stickyBackup))
+            var stickyDest = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
+
+            var filesToRestore = new[]
             {
-                var stickyDest = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Packages", "Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe", "LocalState");
-                Directory.CreateDirectory(stickyDest);
-                await Task.Run(() => File.Copy(stickyBackup, Path.Combine(stickyDest, "plum.sqlite"), true), ct);
-                LogSuccess(rtb, "Sticky Notes restaurés");
-            }
-            else
+                (Backup: "StickyNotes.sqlite",     Dest: "plum.sqlite"),
+                (Backup: "StickyNotes.sqlite-wal", Dest: "plum.sqlite-wal"),
+                (Backup: "StickyNotes.sqlite-shm", Dest: "plum.sqlite-shm")
+            };
+
+            var existingBackups = filesToRestore
+                .Where(f => File.Exists(Path.Combine(restoreRoot, f.Backup)))
+                .ToList();
+
+            if (existingBackups.Count == 0)
             {
                 LogInfo(rtb, "Pas de Sticky Notes à restaurer.");
+                return;
             }
+
+            Directory.CreateDirectory(stickyDest);
+
+            foreach (var file in existingBackups)
+            {
+                var sourcePath = Path.Combine(restoreRoot, file.Backup);
+                var destPath   = Path.Combine(stickyDest, file.Dest);
+                await Task.Run(() => File.Copy(sourcePath, destPath, true), ct);
+            }
+
+            LogSuccess(rtb, "Sticky Notes restaurés (sqlite + WAL/SHM)");
         }
 
         private async Task RestoreEdgeProfileAsync(string restoreRoot, RichTextBox rtb,
@@ -365,20 +382,20 @@ namespace SaveRestoreGUI
                 "Profil Edge", rtb, progress, errorList, ct);
         }
 
-        private async Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
+        private Task RestoreNetworkDrivesInfoAsync(string restoreRoot, RichTextBox rtb)
         {
             var networkDrivesFile = Path.Combine(restoreRoot, "NetworkDrives.txt");
             if (!File.Exists(networkDrivesFile))
             {
                 LogInfo(rtb, "Pas de fichier de lecteurs réseau trouvé.");
-                return;
+                return Task.CompletedTask;
             }
 
             var entries = NetworkDriveParser.ParseFile(networkDrivesFile);
             if (entries.Count == 0)
             {
                 LogInfo(rtb, "Aucun lecteur réseau dans la sauvegarde.");
-                return;
+                return Task.CompletedTask;
             }
 
             LogTitle(rtb, "Lecteurs réseau de l'ancien poste");
@@ -399,6 +416,7 @@ namespace SaveRestoreGUI
             }
 
             LogWarning(rtb, "Merci de recréer manuellement ces lecteurs réseau.");
+            return Task.CompletedTask;
         }
 
         private async Task RestoreWallpaperAsync(string restoreRoot, RichTextBox rtb, CancellationToken ct)
