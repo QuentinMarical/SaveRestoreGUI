@@ -1,11 +1,15 @@
 using SaveRestoreGUI.Services;
 using SaveRestoreGUI.UI;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace SaveRestoreGUI
 {
     public partial class MainForm
     {
+        [GeneratedRegex(@"^[A-Z]:$", RegexOptions.CultureInvariant)]
+        private static partial Regex DriveLetterRegex();
+
         // ── État BitLocker d'un lecteur ──────────────────────────────────────────
         private enum BitLockerState
         {
@@ -186,6 +190,9 @@ namespace SaveRestoreGUI
             {
                 var letter = drivePath.Replace("/", "\\").TrimEnd('\\').ToUpperInvariant();
                 if (!letter.EndsWith(':')) letter += ":";
+
+                if (!DriveLetterRegex().IsMatch(letter))
+                    return BitLockerState.Unknown;
 
                 var script =
                     $"$v = Get-BitLockerVolume -MountPoint '{letter}' -ErrorAction SilentlyContinue; " +
