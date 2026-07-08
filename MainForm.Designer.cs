@@ -74,8 +74,7 @@ namespace SaveRestoreGUI
         private ComboBox cmbUSBDrives;
         private ModernButton btnRefreshUSB;
         private ModernButton btnUnlockBitLocker;
-        private Label lblProfiles;
-        private ComboBox cmbProfiles;          // ← remplace lstProfiles
+        private Label lblSelectedProfile;
         private Label lblMigrationInfo;
         private ModernButton btnBitLocker;
         private Label lblBitLockerStatus;
@@ -98,6 +97,8 @@ namespace SaveRestoreGUI
             Size          = new Size(1100, 780);
             MinimumSize   = new Size(1024, 700);
             StartPosition = FormStartPosition.CenterScreen;
+            WindowState   = FormWindowState.Maximized;
+            MaximizeBox   = false;
             Font          = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
 
             // ── Sidebar
@@ -238,8 +239,7 @@ namespace SaveRestoreGUI
             cmbUSBDrives        = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
             btnRefreshUSB       = new ModernButton { Text = "\U0001f504 Actualiser" };
             btnUnlockBitLocker  = new ModernButton { Text = "\U0001f512 Vérifier BitLocker" };
-            lblProfiles         = new Label   { Text = "Profil à migrer :", AutoSize = true };
-            cmbProfiles         = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            lblSelectedProfile  = new Label   { Text = "", AutoSize = false };
             lblBitLockerStatus  = new Label   { Text = "", AutoSize = false };
             lblMigrationInfo    = new Label   { Text = "", AutoSize = false, Tag = "secondary" };
 
@@ -251,7 +251,7 @@ namespace SaveRestoreGUI
 
             cardMigrationSource.Controls.AddRange(new Control[] {
                 lblUSBDrives, cmbUSBDrives, btnRefreshUSB, btnUnlockBitLocker,
-                lblProfiles, cmbProfiles, lblBitLockerStatus, lblMigrationInfo
+                lblBitLockerStatus, lblSelectedProfile, lblMigrationInfo
             });
 
             cardMigrationOptions     = new CardPanel();
