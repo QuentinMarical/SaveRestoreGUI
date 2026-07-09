@@ -21,11 +21,13 @@ namespace SaveRestoreGUI.UI
 
         public SplashForm()
         {
+            var p = ThemePalette.Dark;
+
             // ── Fenêtre
             FormBorderStyle = FormBorderStyle.None;
             StartPosition   = FormStartPosition.CenterScreen;
             Size            = new Size(480, 260);
-            BackColor       = Color.FromArgb(24, 24, 32);
+            BackColor       = p.Sidebar;
             ShowInTaskbar   = false;
 
             // Coins arrondis (Windows 11)
@@ -36,7 +38,7 @@ namespace SaveRestoreGUI.UI
             {
                 Text      = "SaveRestoreGUI",
                 Font      = new Font("Segoe UI", 22f, FontStyle.Bold),
-                ForeColor = Color.White,
+                ForeColor = p.Text,
                 AutoSize  = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Bounds    = new Rectangle(0, 36, 480, 50)
@@ -46,7 +48,7 @@ namespace SaveRestoreGUI.UI
             {
                 Text      = "Gestionnaire de profil utilisateur",
                 Font      = new Font("Segoe UI", 10f),
-                ForeColor = Color.FromArgb(160, 160, 180),
+                ForeColor = p.TextSecondary,
                 AutoSize  = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Bounds    = new Rectangle(0, 88, 480, 24)
@@ -56,7 +58,7 @@ namespace SaveRestoreGUI.UI
             _progressTrack = new Panel
             {
                 Bounds    = new Rectangle(48, 140, 384, 8),
-                BackColor = Color.FromArgb(50, 50, 66)
+                BackColor = p.InputBackground
             };
             _progressTrack.Region = Region.FromHrgn(
                 CreateRoundRectRgn(0, 0, 384, 8, 4, 4));
@@ -65,7 +67,7 @@ namespace SaveRestoreGUI.UI
             _progressFill = new Panel
             {
                 Bounds    = new Rectangle(0, 0, 0, 8),
-                BackColor = Color.FromArgb(99, 102, 241)
+                BackColor = p.Accent
             };
             _progressFill.Region = Region.FromHrgn(
                 CreateRoundRectRgn(0, 0, 384, 8, 4, 4));
@@ -76,7 +78,7 @@ namespace SaveRestoreGUI.UI
             {
                 Text      = "Initialisation...",
                 Font      = new Font("Segoe UI", 9f),
-                ForeColor = Color.FromArgb(160, 160, 180),
+                ForeColor = p.TextSecondary,
                 AutoSize  = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Bounds    = new Rectangle(0, 158, 480, 24)
@@ -131,11 +133,11 @@ namespace SaveRestoreGUI.UI
         private void OnSplashPaint(object? sender, PaintEventArgs e)
         {
             var g = e.Graphics;
-            // Liseré d'accentuation en haut
+            // Liseré d'accentuation en haut, dans le bleu accent du thème applicatif
             using var accentBrush = new LinearGradientBrush(
                 new Point(0, 0), new Point(Width, 0),
-                Color.FromArgb(99, 102, 241),
-                Color.FromArgb(168, 85, 247));
+                ThemePalette.Dark.Accent,
+                ThemePalette.Dark.AccentHover);
             g.FillRectangle(accentBrush, new Rectangle(0, 0, Width, 3));
         }
 

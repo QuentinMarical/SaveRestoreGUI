@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using SaveRestoreGUI;
 
 namespace SaveRestoreGUI.UI
 {
@@ -44,11 +45,11 @@ namespace SaveRestoreGUI.UI
             // ── Toolbar
             var toolbar = new Panel { Dock = DockStyle.Bottom, Height = 40 };
 
-            _btnExport = new ModernButton { Text = "💾 Exporter", AutoSize = true };
+            _btnExport = new ModernButton { Text = "💾 Exporter", AutoSize = true, Role = ButtonRole.Secondary };
             _btnExport.SetBounds(8, 4, 120, 32);
             _btnExport.Click += OnExport;
 
-            _btnClear = new ModernButton { Text = "🗑 Effacer", AutoSize = true };
+            _btnClear = new ModernButton { Text = "🗑 Effacer", AutoSize = true, Role = ButtonRole.Secondary };
             _btnClear.SetBounds(136, 4, 110, 32);
             _btnClear.Click += (_, _) => LogBox.Clear();
 
@@ -56,14 +57,9 @@ namespace SaveRestoreGUI.UI
 
             Controls.AddRange(new Control[] { LogBox, toolbar });
 
-            ThemeManager.ThemeChanged += ApplyTheme;
             ApplyTheme();
-        }
 
-        protected override void OnFormClosed(FormClosedEventArgs e)
-        {
-            ThemeManager.ThemeChanged -= ApplyTheme;
-            base.OnFormClosed(e);
+            NativeMethods.ApplyWin11WindowStyle(Handle);
         }
 
         // Ferme proprement sans déclencher DialogResult (appelé par ShowPage)

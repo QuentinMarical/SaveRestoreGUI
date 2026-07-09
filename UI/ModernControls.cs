@@ -9,7 +9,8 @@ namespace SaveRestoreGUI.UI
     public class ModernButton : Button
     {
         private bool _hovered;
-        private int _radius = 8;
+        private bool _pressed;
+        private int _radius = 6;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int CornerRadius { get => _radius; set { _radius = value; Invalidate(); } }
@@ -27,7 +28,9 @@ namespace SaveRestoreGUI.UI
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             Cursor = Cursors.Hand;
             MouseEnter += (s, e) => { _hovered = true; Invalidate(); };
-            MouseLeave += (s, e) => { _hovered = false; Invalidate(); };
+            MouseLeave += (s, e) => { _hovered = false; _pressed = false; Invalidate(); };
+            MouseDown += (s, e) => { _pressed = true; Invalidate(); };
+            MouseUp   += (s, e) => { _pressed = false; Invalidate(); };
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -44,15 +47,18 @@ namespace SaveRestoreGUI.UI
                 ButtonRole.Success => p.Success,
                 _ => p.Surface
             };
+            // Sur fond sombre, le survol/l'appui éclaircissent plutôt qu'ils n'assombrissent
+            // (convention Fluent dark : les états d'interaction gagnent en luminosité).
             Color hoverColor = Role switch
             {
                 ButtonRole.Primary => p.AccentHover,
-                ButtonRole.Danger => ControlPaint.Dark(p.Danger, 0.1f),
-                ButtonRole.Success => ControlPaint.Dark(p.Success, 0.1f),
-                _ => p.SurfaceHover
+                _ => ControlPaint.Light(baseColor, 0.15f)
             };
+            Color pressedColor = ControlPaint.Dark(hoverColor, 0.08f);
 
-            var fill = !Enabled ? Color.FromArgb(120, baseColor) : (_hovered ? hoverColor : baseColor);
+            var fill = !Enabled
+                ? Color.FromArgb(120, baseColor)
+                : (_pressed ? pressedColor : (_hovered ? hoverColor : baseColor));
             Color textColor = Role == ButtonRole.Secondary ? p.Text : Color.White;
             if (!Enabled) textColor = Color.FromArgb(160, textColor);
 
@@ -115,6 +121,10 @@ namespace SaveRestoreGUI.UI
             g.FillPath(brush, path);
             using var pen = new Pen(p.Border, 1f);
             g.DrawPath(pen, path);
+
+            // Liseré clair en haut : accroche de lumière façon matériau Mica (Fluent Win11)
+            using var highlightPen = new Pen(p.CardHighlight, 1f);
+            g.DrawLine(highlightPen, _radius, 1, Width - _radius, 1);
         }
     }
 

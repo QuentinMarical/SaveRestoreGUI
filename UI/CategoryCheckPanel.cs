@@ -244,7 +244,7 @@ namespace SaveRestoreGUI.UI
             using var labelFont = new Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Label, labelFont,
                 new Rectangle(HorizPad + 40, y, Width - HorizPad * 2 - 60, HeaderH),
-                p.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                p.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
 
             using var chevFont = new Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Expanded ? "\u25be" : "\u25b8", chevFont,

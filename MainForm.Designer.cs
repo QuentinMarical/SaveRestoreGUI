@@ -23,6 +23,8 @@ namespace SaveRestoreGUI
         private Panel contentPanel;
         private Panel headerPanel;
         private Panel statusPanel;
+        private Panel sidebarDivider;
+        private Panel headerDivider;
         private Label lblAppTitle;
         private Label lblAppSubtitle;
         private Label lblPageTitle;
@@ -30,7 +32,6 @@ namespace SaveRestoreGUI
         private NavButton navBackup;
         private NavButton navRestore;
         private NavButton navMigration;
-        private ModernButton btnToggleTheme;
         private Label statusLabel;
         private ModernProgressBar progressBar;
         private Label lblProgressPercent;
@@ -118,15 +119,12 @@ namespace SaveRestoreGUI
             navRestore.Click   += (s, e) => ShowPage(1);
             navMigration.Click += (s, e) => ShowPage(2);
 
-            btnToggleTheme = new ModernButton { Text = "\U0001f319 Thème sombre", AutoSize = true };
-            btnToggleTheme.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnToggleTheme.SetBounds(16, 680, 188, 34);
-            btnToggleTheme.Click += (s, e) => { ThemeManager.Toggle(); ApplyTheme(); };
-
+            // Liseré de séparation nav pane / contenu (repère de profondeur Fluent Win11)
+            sidebarDivider = new Panel { Dock = DockStyle.Right, Width = 1 };
             sidebarPanel.Controls.AddRange(new Control[] {
                 lblAppTitle, lblAppSubtitle,
                 navBackup, navRestore, navMigration,
-                btnToggleTheme
+                sidebarDivider
             });
 
             // ── Header
@@ -135,7 +133,8 @@ namespace SaveRestoreGUI
             lblPageSubtitle = new Label { Text = "", AutoSize = true, Tag = "secondary" };
             lblPageTitle.SetBounds(28, 14, 600, 28);
             lblPageSubtitle.SetBounds(28, 44, 700, 20);
-            headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle });
+            headerDivider = new Panel { Dock = DockStyle.Bottom, Height = 1 };
+            headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle, headerDivider });
 
             // ── Status bar
             statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 32 };
@@ -175,21 +174,21 @@ namespace SaveRestoreGUI
             cardBackupDest  = new CardPanel();
             lblBackupPath   = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
             txtBackupPath   = new TextBox();
-            btnBrowseBackup = new ModernButton { Text = "Parcourir..." };
+            btnBrowseBackup = new ModernButton { Text = "Parcourir...", Role = ButtonRole.Secondary };
             btnBrowseBackup.Click += BtnBrowseBackup_Click;
             cardBackupDest.Controls.AddRange(new Control[] { lblBackupPath, txtBackupPath, btnBrowseBackup });
 
             cardBackupOptions     = new CardPanel();
             lblBackupOptionsTitle = new Label { Text = "Éléments à sauvegarder", AutoSize = true, Tag = "secondary" };
             chkPanelBackup        = new CategoryCheckPanel();
-            btnSelectAll   = new ModernButton { Text = "Tout cocher" };
-            btnDeselectAll = new ModernButton { Text = "Tout décocher" };
+            btnSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
+            btnDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
             cardBackupOptions.Controls.AddRange(new Control[] { lblBackupOptionsTitle, chkPanelBackup, btnSelectAll, btnDeselectAll });
 
             btnStartBackup     = new ModernButton { Text = "Démarrer la sauvegarde" };
-            btnCancelBackup    = new ModernButton { Text = "Annuler" };
-            btnExportBackupLog = new ModernButton { Text = "Exporter les logs" };
-            btnOpenBackupLog   = new ModernButton { Text = "\U0001f4cb Voir les logs" };
+            btnCancelBackup    = new ModernButton { Text = "Annuler", Role = ButtonRole.Secondary };
+            btnExportBackupLog = new ModernButton { Text = "Exporter les logs", Role = ButtonRole.Secondary };
+            btnOpenBackupLog   = new ModernButton { Text = "\U0001f4cb Voir les logs", Role = ButtonRole.Secondary };
 
             btnStartBackup.Click     += BtnStartBackup_Click;
             btnCancelBackup.Click    += BtnCancelBackup_Click;
@@ -207,21 +206,21 @@ namespace SaveRestoreGUI
             cardRestoreSource = new CardPanel();
             lblRestorePath    = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
             txtRestorePath    = new TextBox();
-            btnBrowseRestore  = new ModernButton { Text = "Parcourir..." };
+            btnBrowseRestore  = new ModernButton { Text = "Parcourir...", Role = ButtonRole.Secondary };
             btnBrowseRestore.Click += BtnBrowseRestore_Click;
             cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
 
             cardRestoreOptions     = new CardPanel();
             lblRestoreOptionsTitle = new Label { Text = "Éléments à restaurer", AutoSize = true, Tag = "secondary" };
             chkPanelRestore        = new CategoryCheckPanel();
-            btnRestoreSelectAll   = new ModernButton { Text = "Tout cocher" };
-            btnRestoreDeselectAll = new ModernButton { Text = "Tout décocher" };
+            btnRestoreSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
+            btnRestoreDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
             cardRestoreOptions.Controls.AddRange(new Control[] { lblRestoreOptionsTitle, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll });
 
             btnStartRestore     = new ModernButton { Text = "Démarrer la restauration" };
-            btnCancelRestore    = new ModernButton { Text = "Annuler" };
-            btnExportRestoreLog = new ModernButton { Text = "Exporter les logs" };
-            btnOpenRestoreLog   = new ModernButton { Text = "\U0001f4cb Voir les logs" };
+            btnCancelRestore    = new ModernButton { Text = "Annuler", Role = ButtonRole.Secondary };
+            btnExportRestoreLog = new ModernButton { Text = "Exporter les logs", Role = ButtonRole.Secondary };
+            btnOpenRestoreLog   = new ModernButton { Text = "\U0001f4cb Voir les logs", Role = ButtonRole.Secondary };
 
             btnStartRestore.Click     += BtnStartRestore_Click;
             btnCancelRestore.Click    += BtnCancelRestore_Click;
@@ -239,8 +238,8 @@ namespace SaveRestoreGUI
             cardMigrationSource = new CardPanel();
             lblUSBDrives        = new Label   { Text = "Lecteur source :", AutoSize = true };
             cmbUSBDrives        = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-            btnRefreshUSB       = new ModernButton { Text = "\U0001f504 Actualiser" };
-            btnUnlockBitLocker  = new ModernButton { Text = "\U0001f512 Vérifier BitLocker" };
+            btnRefreshUSB       = new ModernButton { Text = "\U0001f504 Actualiser", Role = ButtonRole.Secondary };
+            btnUnlockBitLocker  = new ModernButton { Text = "\U0001f512 Vérifier BitLocker", Role = ButtonRole.Secondary };
             lblSelectedProfile  = new Label   { Text = "", AutoSize = false };
             lblBitLockerStatus  = new Label   { Text = "", AutoSize = false };
             lblMigrationInfo    = new Label   { Text = "", AutoSize = false, Tag = "secondary" };
@@ -259,14 +258,14 @@ namespace SaveRestoreGUI
             cardMigrationOptions     = new CardPanel();
             lblMigrationOptionsTitle = new Label { Text = "Éléments à migrer", AutoSize = true, Tag = "secondary" };
             chkPanelMigration        = new CategoryCheckPanel();
-            btnMigrateSelectAll   = new ModernButton { Text = "Tout cocher" };
-            btnMigrateDeselectAll = new ModernButton { Text = "Tout décocher" };
+            btnMigrateSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
+            btnMigrateDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
             cardMigrationOptions.Controls.AddRange(new Control[] { lblMigrationOptionsTitle, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll });
 
             btnStartMigration     = new ModernButton { Text = "Démarrer la migration" };
-            btnCancelMigration    = new ModernButton { Text = "Annuler" };
-            btnExportMigrationLog = new ModernButton { Text = "Exporter les logs" };
-            btnOpenMigrationLog   = new ModernButton { Text = "\U0001f4cb Voir les logs" };
+            btnCancelMigration    = new ModernButton { Text = "Annuler", Role = ButtonRole.Secondary };
+            btnExportMigrationLog = new ModernButton { Text = "Exporter les logs", Role = ButtonRole.Secondary };
+            btnOpenMigrationLog   = new ModernButton { Text = "\U0001f4cb Voir les logs", Role = ButtonRole.Secondary };
 
             btnStartMigration.Click     += BtnStartMigration_Click;
             btnCancelMigration.Click    += BtnCancelMigration_Click;

@@ -45,7 +45,6 @@ namespace SaveRestoreGUI
             _logWindowMigration = new LogWindow("Logs — Migration USB", "migration-log.txt");
 
             InitializeComponent();
-            ThemeManager.ThemeChanged += OnThemeChanged;
 
             // Peupler les panneaux de cases à cocher
             chkPanelBackup.SetCategories(
@@ -60,12 +59,16 @@ namespace SaveRestoreGUI
                 SyncPageSizes();
                 ApplyAutoDetect();
             };
-            this.Resize += (_, _) =>
+            // Layout responsive : recalcule les pages à chaque redimensionnement,
+            // sans forcer l'état de la fenêtre (le Maximized initial vient du Designer).
+            this.Resize += (_, _) => SyncPageSizes();
+
+            // Si la fenêtre est déplacée sur un autre écran (état Normal),
+            // recalcule les bornes de maximisation pour cet écran.
+            this.LocationChanged += (_, _) =>
             {
                 if (WindowState == FormWindowState.Normal)
-                    WindowState = FormWindowState.Maximized;
-                else if (WindowState == FormWindowState.Maximized)
-                    SyncPageSizes();
+                    UpdateMaximizedBounds();
             };
 
             ApplyTheme();
@@ -78,6 +81,25 @@ namespace SaveRestoreGUI
                 ? $"{version.Major}.{version.Minor}.{version.Build}"
                 : "?";
             this.Text = $"SaveRestoreGUI v{versionStr}";
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            // Doit être fait avant que le WindowState.Maximized du Designer ne soit appliqué.
+            UpdateMaximizedBounds();
+            NativeMethods.ApplyWin11WindowStyle(Handle);
+        }
+
+        /// <summary>
+        /// Borne explicitement la fenêtre maximisée à la zone de travail de l'écran.
+        /// Avec MaximizeBox = false (WS_MAXIMIZEBOX absent), Windows peut maximiser
+        /// la fenêtre sur les bounds complets de l'écran, faisant passer la barre de
+        /// progression et la barre de statut sous la barre des tâches.
+        /// </summary>
+        private void UpdateMaximizedBounds()
+        {
+            MaximizedBounds = Screen.FromControl(this).WorkingArea;
         }
 
         private void SyncPageSizes()
@@ -100,7 +122,6 @@ namespace SaveRestoreGUI
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            ThemeManager.ThemeChanged -= OnThemeChanged;
             _logWindowBackup.CloseIfOpen();
             _logWindowRestore.CloseIfOpen();
             _logWindowMigration.CloseIfOpen();
@@ -173,8 +194,6 @@ namespace SaveRestoreGUI
 
         // ───────────────────────────── Thème ──────────────────────────────
 
-        private void OnThemeChanged() => ApplyTheme();
-
         private void ApplyTheme()
         {
             var p = ThemeManager.Palette;
@@ -184,6 +203,8 @@ namespace SaveRestoreGUI
             contentPanel.BackColor = p.Background;
             headerPanel.BackColor  = p.Background;
             statusPanel.BackColor  = p.Sidebar;
+            sidebarDivider.BackColor = p.Border;
+            headerDivider.BackColor  = p.Border;
 
             lblAppTitle.ForeColor     = p.Text;
             lblAppSubtitle.ForeColor  = p.TextSecondary;
@@ -192,8 +213,6 @@ namespace SaveRestoreGUI
             statusLabel.ForeColor     = p.TextSecondary;
 
             lblProgressPercent.ForeColor = p.TextSecondary;
-
-            btnToggleTheme.Text = ThemeManager.IsDark ? "\U0001f319 Thème sombre" : "\u2600\ufe0f Thème clair";
 
             ApplyThemeRecursive(pageBackup, p);
             ApplyThemeRecursive(pageRestore, p);
@@ -277,11 +296,11 @@ namespace SaveRestoreGUI
             if (toast) ToastService.Show(this, message, kind);
         }
 
-        private void LogSuccess(RichTextBox rtb, string m) => Log(rtb, "\u2713 " + m, Color.FromArgb(80, 250, 123));
-        private void LogError  (RichTextBox rtb, string m) => Log(rtb, "\u2717 " + m, Color.FromArgb(255, 121, 121), toast: true, kind: ToastKind.Error);
-        private void LogWarning(RichTextBox rtb, string m) => Log(rtb, "\u26a0 " + m, Color.FromArgb(241, 250, 140));
-        private void LogInfo   (RichTextBox rtb, string m) => Log(rtb, "\u2139 " + m, Color.FromArgb(139, 233, 253));
-        private void LogTitle  (RichTextBox rtb, string m) => Log(rtb, $"\n\u2550\u2550\u2550\u2550\u2550\u2550 {m.ToUpper()} \u2550\u2550\u2550\u2550\u2550\u2550", Color.FromArgb(255, 184, 108));
+        private void LogSuccess(RichTextBox rtb, string m) => Log(rtb, "✓ " + m, Color.FromArgb(80, 250, 123));
+        private void LogError  (RichTextBox rtb, string m) => Log(rtb, "✗ " + m, Color.FromArgb(255, 121, 121), toast: true, kind: ToastKind.Error);
+        private void LogWarning(RichTextBox rtb, string m) => Log(rtb, "⚠ " + m, Color.FromArgb(241, 250, 140));
+        private void LogInfo   (RichTextBox rtb, string m) => Log(rtb, "ℹ " + m, Color.FromArgb(139, 233, 253));
+        private void LogTitle  (RichTextBox rtb, string m) => Log(rtb, $"\n══════ {m.ToUpper()} ══════", Color.FromArgb(255, 184, 108));
 
         private void UpdateStatus(string message)
         { if (InvokeRequired) { Invoke(() => UpdateStatus(message)); return; } statusLabel.Text = message; }
@@ -412,7 +431,7 @@ namespace SaveRestoreGUI
 
             LogTitle(rtb, "Anciens profils domaine détectés");
             foreach (var profile in oldProfiles)
-                LogInfo(rtb, $"  \u2192 {Path.GetFileName(profile)}  ({profile})");
+                LogInfo(rtb, $"  → {Path.GetFileName(profile)}  ({profile})");
         }
 
         private void CancelCurrentOperation(RichTextBox rtb)

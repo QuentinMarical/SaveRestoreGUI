@@ -1,7 +1,7 @@
 namespace SaveRestoreGUI.UI
 {
     /// <summary>
-    /// Palette de couleurs pour les thèmes clair et sombre (style Fluent / Windows 11).
+    /// Palette de couleurs unique — style Fluent / Windows 11, thème sombre.
     /// </summary>
     public sealed class ThemePalette
     {
@@ -21,61 +21,35 @@ namespace SaveRestoreGUI.UI
         public Color ConsoleBackground { get; init; }
         public Color ConsoleText { get; init; }
 
+        /// <summary>Liseré clair simulant l'accroche de lumière d'un matériau Mica en haut des cartes.</summary>
+        public Color CardHighlight { get; init; }
+
         public static ThemePalette Dark { get; } = new()
         {
-            Background = Color.FromArgb(24, 24, 37),
-            Surface = Color.FromArgb(33, 33, 50),
-            SurfaceHover = Color.FromArgb(45, 45, 65),
-            Sidebar = Color.FromArgb(17, 17, 27),
-            Text = Color.FromArgb(220, 224, 240),
-            TextSecondary = Color.FromArgb(150, 155, 175),
-            Accent = Color.FromArgb(59, 130, 246),
-            AccentHover = Color.FromArgb(37, 99, 235),
-            Success = Color.FromArgb(34, 197, 94),
-            Warning = Color.FromArgb(245, 158, 11),
-            Danger = Color.FromArgb(239, 68, 68),
-            Border = Color.FromArgb(55, 55, 75),
-            InputBackground = Color.FromArgb(28, 28, 42),
-            ConsoleBackground = Color.FromArgb(13, 13, 20),
-            ConsoleText = Color.FromArgb(80, 250, 123)
-        };
-
-        public static ThemePalette Light { get; } = new()
-        {
-            Background = Color.FromArgb(243, 244, 248),
-            Surface = Color.White,
-            SurfaceHover = Color.FromArgb(232, 234, 240),
-            Sidebar = Color.FromArgb(228, 230, 238),
-            Text = Color.FromArgb(28, 28, 32),
-            TextSecondary = Color.FromArgb(105, 110, 125),
-            Accent = Color.FromArgb(37, 99, 235),
-            AccentHover = Color.FromArgb(29, 78, 216),
-            Success = Color.FromArgb(22, 163, 74),
-            Warning = Color.FromArgb(217, 119, 6),
-            Danger = Color.FromArgb(220, 38, 38),
-            Border = Color.FromArgb(210, 213, 222),
-            InputBackground = Color.White,
-            ConsoleBackground = Color.FromArgb(20, 20, 28),
-            ConsoleText = Color.FromArgb(80, 250, 123)
+            Background      = Color.FromArgb(32,  32,  32),
+            Surface         = Color.FromArgb(44,  44,  44),
+            SurfaceHover    = Color.FromArgb(56,  56,  56),
+            Sidebar         = Color.FromArgb(24,  24,  24),
+            Text            = Color.FromArgb(255, 255, 255),
+            TextSecondary   = Color.FromArgb(168, 168, 168),
+            Accent          = Color.FromArgb(65, 145, 255),
+            AccentHover     = Color.FromArgb(100, 170, 255),
+            Success         = Color.FromArgb(108, 203, 95),
+            Warning         = Color.FromArgb(255, 185, 0),
+            Danger          = Color.FromArgb(255, 99,  87),
+            Border          = Color.FromArgb(64,  64,  64),
+            InputBackground = Color.FromArgb(40,  40,  40),
+            ConsoleBackground = Color.FromArgb(12, 12, 12),
+            ConsoleText     = Color.FromArgb(80, 250, 123),
+            CardHighlight   = Color.FromArgb(18, 255, 255, 255),
         };
     }
 
     /// <summary>
-    /// Gestionnaire de thème global : conserve le thème actif et notifie les abonnés lors d'un changement.
+    /// Gestionnaire de thème global — thème sombre unique (pas de bascule clair/sombre).
     /// </summary>
     public static class ThemeManager
     {
-        private static bool _dark = true;
-
-        public static bool IsDark => _dark;
-        public static ThemePalette Palette => _dark ? ThemePalette.Dark : ThemePalette.Light;
-
-        public static event Action? ThemeChanged;
-
-        public static void Toggle()
-        {
-            _dark = !_dark;
-            ThemeChanged?.Invoke();
-        }
+        public static ThemePalette Palette => ThemePalette.Dark;
     }
 }

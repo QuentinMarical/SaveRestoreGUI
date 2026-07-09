@@ -337,12 +337,13 @@ namespace SaveRestoreGUI
 
         private void UpdateBitLockerLabel(USBDriveInfo drive)
         {
+            var p = ThemeManager.Palette;
             (lblBitLockerStatus.Text, lblBitLockerStatus.ForeColor) = drive.BitLocker switch
             {
-                BitLockerState.Locked       => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",             Color.OrangeRed),
-                BitLockerState.Unlocked     => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)",   Color.DarkOrange),
-                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",                    Color.SeaGreen),
-                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",           SystemColors.GrayText)
+                BitLockerState.Locked       => ($"\U0001f512 {drive.Letter} — BitLocker VERROUILLÉ",             p.Danger),
+                BitLockerState.Unlocked     => ($"\U0001f513 {drive.Letter} — BitLocker actif (déverrouillé)",   p.Warning),
+                BitLockerState.NotEncrypted => ($"\u2705 {drive.Letter} — Pas de chiffrement",                    p.Success),
+                _                           => ($"\u2139\ufe0f {drive.Letter} — État BitLocker inconnu",           p.TextSecondary)
             };
         }
 

@@ -17,7 +17,9 @@ namespace SaveRestoreGUI
         private const int MigTopCardH  = 260;  // plus de ComboBox profil, layout resserré
 
         // ── Carte options
-        private const int CardMinH         = 260;
+        // Plancher bas volontaire : CategoryCheckPanel est scrollable (AutoScroll),
+        // donc la carte peut rétrécir plutôt que de recouvrir la barre d'action.
+        private const int CardOptMinH      = 120;
         private const int BtnGapY          = 14;
         private const int CardPadBot       = 16;
         private const int ChkStartY        = 44;
@@ -31,7 +33,10 @@ namespace SaveRestoreGUI
         private const int BtnLogsW   = 140;
 
         // ── Barre de progression (overlay dans contentPanel)
-        private const int LogProgressH = 20;
+        private const int LogProgressH   = 20;
+        private const int ProgressGapY   = 12;                              // marge sous la barre (au-dessus du bord bas)
+        private const int ProgressAreaH  = LogProgressH + ProgressGapY * 2; // zone réservée par les pages en bas
+        private const int ProgressPctW   = 80;                              // largeur du label pourcentage
 
         // ── Migration
         private const int MigCmbY        = 40;
@@ -68,9 +73,9 @@ namespace SaveRestoreGUI
             int optY = Margin + TopCardH + CardGap;
 
             // Barre d'action + progression en bas
-            int progressAreaH = LogProgressH + 10;
+            int progressAreaH = ProgressAreaH;
             int actY = ch - ActionH - Margin - progressAreaH;
-            int optH = Math.Max(CardMinH, actY - optY - CardGap);
+            int optH = Math.Max(CardOptMinH, actY - optY - CardGap);
             cardBackupOptions.SetBounds(Margin, optY, cw, optH);
 
             LayoutPanelOptionsCard(cw, optH, chkPanelBackup, btnSelectAll, btnDeselectAll);
@@ -97,9 +102,9 @@ namespace SaveRestoreGUI
 
             int optY = Margin + TopCardH + CardGap;
 
-            int progressAreaH = LogProgressH + 10;
+            int progressAreaH = ProgressAreaH;
             int actY = ch - ActionH - Margin - progressAreaH;
-            int optH = Math.Max(CardMinH, actY - optY - CardGap);
+            int optH = Math.Max(CardOptMinH, actY - optY - CardGap);
             cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
 
             LayoutPanelOptionsCard(cw, optH, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
@@ -135,9 +140,9 @@ namespace SaveRestoreGUI
 
             int optY = Margin + MigTopCardH + CardGap;
 
-            int progressAreaH = LogProgressH + 10;
+            int progressAreaH = ProgressAreaH;
             int actY = ch - ActionH - Margin - progressAreaH;
-            int optH = Math.Max(CardMinH, actY - optY - CardGap);
+            int optH = Math.Max(CardOptMinH, actY - optY - CardGap);
             cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
 
             LayoutPanelOptionsCard(cw, optH, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll);
@@ -159,10 +164,15 @@ namespace SaveRestoreGUI
             int ch = contentPanel.ClientSize.Height;
             if (cw <= 0 || ch <= 0) return;
 
-            int barW = cw - Margin * 2 - 80;
-            int y    = ch - LogProgressH - 6;
+            // Marge basse garantie : la barre reste toujours au-dessus du bord
+            // inférieur du contentPanel (lui-même au-dessus de la statusBar,
+            // elle-même bornée à la zone de travail via MaximizedBounds).
+            int barW = Math.Max(80, cw - Margin * 2 - ProgressPctW);
+            int y    = ch - LogProgressH - ProgressGapY;
             progressBar.SetBounds(Margin, y, barW, LogProgressH);
-            lblProgressPercent.SetBounds(Margin + barW, y, 80, LogProgressH);
+            lblProgressPercent.SetBounds(Margin + barW, y, ProgressPctW, LogProgressH);
+            progressBar.BringToFront();
+            lblProgressPercent.BringToFront();
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -192,12 +202,14 @@ namespace SaveRestoreGUI
             int btnRowH = Math.Max(bAllH, bNoH);
 
             // Le panel checkboxes remplit tout l'espace disponible entre le titre et les boutons
-            int chkH = Math.Max(180, cardHeight - ChkStartY - BtnGapY - btnRowH - CardPadBot);
+            int chkH = Math.Max(60, cardHeight - ChkStartY - BtnGapY - btnRowH - CardPadBot);
             panel.SetBounds(InnerPad, ChkStartY, innerW, chkH);
 
+            // Largeurs fixes : Button.Width vaut 75 par défaut (>0), donc un fallback
+            // conditionnel sur ">0" ne se déclenche jamais et tronque "Tout décocher".
             int btnY  = ChkStartY + chkH + BtnGapY;
-            int bAllW = btnAll?.Width  > 0 ? btnAll.Width  : 120;
-            int bNoW  = btnNone?.Width > 0 ? btnNone.Width : 130;
+            int bAllW = 110;
+            int bNoW  = 130;
 
             btnAll?.SetBounds(InnerPad, btnY, bAllW, bAllH);
             btnNone?.SetBounds(InnerPad + bAllW + 8, btnY, bNoW, bNoH);
