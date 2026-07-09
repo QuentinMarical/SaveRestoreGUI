@@ -90,13 +90,16 @@ namespace SaveRestoreGUI
             components = new System.ComponentModel.Container();
             SuspendLayout();
 
-            Text          = "SaveRestore GUI";
-            Size          = new Size(1100, 780);
-            MinimumSize   = new Size(1024, 700);
-            StartPosition = FormStartPosition.CenterScreen;
-            WindowState   = FormWindowState.Maximized;
-            MaximizeBox   = false;
-            Font          = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
+            // Fenêtre fixe occupant toute la zone de travail : ni redimensionnable
+            // ni maximisable (juste réduire/fermer). Les bounds réels sont posés
+            // dans OnHandleCreated (FitToWorkingArea) pour l'écran courant.
+            Text            = "SaveRestore GUI";
+            Size            = new Size(1100, 780);
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            StartPosition   = FormStartPosition.Manual;
+            MaximizeBox     = false;
+            MinimizeBox     = true;
+            Font            = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
 
             // ── Sidebar
             sidebarPanel   = new Panel { Dock = DockStyle.Left, Width = 220 };
