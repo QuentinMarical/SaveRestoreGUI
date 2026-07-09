@@ -1,6 +1,6 @@
 # SaveRestoreGUI
 
-> Outil Windows Forms (.NET 8) de sauvegarde, restauration et migration de profils utilisateurs Windows.
+> Outil Windows Forms (.NET 10) de sauvegarde, restauration et migration de profils utilisateurs Windows.
 
 ---
 
