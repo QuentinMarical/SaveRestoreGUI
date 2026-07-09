@@ -36,9 +36,9 @@ namespace SaveRestoreGUI
         private const int TitleZoneMinW   = 260;   // place réservée au bloc icône+titre+description
 
         // ── Carte profil (Migration, HeaderMode)
-        private const int ProfCardH       = 142;
-        private const int ProfSelH        = 40;
-        private const int ProfInfoH       = 40;   // 2 lignes de texte secondaire
+        private const int ProfCardH       = 128;
+        private const int ProfSelH        = 36;
+        private const int ProfInfoH       = 36;   // 2 lignes de texte secondaire
 
         // ── Barre d'actions
         private const int ActionH    = 44;
@@ -169,7 +169,7 @@ namespace SaveRestoreGUI
             if (pw <= 0 || ph <= 0) return;
 
             // Alignée sur la colonne de contenu, toujours au-dessus du bord bas
-            // (contentPanel est lui-même borné à la zone de travail via MaximizedBounds).
+            // (la fenêtre fixe est calée sur la zone de travail via FitToWorkingArea).
             int cw   = Math.Min(pw - Margin * 2, MaxContentW);
             int barW = Math.Max(80, cw - ProgressPctW);
             int y    = ph - LogProgressH - ProgressGapY;
