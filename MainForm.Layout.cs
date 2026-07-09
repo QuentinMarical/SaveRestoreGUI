@@ -5,25 +5,40 @@ using SaveRestoreGUI.UI;
 
 namespace SaveRestoreGUI
 {
+    /// <summary>
+    /// Mise en page façon app Paramètres de Windows 11 : colonne de contenu
+    /// à largeur bornée, cartes-lignes (SettingCard) empilées avec petits
+    /// espacements, contrôles alignés à droite dans chaque carte.
+    /// </summary>
     public partial class MainForm
     {
-        // ── Marges et espacements
-        private new const int Margin   = 28;
-        private const int CardGap      = 14;
-        private const int InnerPad     = 16;
+        // ── Colonne de contenu
+        private new const int Margin      = 28;
+        private const int MaxContentW     = 1060;  // largeur max du contenu (≈ app Paramètres)
+        private const int RowGap          = 8;     // entre cartes-lignes d'un même groupe
+        private const int CardGap         = 14;    // entre groupes
 
-        // ── Carte du haut
-        private const int TopCardH     = 90;
-        private const int MigTopCardH  = 260;  // plus de ComboBox profil, layout resserré
-
-        // ── Carte options
+        // ── Cartes options (HeaderMode)
         // Plancher bas volontaire : CategoryCheckPanel est scrollable (AutoScroll),
         // donc la carte peut rétrécir plutôt que de recouvrir la barre d'action.
-        private const int CardOptMinH      = 120;
-        private const int BtnGapY          = 14;
-        private const int CardPadBot       = 16;
-        private const int ChkStartY        = 44;
-        private const int ChkColGap        = 12;
+        private const int CardOptMinH     = 120;
+        private const int OptInnerPadX    = 12;
+        private const int OptInnerPadBot  = 12;
+
+        // ── Contrôles dans les cartes-lignes
+        private const int CtlH            = 30;    // hauteur standard d'un contrôle hébergé
+        private const int CtlGap          = 8;
+        private const int BtnBrowseW      = 110;
+        private const int BtnRefreshW     = 120;
+        private const int BtnBitLockerW   = 175;
+        private const int BtnAllW         = 110;
+        private const int BtnNoneW        = 130;
+        private const int TitleZoneMinW   = 260;   // place réservée au bloc icône+titre+description
+
+        // ── Carte profil (Migration, HeaderMode)
+        private const int ProfCardH       = 142;
+        private const int ProfSelH        = 40;
+        private const int ProfInfoH       = 40;   // 2 lignes de texte secondaire
 
         // ── Barre d'actions
         private const int ActionH    = 44;
@@ -34,21 +49,9 @@ namespace SaveRestoreGUI
 
         // ── Barre de progression (overlay dans contentPanel)
         private const int LogProgressH   = 20;
-        private const int ProgressGapY   = 12;                              // marge sous la barre (au-dessus du bord bas)
-        private const int ProgressAreaH  = LogProgressH + ProgressGapY * 2; // zone réservée par les pages en bas
-        private const int ProgressPctW   = 80;                              // largeur du label pourcentage
-
-        // ── Migration
-        private const int MigCmbY        = 40;
-        private const int MigCmbH        = 30;
-        private const int MigBitlocY     = 78;
-        private const int MigBitlocH     = 34;
-        private const int MigBitLockerSY = 120;   // juste après le bouton BitLocker (112 + 8)
-        private const int MigBitLockerSH = 32;
-        private const int MigSelProfY    = 160;   // label profil auto-sélectionné
-        private const int MigSelProfH    = 48;    // 2-3 lignes
-        private const int MigInfoY       = 216;
-        private const int MigInfoH       = 30;
+        private const int ProgressGapY   = 12;
+        private const int ProgressAreaH  = LogProgressH + ProgressGapY * 2;
+        private const int ProgressPctW   = 80;
 
         public void ApplyResponsiveLayout()
         {
@@ -58,34 +61,31 @@ namespace SaveRestoreGUI
             LayoutProgressOverlay();
         }
 
+        /// <summary>Largeur de la colonne de contenu, bornée façon app Paramètres.</summary>
+        private static int ContentWidth(Control page)
+            => Math.Min(page.ClientSize.Width - Margin * 2, MaxContentW);
+
         // ═══════════════════════════════════════════════════════════════════
         // PAGE SAUVEGARDE
         // ═══════════════════════════════════════════════════════════════════
         private void LayoutBackupPage()
         {
             if (pageBackup.ClientSize.Width <= 0) return;
-            int cw = pageBackup.ClientSize.Width - Margin * 2;
+            int cw = ContentWidth(pageBackup);
             int ch = pageBackup.ClientSize.Height;
 
-            cardBackupDest.SetBounds(Margin, Margin, cw, TopCardH);
-            LayoutDestCard(cw, txtBackupPath, btnBrowseBackup);
+            int y = Margin;
+            cardBackupDest.SetBounds(Margin, y, cw, SettingCard.RowH);
+            LayoutPathRow(cw, txtBackupPath, btnBrowseBackup);
+            y += SettingCard.RowH + CardGap;
 
-            int optY = Margin + TopCardH + CardGap;
+            int actY = ch - ActionH - Margin - ProgressAreaH;
+            int optH = Math.Max(CardOptMinH, actY - y - CardGap);
+            cardBackupOptions.SetBounds(Margin, y, cw, optH);
+            LayoutOptionsCard(cw, optH, chkPanelBackup, btnSelectAll, btnDeselectAll);
 
-            // Barre d'action + progression en bas
-            int progressAreaH = ProgressAreaH;
-            int actY = ch - ActionH - Margin - progressAreaH;
-            int optH = Math.Max(CardOptMinH, actY - optY - CardGap);
-            cardBackupOptions.SetBounds(Margin, optY, cw, optH);
-
-            LayoutPanelOptionsCard(cw, optH, chkPanelBackup, btnSelectAll, btnDeselectAll);
-
-            LayoutActionBar(Margin, actY, cw, btnStartBackup, btnCancelBackup, btnExportBackupLog);
-
-            btnOpenBackupLog.SetBounds(
-                Margin + cw - BtnExportW - BtnLogsW - 8,
-                actY + (ActionH - 34) / 2,
-                BtnLogsW, 34);
+            LayoutActionBar(Margin, actY, cw,
+                btnStartBackup, btnCancelBackup, btnExportBackupLog, btnOpenBackupLog);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -94,27 +94,21 @@ namespace SaveRestoreGUI
         private void LayoutRestorePage()
         {
             if (pageRestore.ClientSize.Width <= 0) return;
-            int cw = pageRestore.ClientSize.Width - Margin * 2;
+            int cw = ContentWidth(pageRestore);
             int ch = pageRestore.ClientSize.Height;
 
-            cardRestoreSource.SetBounds(Margin, Margin, cw, TopCardH);
-            LayoutDestCard(cw, txtRestorePath, btnBrowseRestore);
+            int y = Margin;
+            cardRestoreSource.SetBounds(Margin, y, cw, SettingCard.RowH);
+            LayoutPathRow(cw, txtRestorePath, btnBrowseRestore);
+            y += SettingCard.RowH + CardGap;
 
-            int optY = Margin + TopCardH + CardGap;
+            int actY = ch - ActionH - Margin - ProgressAreaH;
+            int optH = Math.Max(CardOptMinH, actY - y - CardGap);
+            cardRestoreOptions.SetBounds(Margin, y, cw, optH);
+            LayoutOptionsCard(cw, optH, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
 
-            int progressAreaH = ProgressAreaH;
-            int actY = ch - ActionH - Margin - progressAreaH;
-            int optH = Math.Max(CardOptMinH, actY - optY - CardGap);
-            cardRestoreOptions.SetBounds(Margin, optY, cw, optH);
-
-            LayoutPanelOptionsCard(cw, optH, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll);
-
-            LayoutActionBar(Margin, actY, cw, btnStartRestore, btnCancelRestore, btnExportRestoreLog);
-
-            btnOpenRestoreLog.SetBounds(
-                Margin + cw - BtnExportW - BtnLogsW - 8,
-                actY + (ActionH - 34) / 2,
-                BtnLogsW, 34);
+            LayoutActionBar(Margin, actY, cw,
+                btnStartRestore, btnCancelRestore, btnExportRestoreLog, btnOpenRestoreLog);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -123,36 +117,46 @@ namespace SaveRestoreGUI
         private void LayoutMigrationPage()
         {
             if (pageMigration.ClientSize.Width <= 0) return;
-            int cw = pageMigration.ClientSize.Width - Margin * 2;
+            int cw = ContentWidth(pageMigration);
             int ch = pageMigration.ClientSize.Height;
 
-            cardMigrationSource.SetBounds(Margin, Margin, cw, MigTopCardH);
+            int y = Margin;
 
-            int refreshW = btnRefreshUSB.Width > 0 ? btnRefreshUSB.Width : 40;
-            int cmbW     = cw - InnerPad * 2 - refreshW - ChkColGap;
-            cmbUSBDrives.SetBounds(InnerPad, MigCmbY, cmbW, MigCmbH);
-            btnRefreshUSB.SetBounds(InnerPad + cmbW + ChkColGap, MigCmbY, refreshW, MigCmbH + 2);
+            // ── Ligne 1 : lecteur source (combo + actualiser à droite)
+            cardMigrationSource.SetBounds(Margin, y, cw, SettingCard.RowH);
+            int refreshX = cw - SettingCard.PadX - BtnRefreshW;
+            int cmbW     = Math.Max(160, Math.Min(320,
+                cw - SettingCard.PadX * 2 - TitleZoneMinW - BtnRefreshW - CtlGap));
+            int cmbX     = refreshX - CtlGap - cmbW;
+            int ctlY     = (SettingCard.RowH - CtlH) / 2;
+            cmbUSBDrives.SetBounds(cmbX, ctlY, cmbW, CtlH);
+            btnRefreshUSB.SetBounds(refreshX, ctlY, BtnRefreshW, CtlH + 2);
+            y += SettingCard.RowH + RowGap;
 
-            btnUnlockBitLocker.SetBounds(InnerPad, MigBitlocY, cw - InnerPad * 2, MigBitlocH);
-            lblBitLockerStatus.SetBounds(InnerPad, MigBitLockerSY, cw - InnerPad * 2, MigBitLockerSH);
-            lblSelectedProfile.SetBounds(InnerPad, MigSelProfY, cw - InnerPad * 2, MigSelProfH);
-            lblMigrationInfo.SetBounds(InnerPad, MigInfoY, cw - InnerPad * 2, MigInfoH);
+            // ── Ligne 2 : BitLocker (statut + bouton à droite)
+            cardMigrationBitLocker.SetBounds(Margin, y, cw, SettingCard.RowH);
+            int bitBtnX   = cw - SettingCard.PadX - BtnBitLockerW;
+            int statusW   = Math.Max(120, Math.Min(360,
+                cw - SettingCard.PadX * 2 - TitleZoneMinW - BtnBitLockerW - CtlGap));
+            lblBitLockerStatus.SetBounds(bitBtnX - CtlGap - statusW, ctlY, statusW, CtlH);
+            btnUnlockBitLocker.SetBounds(bitBtnX, ctlY, BtnBitLockerW, CtlH + 2);
+            y += SettingCard.RowH + RowGap;
 
-            int optY = Margin + MigTopCardH + CardGap;
+            // ── Ligne 3 : profil détecté (contenu sous l'en-tête)
+            cardMigrationProfile.SetBounds(Margin, y, cw, ProfCardH);
+            int innerW = cw - SettingCard.PadX * 2;
+            lblSelectedProfile.SetBounds(SettingCard.PadX, SettingCard.HeaderH, innerW, ProfSelH);
+            lblMigrationInfo.SetBounds(SettingCard.PadX, SettingCard.HeaderH + ProfSelH + 4, innerW, ProfInfoH);
+            y += ProfCardH + CardGap;
 
-            int progressAreaH = ProgressAreaH;
-            int actY = ch - ActionH - Margin - progressAreaH;
-            int optH = Math.Max(CardOptMinH, actY - optY - CardGap);
-            cardMigrationOptions.SetBounds(Margin, optY, cw, optH);
+            // ── Carte options + barre d'action
+            int actY = ch - ActionH - Margin - ProgressAreaH;
+            int optH = Math.Max(CardOptMinH, actY - y - CardGap);
+            cardMigrationOptions.SetBounds(Margin, y, cw, optH);
+            LayoutOptionsCard(cw, optH, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll);
 
-            LayoutPanelOptionsCard(cw, optH, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll);
-
-            LayoutActionBar(Margin, actY, cw, btnStartMigration, btnCancelMigration, btnExportMigrationLog);
-
-            btnOpenMigrationLog.SetBounds(
-                Margin + cw - BtnExportW - BtnLogsW - 8,
-                actY + (ActionH - 34) / 2,
-                BtnLogsW, 34);
+            LayoutActionBar(Margin, actY, cw,
+                btnStartMigration, btnCancelMigration, btnExportMigrationLog, btnOpenMigrationLog);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -160,15 +164,15 @@ namespace SaveRestoreGUI
         // ═══════════════════════════════════════════════════════════════════
         private void LayoutProgressOverlay()
         {
-            int cw = contentPanel.ClientSize.Width;
-            int ch = contentPanel.ClientSize.Height;
-            if (cw <= 0 || ch <= 0) return;
+            int pw = contentPanel.ClientSize.Width;
+            int ph = contentPanel.ClientSize.Height;
+            if (pw <= 0 || ph <= 0) return;
 
-            // Marge basse garantie : la barre reste toujours au-dessus du bord
-            // inférieur du contentPanel (lui-même au-dessus de la statusBar,
-            // elle-même bornée à la zone de travail via MaximizedBounds).
-            int barW = Math.Max(80, cw - Margin * 2 - ProgressPctW);
-            int y    = ch - LogProgressH - ProgressGapY;
+            // Alignée sur la colonne de contenu, toujours au-dessus du bord bas
+            // (contentPanel est lui-même borné à la zone de travail via MaximizedBounds).
+            int cw   = Math.Min(pw - Margin * 2, MaxContentW);
+            int barW = Math.Max(80, cw - ProgressPctW);
+            int y    = ph - LogProgressH - ProgressGapY;
             progressBar.SetBounds(Margin, y, barW, LogProgressH);
             lblProgressPercent.SetBounds(Margin + barW, y, ProgressPctW, LogProgressH);
             progressBar.BringToFront();
@@ -179,49 +183,51 @@ namespace SaveRestoreGUI
         // HELPERS
         // ═══════════════════════════════════════════════════════════════════
 
-        private static void LayoutDestCard(int cardWidth, TextBox txt, Button browse)
+        /// <summary>Carte-ligne « dossier » : champ de chemin + bouton Parcourir à droite.</summary>
+        private static void LayoutPathRow(int cardWidth, TextBox txt, Button browse)
         {
-            int innerW  = cardWidth - InnerPad * 2;
-            int browseW = browse.Width > 0 ? browse.Width : 120;
-            int txtW    = Math.Max(80, innerW - browseW - ChkColGap);
-            txt.SetBounds(InnerPad, 38, txtW, 30);
-            browse.SetBounds(InnerPad + txtW + ChkColGap, 36, browseW, 32);
+            int browseX = cardWidth - SettingCard.PadX - BtnBrowseW;
+            int txtW    = Math.Max(180, Math.Min(420,
+                cardWidth - SettingCard.PadX * 2 - TitleZoneMinW - BtnBrowseW - CtlGap));
+            int y = (SettingCard.RowH - CtlH) / 2;
+            txt.SetBounds(browseX - CtlGap - txtW, y, txtW, CtlH);
+            browse.SetBounds(browseX, y - 1, BtnBrowseW, CtlH + 2);
         }
 
-        private static void LayoutPanelOptionsCard(
+        /// <summary>
+        /// Carte options (HeaderMode) : boutons Tout cocher / Tout décocher dans
+        /// l'en-tête à droite, panneau de cases remplissant le reste de la carte.
+        /// </summary>
+        private static void LayoutOptionsCard(
             int cardWidth,
             int cardHeight,
             CategoryCheckPanel panel,
             Button btnAll,
             Button btnNone)
         {
-            int innerW = cardWidth - InnerPad * 2;
+            int btnY  = (SettingCard.HeaderH - CtlH) / 2;
+            int noneX = cardWidth - SettingCard.PadX - BtnNoneW;
+            int allX  = noneX - CtlGap - BtnAllW;
+            btnAll.SetBounds(allX, btnY, BtnAllW, CtlH);
+            btnNone.SetBounds(noneX, btnY, BtnNoneW, CtlH);
 
-            int bAllH = btnAll?.Height  > 0 ? btnAll.Height  : 34;
-            int bNoH  = btnNone?.Height > 0 ? btnNone.Height : 34;
-            int btnRowH = Math.Max(bAllH, bNoH);
-
-            // Le panel checkboxes remplit tout l'espace disponible entre le titre et les boutons
-            int chkH = Math.Max(60, cardHeight - ChkStartY - BtnGapY - btnRowH - CardPadBot);
-            panel.SetBounds(InnerPad, ChkStartY, innerW, chkH);
-
-            // Largeurs fixes : Button.Width vaut 75 par défaut (>0), donc un fallback
-            // conditionnel sur ">0" ne se déclenche jamais et tronque "Tout décocher".
-            int btnY  = ChkStartY + chkH + BtnGapY;
-            int bAllW = 110;
-            int bNoW  = 130;
-
-            btnAll?.SetBounds(InnerPad, btnY, bAllW, bAllH);
-            btnNone?.SetBounds(InnerPad + bAllW + 8, btnY, bNoW, bNoH);
+            panel.SetBounds(
+                OptInnerPadX,
+                SettingCard.HeaderH,
+                cardWidth - OptInnerPadX * 2,
+                Math.Max(60, cardHeight - SettingCard.HeaderH - OptInnerPadBot));
         }
 
         private static void LayoutActionBar(
             int left, int top, int availableWidth,
-            Button start, Button cancel, Button export)
+            Button start, Button cancel, Button export, Button logs)
         {
             start.SetBounds(left, top, BtnStartW, ActionH);
-            cancel.SetBounds(left + BtnStartW + 8, top, BtnCancelW, ActionH);
-            export.SetBounds(left + availableWidth - BtnExportW, top + (ActionH - 34) / 2, BtnExportW, 34);
+            cancel.SetBounds(left + BtnStartW + CtlGap, top, BtnCancelW, ActionH);
+
+            int btnY = top + (ActionH - 34) / 2;
+            export.SetBounds(left + availableWidth - BtnExportW, btnY, BtnExportW, 34);
+            logs.SetBounds(left + availableWidth - BtnExportW - BtnLogsW - CtlGap, btnY, BtnLogsW, 34);
         }
     }
 }
