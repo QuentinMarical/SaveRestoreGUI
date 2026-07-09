@@ -30,18 +30,33 @@ namespace SaveRestoreGUI.UI
     public class CategoryCheckPanel : Panel
     {
         // ── Layout général ──────────────────────────────────────────────────
-        private const int HeaderH    = 34;
-        private const int TileW      = 100;
-        private const int TileH      = 90;
         private const int TileGap    = 8;
         private const int HorizPad   = 10;
         private const int CheckBoxW  = 16;
         private const int TileRadius = 8;
 
-        // ── Zone icône ──────────────────────────────────────────────────────
-        private const int IconZoneTop    = 26;
-        private const int IconZoneHeight = 42;
-        private const int IconSize       = 32;
+        // ── Zones internes d'une tuile (dérivées de la hauteur de tuile)
+        private const int TileTopZone = 22;   // bandeau case à cocher
+        private const int TileLblZone = 18;   // bandeau libellé bas
+
+        // ── Tailles adaptatives (tuiles + en-têtes de catégories) ───────────
+        // AutoFit choisit le plus grand preset dont le contenu total tient dans
+        // la hauteur du panel, pour éviter toute scrollbar. La plus petite
+        // taille reste un plancher : au-delà, la scrollbar réapparaît (dernier
+        // recours sur écrans très bas).
+        private static readonly (int W, int H, int Icon, int HeadH, int HeadGap)[] TilePresets =
+        [
+            (88, 78, 28, 34, 6),
+            (78, 68, 24, 32, 6),
+            (68, 60, 20, 30, 5),
+            (60, 52, 16, 28, 4),
+        ];
+
+        private int _tileW    = 88;
+        private int _tileH    = 78;
+        private int _iconSize = 28;
+        private int _headerH  = 34;
+        private int _headGap  = 6;
 
         // ── Couleurs de fallback fixes par app ──────────────────────────────
         private static readonly Dictionary<string, Color> _appColors = new()
@@ -97,7 +112,7 @@ namespace SaveRestoreGUI.UI
             foreach (var cat in _categories)
                 foreach (var item in cat.Items)
                     _checked[item.Key] = item.DefaultChecked;
-            UpdateScrollBounds();
+            AutoFit();
             Invalidate();
         }
 
@@ -147,9 +162,27 @@ namespace SaveRestoreGUI.UI
         }
 
         protected override void OnResize(EventArgs e)
-        { base.OnResize(e); UpdateScrollBounds(); }
+        { base.OnResize(e); AutoFit(); }
 
-        private void UpdateScrollBounds() => AutoScrollMinSize = new Size(0, CalcTotalHeight());
+        /// <summary>
+        /// Sélectionne le plus grand preset de tuiles dont le contenu total tient
+        /// dans la hauteur visible, puis met à jour la zone de défilement (qui ne
+        /// devient active que si même le plus petit preset déborde).
+        /// </summary>
+        private void AutoFit()
+        {
+            int oldIcon = _iconSize;
+            foreach (var (w, h, icon, headH, headGap) in TilePresets)
+            {
+                _tileW = w; _tileH = h; _iconSize = icon;
+                _headerH = headH; _headGap = headGap;
+                if (CalcTotalHeight() <= ClientSize.Height) break;
+            }
+            if (_iconSize != oldIcon) _nativeCache.Clear();
+
+            AutoScrollMinSize = new Size(0, CalcTotalHeight());
+            Invalidate();
+        }
 
         // ── Résolution d'icône ────────────────────────────────────────────
 
@@ -157,7 +190,7 @@ namespace SaveRestoreGUI.UI
         {
             if (!_nativeCache.TryGetValue(item.Icon, out var native))
             {
-                native = WindowsIcons.Get(item.Icon, IconSize);
+                native = WindowsIcons.Get(item.Icon, _iconSize);
                 _nativeCache[item.Icon] = native;
             }
             if (native != null) return native;
@@ -166,22 +199,22 @@ namespace SaveRestoreGUI.UI
                 ? ac
                 : Color.FromArgb(100, 120, 140);
 
-            return SvgIcons.Get(item.Icon, IconSize, fallback);
+            return SvgIcons.Get(item.Icon, _iconSize, fallback);
         }
 
         // ── Calculs de layout ────────────────────────────────────────────
 
         private int ColsActual()
         {
-            int available = Width - HorizPad * 2;
+            int available = ClientSize.Width - HorizPad * 2;
             if (available <= 0) return 5;
-            return Math.Max(1, (available + TileGap) / (TileW + TileGap));
+            return Math.Max(1, (available + TileGap) / (_tileW + TileGap));
         }
 
         private int ActualTileW()
         {
             int cols      = ColsActual();
-            int available = Width - HorizPad * 2;
+            int available = ClientSize.Width - HorizPad * 2;
             return cols <= 1 ? available : (available - TileGap * (cols - 1)) / cols;
         }
 
@@ -189,7 +222,7 @@ namespace SaveRestoreGUI.UI
         {
             int cols = ColsActual();
             int rows = (cat.Items.Length + cols - 1) / cols;
-            return rows * TileH + Math.Max(0, rows - 1) * TileGap;
+            return rows * _tileH + Math.Max(0, rows - 1) * TileGap;
         }
 
         private int CalcTotalHeight()
@@ -197,7 +230,7 @@ namespace SaveRestoreGUI.UI
             int h = 2;
             foreach (var cat in _categories)
             {
-                h += HeaderH + 6;
+                h += _headerH + _headGap;
                 if (cat.Expanded) h += GridHeightForCat(cat) + 8;
             }
             return h + 4;
@@ -217,7 +250,7 @@ namespace SaveRestoreGUI.UI
             foreach (var cat in _categories)
             {
                 DrawCategoryHeader(g, p, cat, y);
-                y += HeaderH + 6;
+                y += _headerH + _headGap;
                 if (cat.Expanded)
                 {
                     DrawGrid(g, p, cat, y);
@@ -228,27 +261,27 @@ namespace SaveRestoreGUI.UI
 
         private void DrawCategoryHeader(Graphics g, ThemePalette p, CheckCategory cat, int y)
         {
-            if (y + HeaderH < 0 || y > Height) return;
-            var rect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
+            if (y + _headerH < 0 || y > Height) return;
+            var rect = new Rectangle(HorizPad, y, Width - HorizPad * 2, _headerH);
             using var bgPath  = RoundRect(rect, 7);
             using var bgBrush = new SolidBrush(Color.FromArgb(22, p.Accent.R, p.Accent.G, p.Accent.B));
             g.FillPath(bgBrush, bgPath);
             using var accentBrush = new SolidBrush(p.Accent);
-            g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, HeaderH - 16));
+            g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, _headerH - 16));
 
             using var emojiFont = new Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
-            g.DrawString(cat.Icon, emojiFont, textBrush, new RectangleF(HorizPad + 10, y, 26, HeaderH), sf);
+            g.DrawString(cat.Icon, emojiFont, textBrush, new RectangleF(HorizPad + 10, y, 26, _headerH), sf);
 
             using var labelFont = new Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Label, labelFont,
-                new Rectangle(HorizPad + 40, y, Width - HorizPad * 2 - 60, HeaderH),
+                new Rectangle(HorizPad + 40, y, Width - HorizPad * 2 - 60, _headerH),
                 p.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
 
             using var chevFont = new Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Expanded ? "\u25be" : "\u25b8", chevFont,
-                new Rectangle(rect.Right - 22, y, 20, HeaderH),
+                new Rectangle(rect.Right - 22, y, 20, _headerH),
                 p.TextSecondary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
@@ -261,8 +294,8 @@ namespace SaveRestoreGUI.UI
                 int col = i % cols;
                 int row = i / cols;
                 int tx  = HorizPad + col * (tileW + TileGap);
-                int ty  = y + row  * (TileH  + TileGap);
-                if (ty + TileH < 0 || ty > Height) continue;
+                int ty  = y + row  * (_tileH + TileGap);
+                if (ty + _tileH < 0 || ty > Height) continue;
                 DrawTile(g, p, cat.Items[i], tx, ty, tileW);
             }
         }
@@ -272,7 +305,7 @@ namespace SaveRestoreGUI.UI
             bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
             bool hovered = _hoverItem == item.Key;
 
-            var tileRect = new Rectangle(x, y, w, TileH);
+            var tileRect = new Rectangle(x, y, w, _tileH);
             using var tilePath = RoundRect(tileRect, TileRadius);
 
             Color bgColor = chk
@@ -310,13 +343,14 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            var bmp  = GetItemIcon(item);
-            int iconX = x + (w        - IconSize)      / 2;
-            int iconY = y + IconZoneTop + (IconZoneHeight - IconSize) / 2;
+            var bmp      = GetItemIcon(item);
+            int iconZone = _tileH - TileTopZone - TileLblZone;
+            int iconX    = x + (w - _iconSize) / 2;
+            int iconY    = y + TileTopZone + (iconZone - _iconSize) / 2;
 
             if (chk)
             {
-                g.DrawImage(bmp, iconX, iconY, IconSize, IconSize);
+                g.DrawImage(bmp, iconX, iconY, _iconSize, _iconSize);
             }
             else
             {
@@ -324,15 +358,15 @@ namespace SaveRestoreGUI.UI
                 var cm = new ColorMatrix { Matrix33 = 0.45f };
                 ia.SetColorMatrix(cm);
                 g.DrawImage(bmp,
-                    new Rectangle(iconX, iconY, IconSize, IconSize),
-                    0, 0, IconSize, IconSize,
+                    new Rectangle(iconX, iconY, _iconSize, _iconSize),
+                    0, 0, bmp.Width, bmp.Height,
                     GraphicsUnit.Pixel, ia);
             }
 
-            using var textFont  = new Font("Segoe UI", 7.5f);
+            using var textFont  = new Font("Segoe UI", _tileW >= 78 ? 7.5f : 7f);
             Color     textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
-                new Rectangle(x + 2, y + TileH - 22, w - 4, 20),
+                new Rectangle(x + 2, y + _tileH - TileLblZone - 2, w - 4, TileLblZone),
                 textColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
         }
@@ -344,16 +378,16 @@ namespace SaveRestoreGUI.UI
             int y = AutoScrollPosition.Y + 2;
             foreach (var cat in _categories)
             {
-                var headerRect = new Rectangle(HorizPad, y, Width - HorizPad * 2, HeaderH);
+                var headerRect = new Rectangle(HorizPad, y, Width - HorizPad * 2, _headerH);
                 if (headerRect.Contains(e.Location))
                 {
                     cat.Expanded = !cat.Expanded;
-                    UpdateScrollBounds();
+                    AutoFit();
                     Invalidate();
                     return;
                 }
 
-                y += HeaderH + 6;
+                y += _headerH + _headGap;
                 if (!cat.Expanded) continue;
 
                 int cols  = ColsActual();
@@ -361,8 +395,8 @@ namespace SaveRestoreGUI.UI
                 for (int i = 0; i < cat.Items.Length; i++)
                 {
                     int tx = HorizPad + (i % cols) * (tileW + TileGap);
-                    int ty = y        + (i / cols) * (TileH  + TileGap);
-                    if (new Rectangle(tx, ty, tileW, TileH).Contains(e.Location))
+                    int ty = y        + (i / cols) * (_tileH + TileGap);
+                    if (new Rectangle(tx, ty, tileW, _tileH).Contains(e.Location))
                     {
                         _checked[cat.Items[i].Key] = !_checked[cat.Items[i].Key];
                         Invalidate();
@@ -386,7 +420,7 @@ namespace SaveRestoreGUI.UI
             int y = AutoScrollPosition.Y + 2;
             foreach (var cat in _categories)
             {
-                y += HeaderH + 6;
+                y += _headerH + _headGap;
                 if (!cat.Expanded) continue;
 
                 int cols  = ColsActual();
@@ -394,8 +428,8 @@ namespace SaveRestoreGUI.UI
                 for (int i = 0; i < cat.Items.Length; i++)
                 {
                     int tx = HorizPad + (i % cols) * (tileW + TileGap);
-                    int ty = y        + (i / cols) * (TileH  + TileGap);
-                    if (new Rectangle(tx, ty, tileW, TileH).Contains(pt))
+                    int ty = y        + (i / cols) * (_tileH + TileGap);
+                    if (new Rectangle(tx, ty, tileW, _tileH).Contains(pt))
                         return cat.Items[i].Key;
                 }
 
