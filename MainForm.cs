@@ -59,17 +59,9 @@ namespace SaveRestoreGUI
                 SyncPageSizes();
                 ApplyAutoDetect();
             };
-            // Layout responsive : recalcule les pages à chaque redimensionnement,
-            // sans forcer l'état de la fenêtre (le Maximized initial vient du Designer).
+            // Recalcule les pages au retour de minimisation (la taille de fenêtre
+            // est fixe par ailleurs : FixedSingle, bounds posés au démarrage).
             this.Resize += (_, _) => SyncPageSizes();
-
-            // Si la fenêtre est déplacée sur un autre écran (état Normal),
-            // recalcule les bornes de maximisation pour cet écran.
-            this.LocationChanged += (_, _) =>
-            {
-                if (WindowState == FormWindowState.Normal)
-                    UpdateMaximizedBounds();
-            };
 
             ApplyTheme();
             UpdateOldProfileOptionState();
@@ -86,20 +78,18 @@ namespace SaveRestoreGUI
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            // Doit être fait avant que le WindowState.Maximized du Designer ne soit appliqué.
-            UpdateMaximizedBounds();
+            FitToWorkingArea();
             NativeMethods.ApplyWin11WindowStyle(Handle);
         }
 
         /// <summary>
-        /// Borne explicitement la fenêtre maximisée à la zone de travail de l'écran.
-        /// Avec MaximizeBox = false (WS_MAXIMIZEBOX absent), Windows peut maximiser
-        /// la fenêtre sur les bounds complets de l'écran, faisant passer la barre de
-        /// progression et la barre de statut sous la barre des tâches.
+        /// Cale la fenêtre (fixe, non redimensionnable) exactement sur la zone de
+        /// travail de l'écran courant — remplace l'état Maximized, dont le rendu
+        /// est imprévisible quand WS_MAXIMIZEBOX est absent (MaximizeBox = false).
         /// </summary>
-        private void UpdateMaximizedBounds()
+        private void FitToWorkingArea()
         {
-            MaximizedBounds = Screen.FromControl(this).WorkingArea;
+            Bounds = Screen.FromControl(this).WorkingArea;
         }
 
         private void SyncPageSizes()
