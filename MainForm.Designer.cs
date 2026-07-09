@@ -172,10 +172,11 @@ namespace SaveRestoreGUI
             // ════════════════════════════════════════════════
             // CONTRÔLES PAGE SAUVEGARDE
             // ════════════════════════════════════════════════
-            cardBackupDest = new CardPanel();
-            lblBackupPath  = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
-            txtBackupPath  = new TextBox();
+            cardBackupDest  = new CardPanel();
+            lblBackupPath   = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
+            txtBackupPath   = new TextBox();
             btnBrowseBackup = new ModernButton { Text = "Parcourir..." };
+            btnBrowseBackup.Click += BtnBrowseBackup_Click;
             cardBackupDest.Controls.AddRange(new Control[] { lblBackupPath, txtBackupPath, btnBrowseBackup });
 
             cardBackupOptions     = new CardPanel();
@@ -207,6 +208,7 @@ namespace SaveRestoreGUI
             lblRestorePath    = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
             txtRestorePath    = new TextBox();
             btnBrowseRestore  = new ModernButton { Text = "Parcourir..." };
+            btnBrowseRestore.Click += BtnBrowseRestore_Click;
             cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
 
             cardRestoreOptions     = new CardPanel();
