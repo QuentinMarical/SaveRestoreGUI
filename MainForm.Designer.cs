@@ -38,12 +38,10 @@ namespace SaveRestoreGUI
 
         // ─── Page Sauvegarde ───
         private Panel pageBackup;
-        private CardPanel cardBackupDest;
-        private Label lblBackupPath;
+        private SettingCard cardBackupDest;
         private TextBox txtBackupPath;
         private ModernButton btnBrowseBackup;
-        private CardPanel cardBackupOptions;
-        private Label lblBackupOptionsTitle;
+        private SettingCard cardBackupOptions;
         private CategoryCheckPanel chkPanelBackup;
         private ModernButton btnSelectAll;
         private ModernButton btnDeselectAll;
@@ -54,12 +52,10 @@ namespace SaveRestoreGUI
 
         // ─── Page Restauration ───
         private Panel pageRestore;
-        private CardPanel cardRestoreSource;
-        private Label lblRestorePath;
+        private SettingCard cardRestoreSource;
         private TextBox txtRestorePath;
         private ModernButton btnBrowseRestore;
-        private CardPanel cardRestoreOptions;
-        private Label lblRestoreOptionsTitle;
+        private SettingCard cardRestoreOptions;
         private CategoryCheckPanel chkPanelRestore;
         private ModernButton btnRestoreSelectAll;
         private ModernButton btnRestoreDeselectAll;
@@ -70,8 +66,9 @@ namespace SaveRestoreGUI
 
         // ─── Page Migration ───
         private Panel pageMigration;
-        private CardPanel cardMigrationSource;
-        private Label lblUSBDrives;
+        private SettingCard cardMigrationSource;
+        private SettingCard cardMigrationBitLocker;
+        private SettingCard cardMigrationProfile;
         private ComboBox cmbUSBDrives;
         private ModernButton btnRefreshUSB;
         private ModernButton btnUnlockBitLocker;
@@ -79,8 +76,7 @@ namespace SaveRestoreGUI
         private Label lblMigrationInfo;
         private ModernButton btnBitLocker;
         private Label lblBitLockerStatus;
-        private CardPanel cardMigrationOptions;
-        private Label lblMigrationOptionsTitle;
+        private SettingCard cardMigrationOptions;
         private CategoryCheckPanel chkPanelMigration;
         private ModernButton btnMigrateSelectAll;
         private ModernButton btnMigrateDeselectAll;
@@ -171,19 +167,27 @@ namespace SaveRestoreGUI
             // ════════════════════════════════════════════════
             // CONTRÔLES PAGE SAUVEGARDE
             // ════════════════════════════════════════════════
-            cardBackupDest  = new CardPanel();
-            lblBackupPath   = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
-            txtBackupPath   = new TextBox();
+            cardBackupDest = new SettingCard
+            {
+                IconGlyph   = "\U0001f4c1",
+                Title       = "Dossier de sauvegarde",
+                Description = "Destination des données à sauvegarder"
+            };
+            txtBackupPath   = new TextBox { BorderStyle = BorderStyle.FixedSingle };
             btnBrowseBackup = new ModernButton { Text = "Parcourir...", Role = ButtonRole.Secondary };
             btnBrowseBackup.Click += BtnBrowseBackup_Click;
-            cardBackupDest.Controls.AddRange(new Control[] { lblBackupPath, txtBackupPath, btnBrowseBackup });
+            cardBackupDest.Controls.AddRange(new Control[] { txtBackupPath, btnBrowseBackup });
 
-            cardBackupOptions     = new CardPanel();
-            lblBackupOptionsTitle = new Label { Text = "Éléments à sauvegarder", AutoSize = true, Tag = "secondary" };
-            chkPanelBackup        = new CategoryCheckPanel();
+            cardBackupOptions = new SettingCard
+            {
+                IconGlyph  = "\U0001f4cb",
+                Title      = "Éléments à sauvegarder",
+                HeaderMode = true
+            };
+            chkPanelBackup = new CategoryCheckPanel();
             btnSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
             btnDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
-            cardBackupOptions.Controls.AddRange(new Control[] { lblBackupOptionsTitle, chkPanelBackup, btnSelectAll, btnDeselectAll });
+            cardBackupOptions.Controls.AddRange(new Control[] { chkPanelBackup, btnSelectAll, btnDeselectAll });
 
             btnStartBackup     = new ModernButton { Text = "Démarrer la sauvegarde" };
             btnCancelBackup    = new ModernButton { Text = "Annuler", Role = ButtonRole.Secondary };
@@ -203,19 +207,27 @@ namespace SaveRestoreGUI
             // ════════════════════════════════════════════════
             // CONTRÔLES PAGE RESTAURATION
             // ════════════════════════════════════════════════
-            cardRestoreSource = new CardPanel();
-            lblRestorePath    = new Label  { Text = "Dossier de sauvegarde :", AutoSize = true };
-            txtRestorePath    = new TextBox();
-            btnBrowseRestore  = new ModernButton { Text = "Parcourir...", Role = ButtonRole.Secondary };
+            cardRestoreSource = new SettingCard
+            {
+                IconGlyph   = "\U0001f4c2",
+                Title       = "Dossier de sauvegarde",
+                Description = "Source contenant la sauvegarde à restaurer"
+            };
+            txtRestorePath   = new TextBox { BorderStyle = BorderStyle.FixedSingle };
+            btnBrowseRestore = new ModernButton { Text = "Parcourir...", Role = ButtonRole.Secondary };
             btnBrowseRestore.Click += BtnBrowseRestore_Click;
-            cardRestoreSource.Controls.AddRange(new Control[] { lblRestorePath, txtRestorePath, btnBrowseRestore });
+            cardRestoreSource.Controls.AddRange(new Control[] { txtRestorePath, btnBrowseRestore });
 
-            cardRestoreOptions     = new CardPanel();
-            lblRestoreOptionsTitle = new Label { Text = "Éléments à restaurer", AutoSize = true, Tag = "secondary" };
-            chkPanelRestore        = new CategoryCheckPanel();
+            cardRestoreOptions = new SettingCard
+            {
+                IconGlyph  = "\U0001f4cb",
+                Title      = "Éléments à restaurer",
+                HeaderMode = true
+            };
+            chkPanelRestore       = new CategoryCheckPanel();
             btnRestoreSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
             btnRestoreDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
-            cardRestoreOptions.Controls.AddRange(new Control[] { lblRestoreOptionsTitle, chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll });
+            cardRestoreOptions.Controls.AddRange(new Control[] { chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll });
 
             btnStartRestore     = new ModernButton { Text = "Démarrer la restauration" };
             btnCancelRestore    = new ModernButton { Text = "Annuler", Role = ButtonRole.Secondary };
@@ -235,32 +247,52 @@ namespace SaveRestoreGUI
             // ════════════════════════════════════════════════
             // CONTRÔLES PAGE MIGRATION
             // ════════════════════════════════════════════════
-            cardMigrationSource = new CardPanel();
-            lblUSBDrives        = new Label   { Text = "Lecteur source :", AutoSize = true };
-            cmbUSBDrives        = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-            btnRefreshUSB       = new ModernButton { Text = "\U0001f504 Actualiser", Role = ButtonRole.Secondary };
-            btnUnlockBitLocker  = new ModernButton { Text = "\U0001f512 Vérifier BitLocker", Role = ButtonRole.Secondary };
-            lblSelectedProfile  = new Label   { Text = "", AutoSize = false };
-            lblBitLockerStatus  = new Label   { Text = "", AutoSize = false };
-            lblMigrationInfo    = new Label   { Text = "", AutoSize = false, Tag = "secondary" };
-
-            btnBitLocker = btnUnlockBitLocker;
-
+            cardMigrationSource = new SettingCard
+            {
+                IconGlyph   = "\U0001f4be",
+                Title       = "Lecteur source",
+                Description = "Disque externe contenant l'ancien profil"
+            };
+            // FlatStyle.Flat requis : en DropDownList, le rendu par défaut ignore
+            // BackColor et reste clair quel que soit le thème appliqué.
+            cmbUSBDrives  = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+            btnRefreshUSB = new ModernButton { Text = "\U0001f504 Actualiser", Role = ButtonRole.Secondary };
             cmbUSBDrives.SelectedIndexChanged += CmbUSBDrives_SelectedIndexChanged;
             btnRefreshUSB.Click               += BtnRefreshUSB_Click;
-            btnUnlockBitLocker.Click          += BtnBitLocker_Click;
+            cardMigrationSource.Controls.AddRange(new Control[] { cmbUSBDrives, btnRefreshUSB });
 
-            cardMigrationSource.Controls.AddRange(new Control[] {
-                lblUSBDrives, cmbUSBDrives, btnRefreshUSB, btnUnlockBitLocker,
-                lblBitLockerStatus, lblSelectedProfile, lblMigrationInfo
-            });
+            cardMigrationBitLocker = new SettingCard
+            {
+                IconGlyph   = "\U0001f512",
+                Title       = "Chiffrement BitLocker",
+                Description = "État et déverrouillage du lecteur sélectionné"
+            };
+            btnUnlockBitLocker = new ModernButton { Text = "\U0001f512 Vérifier BitLocker", Role = ButtonRole.Secondary };
+            lblBitLockerStatus = new Label { Text = "", AutoSize = false, TextAlign = ContentAlignment.MiddleRight };
+            btnBitLocker = btnUnlockBitLocker;
+            btnUnlockBitLocker.Click += BtnBitLocker_Click;
+            cardMigrationBitLocker.Controls.AddRange(new Control[] { lblBitLockerStatus, btnUnlockBitLocker });
 
-            cardMigrationOptions     = new CardPanel();
-            lblMigrationOptionsTitle = new Label { Text = "Éléments à migrer", AutoSize = true, Tag = "secondary" };
-            chkPanelMigration        = new CategoryCheckPanel();
+            cardMigrationProfile = new SettingCard
+            {
+                IconGlyph  = "\U0001f464",
+                Title      = "Profil détecté",
+                HeaderMode = true
+            };
+            lblSelectedProfile = new Label { Text = "", AutoSize = false };
+            lblMigrationInfo   = new Label { Text = "", AutoSize = false, Tag = "secondary" };
+            cardMigrationProfile.Controls.AddRange(new Control[] { lblSelectedProfile, lblMigrationInfo });
+
+            cardMigrationOptions = new SettingCard
+            {
+                IconGlyph  = "\U0001f4cb",
+                Title      = "Éléments à migrer",
+                HeaderMode = true
+            };
+            chkPanelMigration     = new CategoryCheckPanel();
             btnMigrateSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
             btnMigrateDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
-            cardMigrationOptions.Controls.AddRange(new Control[] { lblMigrationOptionsTitle, chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll });
+            cardMigrationOptions.Controls.AddRange(new Control[] { chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll });
 
             btnStartMigration     = new ModernButton { Text = "Démarrer la migration" };
             btnCancelMigration    = new ModernButton { Text = "Annuler", Role = ButtonRole.Secondary };
@@ -273,7 +305,7 @@ namespace SaveRestoreGUI
             btnOpenMigrationLog.Click   += (s, e) => OpenLogWindow(2);
 
             pageMigration.Controls.AddRange(new Control[] {
-                cardMigrationSource, cardMigrationOptions,
+                cardMigrationSource, cardMigrationBitLocker, cardMigrationProfile, cardMigrationOptions,
                 btnStartMigration, btnCancelMigration, btnExportMigrationLog, btnOpenMigrationLog
             });
 
