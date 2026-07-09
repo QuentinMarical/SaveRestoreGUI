@@ -15,7 +15,7 @@
 ## Prérequis
 
 - Windows 10/11 64-bit
-- .NET 8 Desktop Runtime (ou SDK pour compiler)
+- .NET 10 Desktop Runtime (ou SDK pour compiler)
 - **Droits administrateur recommandés** (import de clés de registre, accès à `C:\Users`)
 
 ## Structure d'une sauvegarde
