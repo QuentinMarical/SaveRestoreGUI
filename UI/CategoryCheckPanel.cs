@@ -10,24 +10,20 @@ using SaveRestoreGUI.Services;
 
 namespace SaveRestoreGUI.UI
 {
-    public class CheckItem
+    public class CheckItem(string key, string text, string icon, bool defaultChecked = true)
     {
-        public string Key            { get; }
-        public string Text           { get; }
-        public string Icon           { get; }
-        public bool   DefaultChecked { get; }
-        public CheckItem(string key, string text, string icon, bool defaultChecked = true)
-        { Key = key; Text = text; Icon = icon; DefaultChecked = defaultChecked; }
+        public string Key            { get; } = key;
+        public string Text           { get; } = text;
+        public string Icon           { get; } = icon;
+        public bool   DefaultChecked { get; } = defaultChecked;
     }
 
-    public class CheckCategory
+    public class CheckCategory(string label, string icon, CheckItem[] items)
     {
-        public string      Label    { get; }
-        public string      Icon     { get; }
-        public CheckItem[] Items    { get; }
+        public string      Label    { get; } = label;
+        public string      Icon     { get; } = icon;
+        public CheckItem[] Items    { get; } = items;
         public bool        Expanded { get; set; } = true;
-        public CheckCategory(string label, string icon, CheckItem[] items)
-        { Label = label; Icon = icon; Items = items; }
     }
 
     [SupportedOSPlatform("windows")]
@@ -43,45 +39,38 @@ namespace SaveRestoreGUI.UI
         private const int TileRadius = 8;
 
         // ── Zone icône ──────────────────────────────────────────────────────
-        // Répartition verticale dans TileH=90 :
-        //   y+6  .. y+26  → Checkbox (hauteur 20, avec marge 6)
-        //   y+26 .. y+68  → Zone icône (hauteur 42) ← CENTRAGE ICI
-        //   y+68 .. y+90  → Texte (hauteur 22)
-        private const int IconZoneTop    = 26;   // offset depuis le bord haut de la tuile
-        private const int IconZoneHeight = 42;   // hauteur de la zone allouée à l'icône
-        private const int IconSize       = 32;   // taille du bitmap rendu
+        private const int IconZoneTop    = 26;
+        private const int IconZoneHeight = 42;
+        private const int IconSize       = 32;
 
         // ── Couleurs de fallback fixes par app ──────────────────────────────
-        // Utilisées UNIQUEMENT si imageres.dll ne fournit pas d'icône native.
         private static readonly Dictionary<string, Color> _appColors = new()
         {
-            { "Outlook",         Color.FromArgb(  0, 120, 212) },  // bleu Microsoft
-            { "OneNote",         Color.FromArgb(119,  25, 170) },  // violet OneNote
-            { "ExcelMacros",     Color.FromArgb( 33, 115,  70) },  // vert Excel
-            { "OfficeTemplates", Color.FromArgb(216,  59,   1) },  // orange Office
-            { "Signatures",      Color.FromArgb( 70, 100, 140) },  // bleu-gris
-            // Navigateurs
-            { "BrowserEdge",     Color.FromArgb(  0, 120, 215) },  // bleu Edge
-            { "BrowserChrome",   Color.FromArgb( 66, 133,  44) },  // vert Chrome
-            { "BrowserBrave",    Color.FromArgb(251, 116,  77) },  // orange Brave
-            { "BrowserVivaldi",  Color.FromArgb(239,  64,  64) },  // rouge Vivaldi
-            { "BrowserOpera",    Color.FromArgb(255,  24,  24) },  // rouge Opera
-            { "BrowserOperaGX",  Color.FromArgb(220,  20,  60) },  // cramoisie Opera GX
-            { "BrowserFirefox",  Color.FromArgb(255, 103,   0) },  // orange Firefox
-            { "BrowserLibreWolf",Color.FromArgb(  0, 170, 255) },  // bleu LibreWolf
-            { "BrowserPaleMoon", Color.FromArgb( 73,  97, 165) },  // bleu Pale Moon
-            { "BrowserTor",      Color.FromArgb(126,  56, 178) },  // violet Tor
-            { "BrowserDDG",      Color.FromArgb(222,  88,  48) },  // orange DDG
-            { "BrowserArc",      Color.FromArgb( 90,  90, 220) },  // bleu-violet Arc
-            { "BrowserComet",    Color.FromArgb( 32, 178, 170) },  // teal Comet
+            { "Outlook",         Color.FromArgb(  0, 120, 212) },
+            { "OneNote",         Color.FromArgb(119,  25, 170) },
+            { "ExcelMacros",     Color.FromArgb( 33, 115,  70) },
+            { "OfficeTemplates", Color.FromArgb(216,  59,   1) },
+            { "Signatures",      Color.FromArgb( 70, 100, 140) },
+            { "BrowserEdge",     Color.FromArgb(  0, 120, 215) },
+            { "BrowserChrome",   Color.FromArgb( 66, 133,  44) },
+            { "BrowserBrave",    Color.FromArgb(251, 116,  77) },
+            { "BrowserVivaldi",  Color.FromArgb(239,  64,  64) },
+            { "BrowserOpera",    Color.FromArgb(255,  24,  24) },
+            { "BrowserOperaGX",  Color.FromArgb(220,  20,  60) },
+            { "BrowserFirefox",  Color.FromArgb(255, 103,   0) },
+            { "BrowserLibreWolf",Color.FromArgb(  0, 170, 255) },
+            { "BrowserPaleMoon", Color.FromArgb( 73,  97, 165) },
+            { "BrowserTor",      Color.FromArgb(126,  56, 178) },
+            { "BrowserDDG",      Color.FromArgb(222,  88,  48) },
+            { "BrowserArc",      Color.FromArgb( 90,  90, 220) },
+            { "BrowserComet",    Color.FromArgb( 32, 178, 170) },
         };
 
-        private List<CheckCategory>      _categories = new();
-        private Dictionary<string, bool> _checked    = new();
+        private List<CheckCategory>      _categories = [];
+        private readonly Dictionary<string, bool> _checked    = [];
         private string?                  _hoverItem;
 
-        // Cache d'icônes natives (WindowsIcons)
-        private readonly Dictionary<string, Bitmap?> _nativeCache = new();
+        private readonly Dictionary<string, Bitmap?> _nativeCache = [];
 
         public event EventHandler? CheckedChanged;
 
@@ -102,7 +91,7 @@ namespace SaveRestoreGUI.UI
 
         public void SetCategories(IEnumerable<CheckCategory> categories)
         {
-            _categories = new List<CheckCategory>(categories);
+            _categories = [.. categories];
             _checked.Clear();
             _nativeCache.Clear();
             foreach (var cat in _categories)
@@ -142,7 +131,6 @@ namespace SaveRestoreGUI.UI
             SetChecked("OfficeTemplates", r.HasOfficeTemplates);
             SetChecked("ExcelMacros",     r.HasExcelMacros);
 
-            // Navigateurs : pré-cocher uniquement si des données de profil existent
             foreach (var browser in BrowserService.All)
             {
                 bool shouldCheck = r.BrowsersToPreCheck.Contains(browser.Key);
@@ -165,14 +153,8 @@ namespace SaveRestoreGUI.UI
 
         // ── Résolution d'icône ────────────────────────────────────────────
 
-        /// <summary>
-        /// Retourne le bitmap à afficher pour un item :
-        ///   1. WindowsIcons (SHGetFileInfo, couleurs natives OS)
-        ///   2. SvgIcons fallback GDI+ avec couleur fixe par app
-        /// </summary>
         private Bitmap GetItemIcon(CheckItem item)
         {
-            // 1. Icône native Windows
             if (!_nativeCache.TryGetValue(item.Icon, out var native))
             {
                 native = WindowsIcons.Get(item.Icon, IconSize);
@@ -180,7 +162,6 @@ namespace SaveRestoreGUI.UI
             }
             if (native != null) return native;
 
-            // 2. Fallback GDI+ — couleur fixe par app, ou gris neutre pour dossiers
             Color fallback = _appColors.TryGetValue(item.Icon, out var ac)
                 ? ac
                 : Color.FromArgb(100, 120, 140);
@@ -266,7 +247,7 @@ namespace SaveRestoreGUI.UI
                 p.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
 
             using var chevFont = new Font("Segoe UI", 9f, FontStyle.Bold);
-            TextRenderer.DrawText(g, cat.Expanded ? "▾" : "▸", chevFont,
+            TextRenderer.DrawText(g, cat.Expanded ? "\u25be" : "\u25b8", chevFont,
                 new Rectangle(rect.Right - 22, y, 20, HeaderH),
                 p.TextSecondary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
@@ -291,7 +272,6 @@ namespace SaveRestoreGUI.UI
             bool chk     = _checked.TryGetValue(item.Key, out var cv) && cv;
             bool hovered = _hoverItem == item.Key;
 
-            // ── Fond et bordure ──────────────────────────────────────────
             var tileRect = new Rectangle(x, y, w, TileH);
             using var tilePath = RoundRect(tileRect, TileRadius);
 
@@ -307,7 +287,6 @@ namespace SaveRestoreGUI.UI
                 : new Pen(Color.FromArgb(40,  p.Border.R, p.Border.G, p.Border.B), 1f);
             g.DrawPath(borderPen, tilePath);
 
-            // ── Checkbox (coin haut-gauche) ──────────────────────────────
             int cbx = x + 8, cby = y + 6;
             var boxRect = new Rectangle(cbx, cby, CheckBoxW, CheckBoxW);
             using var boxPath = RoundRect(boxRect, 4);
@@ -331,7 +310,6 @@ namespace SaveRestoreGUI.UI
                 g.DrawPath(bp2, boxPath);
             }
 
-            // ── Icône ────────────────────────────────────────────────────
             var bmp  = GetItemIcon(item);
             int iconX = x + (w        - IconSize)      / 2;
             int iconY = y + IconZoneTop + (IconZoneHeight - IconSize) / 2;
@@ -351,7 +329,6 @@ namespace SaveRestoreGUI.UI
                     GraphicsUnit.Pixel, ia);
             }
 
-            // ── Texte en bas, centré ─────────────────────────────────────
             using var textFont  = new Font("Segoe UI", 7.5f);
             Color     textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
@@ -451,45 +428,43 @@ namespace SaveRestoreGUI.UI
                 new("Desktop",   "Bureau",          "Desktop"),
                 new("Documents", "Documents",       "Documents"),
                 new("Pictures",  "Images",          "Pictures"),
-                new("Videos",    "Vidéos",          "Videos"),
-                new("Downloads", "Téléchargements", "Downloads"),
+                new("Videos",    "Vid\u00e9os",     "Videos"),
+                new("Downloads", "T\u00e9l\u00e9chargements", "Downloads"),
                 new("Music",     "Musique",         "Music"),
                 new("Public",    "Dossier Public",  "Public"),
             };
             if (includeOldProfile)
                 userFiles.Add(new("OldProfile", "Ancien profil", "OldProfile", false));
 
-            var office = new CheckItem[]
-            {
+            CheckItem[] office =
+            [
                 new("Outlook",         "PST Outlook",    "Outlook",         false),
                 new("Signatures",      "Signatures",     "Signatures",      false),
-                new("OfficeTemplates", "Modèles Office", "OfficeTemplates", false),
+                new("OfficeTemplates", "Mod\u00e8les Office", "OfficeTemplates", false),
                 new("OneNote",         "OneNote",        "OneNote",         false),
                 new("StickyNotes",     "Sticky Notes",   "StickyNotes",     false),
                 new("ExcelMacros",     "Macros Excel",   "ExcelMacros",     false),
-            };
+            ];
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'écran",    "Wallpaper",     false),
-                new("NetworkDrives", "Lecteurs réseau", "NetworkDrives", false),
+                new("Wallpaper",     "Fond d'\u00e9cran",    "Wallpaper",     false),
+                new("NetworkDrives", "Lecteurs r\u00e9seau", "NetworkDrives", false),
             };
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Applications", "LaunchApps"));
 
-            // Navigateurs — générés depuis BrowserService.All
-            // DefaultChecked = false : ApplyAutoDetect() pré-cochera selon présence profil
             var browserItems = BrowserService.All
                 .Select(b => new CheckItem(b.Key, b.DisplayName, b.Key, defaultChecked: false))
                 .ToArray();
 
-            return new[]
-            {
-                new CheckCategory("Fichiers utilisateur",       "📁", userFiles.ToArray()),
-                new CheckCategory("Bureautique",                "💼", office),
-                new CheckCategory("Navigateurs",                "🌐", browserItems),
-                new CheckCategory("Système & Personnalisation", "⚙️", systemItems.ToArray()),
-            };
+            return
+            [
+                new CheckCategory("Fichiers utilisateur",       "\U0001f4c1", userFiles.ToArray()),
+                new CheckCategory("Bureautique",                "\U0001f4bc", office),
+                new CheckCategory("Navigateurs",                "\U0001f310", browserItems),
+                new CheckCategory("Syst\u00e8me & Personnalisation", "\u2699\ufe0f", systemItems.ToArray()),
+            ];
         }
     }
 }
