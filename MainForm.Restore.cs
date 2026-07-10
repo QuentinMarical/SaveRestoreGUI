@@ -120,6 +120,9 @@ namespace SaveRestoreGUI
                 if (chkPanelRestore.IsChecked("StickyNotes"))  steps.Add(("Sticky Notes",         () => RestoreStickyNotesAsync(restoreRoot, RestoreLogBox, ct)));
                 if (chkPanelRestore.IsChecked("NetworkDrives")) steps.Add(("Lecteurs réseau",     () => RestoreNetworkDrivesInfoAsync(restoreRoot, RestoreLogBox)));
                 if (chkPanelRestore.IsChecked("Wallpaper"))    steps.Add(("Fond d'écran",          () => RestoreWallpaperAsync(restoreRoot, RestoreLogBox, ct)));
+                if (chkPanelRestore.IsChecked("Theme"))        steps.Add(("Thème Windows",         () => RunServiceStepAsync("Thème Windows",     RestoreLogBox, () => ThemeService.Restore(restoreRoot,       m => LogInfo(RestoreLogBox, m), m => LogSuccess(RestoreLogBox, m), m => LogWarning(RestoreLogBox, m)))));
+                if (chkPanelRestore.IsChecked("Taskbar"))      steps.Add(("Barre des tâches",      () => RunServiceStepAsync("Barre des tâches",  RestoreLogBox, () => TaskbarService.Restore(restoreRoot,     m => LogInfo(RestoreLogBox, m), m => LogSuccess(RestoreLogBox, m), m => LogWarning(RestoreLogBox, m)))));
+                if (chkPanelRestore.IsChecked("SystemState"))  steps.Add(("Fonctions Windows",     () => RunServiceStepAsync("Fonctions Windows", RestoreLogBox, () => SystemStateService.Restore(restoreRoot, m => LogInfo(RestoreLogBox, m), m => LogSuccess(RestoreLogBox, m), m => LogWarning(RestoreLogBox, m)))));
                 if (chkPanelRestore.IsChecked("IpSoftphone"))  steps.Add(("IP Desktop Softphone",  () => RestoreIpDesktopSoftphoneAsync(restoreRoot, RestoreLogBox, progress, errorList, ct)));
 
                 // Navigateurs — boucle générique sur BrowserService.All
