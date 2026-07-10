@@ -1,0 +1,116 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>diskette.ico</ApplicationIcon>
+    <!-- Désactive la génération automatique de AssemblyInfo pour éviter CS0579 -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- LibraryImport (source-gen P/Invoke) génère du code unsafe -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Ce projet est exclusivement Windows (WinForms) : supprime CA1416 globalement -->
+    <!-- Supprime aussi CA1838/SYSLIB1054 (LibraryImport string marshalling) -->
+    <NoWarn>$(NoWarn);CA1416;CA1838;SYSLIB1054</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    Propriétés de publication autonome activées UNIQUEMENT lors du dotnet publish.
+    Appel : dotnet publish /p:Publishing=true
+  -->
+  <PropertyGroup Condition="'$(Publishing)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="SaveRestoreGUI.Tests\**" />
+    <EmbeddedResource Remove="SaveRestoreGUI.Tests\**" />
+    <None Remove="SaveRestoreGUI.Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="MainForm.Designer.cs">
+      <SubType>Form</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Backup.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Layout.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Migration.cs">
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+    <Compile Update="MainForm.Restore.cs">
+      <SubType>Code</SubType>
+      <DependentUpon>MainForm.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="MainForm_Backup.resx" />
+    <EmbeddedResource Remove="MainForm_Layout.resx" />
+    <EmbeddedResource Remove="MainForm_Migration.resx" />
+    <EmbeddedResource Remove="MainForm_Restore.resx" />
+
+    <None Remove="MainForm.Backup.resx" />
+    <None Remove="MainForm.Layout.resx" />
+    <None Remove="MainForm.Migration.resx" />
+    <None Remove="MainForm.Restore.resx" />
+    <None Remove="MainForm_Backup.resx" />
+    <None Remove="MainForm_Layout.resx" />
+    <None Remove="MainForm_Migration.resx" />
+    <None Remove="MainForm_Restore.resx" />
+
+    <Content Remove="MainForm.Backup.resx" />
+    <Content Remove="MainForm.Layout.resx" />
+    <Content Remove="MainForm.Migration.resx" />
+    <Content Remove="MainForm.Restore.resx" />
+    <Content Remove="MainForm_Backup.resx" />
+    <Content Remove="MainForm_Layout.resx" />
+    <Content Remove="MainForm_Migration.resx" />
+    <Content Remove="MainForm_Restore.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="diskette.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Svg" Version="3.4.7" />
+    <PackageReference Include="System.Management" Version="10.0.9" />
+  </ItemGroup>
+
+  <Target Name="SignAfterBuild" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <PropertyGroup>
+      <_ExeToSign>$(TargetDir)$(AssemblyName).exe</_ExeToSign>
+    </PropertyGroup>
+    <Message Text="🔏 Signature de $(_ExeToSign)..." Importance="high" />
+    <Exec
+      Command="powershell -NoProfile -NonInteractive -Command &quot;$exe = '$(_ExeToSign)'; if (-not (Test-Path $exe)) { Write-Host '⚠️  .exe introuvable : ' $exe; exit 0 }; $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.FriendlyName -eq 'SaveRestoreGUI Code Signing' } | Select-Object -First 1; if (-not $cert) { Write-Host '⚠️  Certificat introuvable — build non signée. Exécutez le script PowerShell de création du certificat.'; exit 0 }; $result = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -TimestampServer 'http://timestamp.digicert.com' -HashAlgorithm SHA256; if ($result.Status -eq 'Valid') { Write-Host '✅ Signature OK : $(AssemblyName).exe' } else { Write-Host ('⚠️  Signature échouée : ' + $result.Status + ' — ' + $result.StatusMessage) }&quot;"
+      ContinueOnError="true" />
+  </Target>
+
+  <Target Name="SignAfterPublish" AfterTargets="Publish" Condition="'$(OS)' == 'Windows_NT'">
+    <PropertyGroup>
+      <_PublishedExe>$(PublishDir)$(AssemblyName).exe</_PublishedExe>
+    </PropertyGroup>
+    <Message Text="🔏 Signature du binaire publié : $(_PublishedExe)" Importance="high" />
+    <Exec
+      Command="powershell -NoProfile -NonInteractive -Command &quot;$exe = '$(_PublishedExe)'; if (-not (Test-Path $exe)) { Write-Host '⚠️  Exe publié introuvable : ' $exe; exit 0 }; $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.FriendlyName -eq 'SaveRestoreGUI Code Signing' } | Select-Object -First 1; if (-not $cert) { Write-Host '⚠️  Certificat introuvable — publish non signé.'; exit 0 }; $result = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -TimestampServer 'http://timestamp.digicert.com' -HashAlgorithm SHA256; if ($result.Status -eq 'Valid') { Write-Host '✅ Publish signé : $(AssemblyName).exe' } else { Write-Host ('⚠️  Signature publish échouée : ' + $result.Status) }&quot;"
+      ContinueOnError="true" />
+  </Target>
+
+</Project>
