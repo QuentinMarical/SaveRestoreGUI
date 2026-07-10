@@ -18,6 +18,16 @@ namespace SaveRestoreGUI
             string pvParam,
             uint fWinIni);
 
+        // ── Métriques fenêtre ───────────────────────────────────────────────────
+        // SM_CXPADDEDBORDER : largeur de la bordure invisible ajoutée par le DWM
+        // autour des fenêtres à légende (non exposée par SystemInformation).
+        private const int SM_CXPADDEDBORDER = 92;
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+
+        public static int PaddedBorderWidth => GetSystemMetrics(SM_CXPADDEDBORDER);
+
         // ── DWM (Desktop Window Manager) — habillage Windows 11 natif ──────────
         // Titre de fenêtre sombre + coins arrondis : purement cosmétique sur la
         // zone non-cliente, sans effet sur le rendu (opaque) des contrôles custom.
@@ -30,18 +40,23 @@ namespace SaveRestoreGUI
             IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 
         /// <summary>
-        /// Applique le titre de fenêtre sombre et les coins arrondis (Windows 11).
+        /// Applique le titre de fenêtre sombre et, en option, les coins arrondis
+        /// (Windows 11). Ne pas forcer l'arrondi sur une fenêtre maximisée : les
+        /// coins découpés laisseraient voir l'arrière-plan aux quatre angles.
         /// Sans effet (échec silencieux) sur les versions antérieures de Windows.
         /// </summary>
-        public static void ApplyWin11WindowStyle(IntPtr handle)
+        public static void ApplyWin11WindowStyle(IntPtr handle, bool roundCorners = true)
         {
             try
             {
                 int darkMode = 1;
                 DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
 
-                int corner = DWMWCP_ROUND;
-                DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+                if (roundCorners)
+                {
+                    int corner = DWMWCP_ROUND;
+                    DwmSetWindowAttribute(handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+                }
             }
             catch { /* Windows < 11 ou DWM indisponible : ignoré volontairement */ }
         }
