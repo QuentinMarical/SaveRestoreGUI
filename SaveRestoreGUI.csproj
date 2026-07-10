@@ -29,12 +29,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="SaveRestoreGUI.Tests\**" />
-    <EmbeddedResource Remove="SaveRestoreGUI.Tests\**" />
-    <None Remove="SaveRestoreGUI.Tests\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

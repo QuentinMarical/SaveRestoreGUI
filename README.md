@@ -48,13 +48,7 @@
 dotnet build SaveRestoreGUI.sln -c Release
 ```
 
-L'exécutable est produit dans `bin\Release\net8.0-windows\`.
-
-## Lancer les tests
-
-```powershell
-dotnet test SaveRestoreGUI.Tests\SaveRestoreGUI.Tests.csproj
-```
+L'exécutable est produit dans `bin\Release\net10.0-windows\`.
 
 ## Versionnage
 
