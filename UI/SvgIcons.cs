@@ -163,6 +163,11 @@ namespace SaveRestoreGUI.UI
                 case "OfficeTemplates": FbOffice(g);          break;
                 case "Signatures":      FbSignatures(g);      break;
 
+                // ── Fonctions système ─────────────────────────────────────────
+                case "Theme":           FbTheme(g, c);        break;
+                case "Taskbar":         FbTaskbar(g, c);      break;
+                case "SystemState":     FbSystemState(g, c);  break;
+
                 // ── Dossiers / couleur thème ──────────────────────────────────
                 case "Desktop":         FbDesktop(g, c);      break;
                 case "Pictures":        FbPictures(g, c);     break;
@@ -286,6 +291,45 @@ namespace SaveRestoreGUI.UI
             g.DrawLine(pp,  68f, 188f, 188f,  68f);
             g.DrawLine(pp, 188f,  68f, 168f,  88f);
             g.DrawLine(pp,  68f, 188f,  56f, 200f);
+        }
+
+        // ─── Fonctions système ─────────────────────────────────────────────────
+
+        /// <summary>Thème — palette de peintre avec pastilles de couleurs</summary>
+        private static void FbTheme(Graphics g, Color c)
+        {
+            using var pb = new SolidBrush(c);
+            g.FillEllipse(pb, 30f, 40f, 196f, 176f);
+            // Pastilles de couleurs
+            using var b1 = new SolidBrush(Color.FromArgb(255, 200,  60));
+            using var b2 = new SolidBrush(Color.FromArgb( 80, 180, 255));
+            using var b3 = new SolidBrush(Color.FromArgb(120, 220, 120));
+            using var b4 = new SolidBrush(Color.White);
+            g.FillEllipse(b1,  66f,  74f, 36f, 36f);
+            g.FillEllipse(b2, 126f,  60f, 36f, 36f);
+            g.FillEllipse(b3, 172f,  96f, 36f, 36f);
+            g.FillEllipse(b4,  60f, 138f, 36f, 36f);
+        }
+
+        /// <summary>Barre des tâches — écran avec barre inférieure et boutons</summary>
+        private static void FbTaskbar(Graphics g, Color c)
+        {
+            using var scr = new SolidBrush(Color.FromArgb(120, c.R, c.G, c.B));
+            FillRR(g, scr, new RectangleF(28, 48, 200, 160), 10);
+            using var bar = new SolidBrush(c);
+            FillRR(g, bar, new RectangleF(28, 176, 200, 32), 6);
+            using var dot = new SolidBrush(Color.White);
+            for (int i = 0; i < 4; i++)
+                FillRR(g, dot, new RectangleF(64 + i * 36, 183, 18, 18), 4);
+        }
+
+        /// <summary>Fonctions Windows — interrupteur à bascule (toggle)</summary>
+        private static void FbSystemState(Graphics g, Color c)
+        {
+            using var track = new SolidBrush(c);
+            FillRR(g, track, new RectangleF(30, 88, 196, 80), 40);
+            using var knob = new SolidBrush(Color.White);
+            g.FillEllipse(knob, 152f, 96f, 64f, 64f);
         }
 
         // ─── Dossiers (couleur thème) ──────────────────────────────────────────
