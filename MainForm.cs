@@ -78,18 +78,11 @@ namespace SaveRestoreGUI
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            FitToWorkingArea();
+            // Doit précéder l'application du WindowState.Maximized du Designer :
+            // sans WS_MAXIMIZEBOX (MaximizeBox = false), Windows maximise sinon
+            // sur les bounds complets de l'écran, sous la barre des tâches.
+            MaximizedBounds = Screen.FromControl(this).WorkingArea;
             NativeMethods.ApplyWin11WindowStyle(Handle);
-        }
-
-        /// <summary>
-        /// Cale la fenêtre (fixe, non redimensionnable) exactement sur la zone de
-        /// travail de l'écran courant — remplace l'état Maximized, dont le rendu
-        /// est imprévisible quand WS_MAXIMIZEBOX est absent (MaximizeBox = false).
-        /// </summary>
-        private void FitToWorkingArea()
-        {
-            Bounds = Screen.FromControl(this).WorkingArea;
         }
 
         private void SyncPageSizes()
@@ -112,9 +105,9 @@ namespace SaveRestoreGUI
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            _logWindowBackup.CloseIfOpen();
-            _logWindowRestore.CloseIfOpen();
-            _logWindowMigration.CloseIfOpen();
+            _logWindowBackup.ForceClose();
+            _logWindowRestore.ForceClose();
+            _logWindowMigration.ForceClose();
             base.OnFormClosed(e);
         }
 
@@ -252,6 +245,9 @@ namespace SaveRestoreGUI
 
         private void Log(RichTextBox rtb, string message, Color? color = null, bool toast = false, ToastKind kind = ToastKind.Info)
         {
+            // Garde-fou : une opération asynchrone peut logger après destruction
+            // de la cible (fermeture de l'application en cours d'opération).
+            if (rtb.IsDisposed || IsDisposed) return;
             if (InvokeRequired)
             { Invoke(() => Log(rtb, message, color, toast, kind)); return; }
 
