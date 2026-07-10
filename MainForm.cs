@@ -81,8 +81,24 @@ namespace SaveRestoreGUI
             // Doit précéder l'application du WindowState.Maximized du Designer :
             // sans WS_MAXIMIZEBOX (MaximizeBox = false), Windows maximise sinon
             // sur les bounds complets de l'écran, sous la barre des tâches.
-            MaximizedBounds = Screen.FromControl(this).WorkingArea;
-            NativeMethods.ApplyWin11WindowStyle(Handle);
+            UpdateMaximizedBounds();
+            NativeMethods.ApplyWin11WindowStyle(Handle, roundCorners: false);
+        }
+
+        /// <summary>
+        /// Borne la maximisation à la zone de travail, gonflée de la bordure
+        /// invisible que Windows réserve autour des fenêtres (padded border).
+        /// Sans cette compensation — que le maximize standard fait en poussant le
+        /// cadre hors écran — un liseré de quelques pixels reste découvert sur
+        /// les bords et laisse voir les fenêtres d'arrière-plan.
+        /// </summary>
+        private void UpdateMaximizedBounds()
+        {
+            var wa  = Screen.FromControl(this).WorkingArea;
+            int pad = NativeMethods.PaddedBorderWidth
+                    + SystemInformation.FixedFrameBorderSize.Width;
+            wa.Inflate(pad, pad);
+            MaximizedBounds = wa;
         }
 
         private void SyncPageSizes()
