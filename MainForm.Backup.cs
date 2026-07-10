@@ -294,6 +294,9 @@ namespace SaveRestoreGUI
                 if (chkPanelBackup.IsChecked("OneNote"))         steps.Add(("OneNote (registre)",    () => BackupOneNoteAsync(backupRoot, BackupLogBox)));
                 if (chkPanelBackup.IsChecked("StickyNotes"))     steps.Add(("Sticky Notes",          () => BackupStickyNotesAsync(backupRoot, BackupLogBox, ct)));
                 if (chkPanelBackup.IsChecked("Wallpaper"))       steps.Add(("Fond d'écran",          () => BackupWallpaperAsync(backupRoot, BackupLogBox)));
+                if (chkPanelBackup.IsChecked("Theme"))           steps.Add(("Thème Windows",         () => RunServiceStepAsync("Thème Windows",      BackupLogBox, () => ThemeService.Backup(backupRoot,       m => LogInfo(BackupLogBox, m), m => LogSuccess(BackupLogBox, m), m => LogWarning(BackupLogBox, m)))));
+                if (chkPanelBackup.IsChecked("Taskbar"))         steps.Add(("Barre des tâches",      () => RunServiceStepAsync("Barre des tâches",   BackupLogBox, () => TaskbarService.Backup(backupRoot,     m => LogInfo(BackupLogBox, m), m => LogSuccess(BackupLogBox, m), m => LogWarning(BackupLogBox, m)))));
+                if (chkPanelBackup.IsChecked("SystemState"))     steps.Add(("Fonctions Windows",     () => RunServiceStepAsync("Fonctions Windows",  BackupLogBox, () => SystemStateService.Backup(backupRoot, m => LogInfo(BackupLogBox, m), m => LogSuccess(BackupLogBox, m), m => LogWarning(BackupLogBox, m)))));
                 if (chkPanelBackup.IsChecked("NetworkDrives"))   steps.Add(("Lecteurs réseau",       () => BackupNetworkDrivesAsync(backupRoot, BackupLogBox)));
                 if (chkPanelBackup.IsChecked("IpSoftphone"))     steps.Add(("IP Desktop Softphone",  () => BackupIpDesktopSoftphoneAsync(backupRoot, BackupLogBox, progress, errorList, ct)));
 
