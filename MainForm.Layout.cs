@@ -14,7 +14,6 @@ namespace SaveRestoreGUI
     {
         // ── Colonne de contenu
         private new const int Margin      = 28;
-        private const int MaxContentW     = 1060;  // largeur max du contenu (≈ app Paramètres)
         private const int RowGap          = 8;     // entre cartes-lignes d'un même groupe
         private const int CardGap         = 14;    // entre groupes
 
@@ -61,9 +60,9 @@ namespace SaveRestoreGUI
             LayoutProgressOverlay();
         }
 
-        /// <summary>Largeur de la colonne de contenu, bornée façon app Paramètres.</summary>
+        /// <summary>Largeur de la colonne de contenu (pleine largeur moins marges).</summary>
         private static int ContentWidth(Control page)
-            => Math.Min(page.ClientSize.Width - Margin * 2, MaxContentW);
+            => page.ClientSize.Width - Margin * 2;
 
         // ═══════════════════════════════════════════════════════════════════
         // PAGE SAUVEGARDE
@@ -169,8 +168,8 @@ namespace SaveRestoreGUI
             if (pw <= 0 || ph <= 0) return;
 
             // Alignée sur la colonne de contenu, toujours au-dessus du bord bas
-            // (la fenêtre fixe est calée sur la zone de travail via FitToWorkingArea).
-            int cw   = Math.Min(pw - Margin * 2, MaxContentW);
+            // (la fenêtre maximisée est bornée à la zone de travail via MaximizedBounds).
+            int cw   = pw - Margin * 2;
             int barW = Math.Max(80, cw - ProgressPctW);
             int y    = ph - LogProgressH - ProgressGapY;
             progressBar.SetBounds(Margin, y, barW, LogProgressH);
