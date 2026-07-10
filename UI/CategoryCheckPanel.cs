@@ -79,6 +79,9 @@ namespace SaveRestoreGUI.UI
             { "BrowserDDG",      Color.FromArgb(222,  88,  48) },
             { "BrowserArc",      Color.FromArgb( 90,  90, 220) },
             { "BrowserComet",    Color.FromArgb( 32, 178, 170) },
+            { "Theme",           Color.FromArgb(168,  85, 247) },
+            { "Taskbar",         Color.FromArgb( 65, 145, 255) },
+            { "SystemState",     Color.FromArgb(108, 203,  95) },
         };
 
         private List<CheckCategory>      _categories = [];
@@ -455,7 +458,8 @@ namespace SaveRestoreGUI.UI
     {
         public static CheckCategory[] Build(
             bool includeOldProfile = false,
-            bool includeLaunchApps = false)
+            bool includeLaunchApps = false,
+            bool includeSystemFeatures = true)
         {
             var userFiles = new List<CheckItem>
             {
@@ -482,9 +486,17 @@ namespace SaveRestoreGUI.UI
 
             var systemItems = new List<CheckItem>
             {
-                new("Wallpaper",     "Fond d'\u00e9cran",    "Wallpaper",     false),
-                new("NetworkDrives", "Lecteurs r\u00e9seau", "NetworkDrives", false),
+                new("Wallpaper",     "Fond d'\u00e9cran",      "Wallpaper",     false),
+                new("NetworkDrives", "Lecteurs r\u00e9seau",   "NetworkDrives", false),
             };
+            // Captur\u00e9s sur le syst\u00e8me en cours d'ex\u00e9cution : sans objet pour la
+            // migration depuis un disque externe.
+            if (includeSystemFeatures)
+            {
+                systemItems.Insert(1, new("Theme",       "Th\u00e8me Windows",     "Theme",       false));
+                systemItems.Insert(2, new("Taskbar",     "Barre des t\u00e2ches",  "Taskbar",     false));
+                systemItems.Insert(3, new("SystemState", "Fonctions Windows", "SystemState", false));
+            }
             if (includeLaunchApps)
                 systemItems.Add(new("LaunchApps", "Applications", "LaunchApps"));
 
