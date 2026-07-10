@@ -310,6 +310,10 @@ namespace SaveRestoreGUI
         private void UpdateProgress(int percent)
         {
             if (InvokeRequired) { Invoke(() => UpdateProgress(percent)); return; }
+            // Progress<T> poste ses rapports en asynchrone : après annulation ou fin
+            // d'opération, des rapports résiduels arrivent encore et réaffichaient
+            // la barre juste après HideProgress. Aucune opération active → ignorer.
+            if (_ctsBackup == null && _ctsRestore == null && _ctsMigration == null) return;
             int clamped = Math.Min(100, Math.Max(0, percent));
             progressBar.Visible = true;
             progressBar.Value   = clamped;
