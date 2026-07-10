@@ -90,13 +90,15 @@ namespace SaveRestoreGUI
             components = new System.ComponentModel.Container();
             SuspendLayout();
 
-            // Fenêtre fixe occupant toute la zone de travail : ni redimensionnable
-            // ni maximisable (juste réduire/fermer). Les bounds réels sont posés
-            // dans OnHandleCreated (FitToWorkingArea) pour l'écran courant.
+            // Fenêtre réellement maximisée (bords collés à l'écran) mais non
+            // redimensionnable : FixedSingle supprime la poignée de resize,
+            // MaximizeBox=false retire le bouton agrandir/restaurer. Les bornes
+            // de maximisation sont posées dans OnHandleCreated (zone de travail).
             Text            = "SaveRestore GUI";
             Size            = new Size(1100, 780);
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            StartPosition   = FormStartPosition.Manual;
+            StartPosition   = FormStartPosition.CenterScreen;
+            WindowState     = FormWindowState.Maximized;
             MaximizeBox     = false;
             MinimizeBox     = true;
             Font            = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
