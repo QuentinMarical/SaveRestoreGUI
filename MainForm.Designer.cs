@@ -192,6 +192,8 @@ namespace SaveRestoreGUI
             chkPanelBackup = new CategoryCheckPanel();
             btnSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
             btnDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
+            btnSelectAll.Click   += (s, e) => chkPanelBackup.SetAll(true);
+            btnDeselectAll.Click += (s, e) => chkPanelBackup.SetAll(false);
             cardBackupOptions.Controls.AddRange(new Control[] { chkPanelBackup, btnSelectAll, btnDeselectAll });
 
             btnStartBackup     = new ModernButton { Text = "Démarrer la sauvegarde" };
@@ -232,6 +234,8 @@ namespace SaveRestoreGUI
             chkPanelRestore       = new CategoryCheckPanel();
             btnRestoreSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
             btnRestoreDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
+            btnRestoreSelectAll.Click   += (s, e) => chkPanelRestore.SetAll(true);
+            btnRestoreDeselectAll.Click += (s, e) => chkPanelRestore.SetAll(false);
             cardRestoreOptions.Controls.AddRange(new Control[] { chkPanelRestore, btnRestoreSelectAll, btnRestoreDeselectAll });
 
             btnStartRestore     = new ModernButton { Text = "Démarrer la restauration" };
@@ -297,6 +301,8 @@ namespace SaveRestoreGUI
             chkPanelMigration     = new CategoryCheckPanel();
             btnMigrateSelectAll   = new ModernButton { Text = "Tout cocher", Role = ButtonRole.Secondary };
             btnMigrateDeselectAll = new ModernButton { Text = "Tout décocher", Role = ButtonRole.Secondary };
+            btnMigrateSelectAll.Click   += (s, e) => chkPanelMigration.SetAll(true);
+            btnMigrateDeselectAll.Click += (s, e) => chkPanelMigration.SetAll(false);
             cardMigrationOptions.Controls.AddRange(new Control[] { chkPanelMigration, btnMigrateSelectAll, btnMigrateDeselectAll });
 
             btnStartMigration     = new ModernButton { Text = "Démarrer la migration" };
