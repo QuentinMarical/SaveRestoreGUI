@@ -52,7 +52,8 @@ namespace SaveRestoreGUI
             chkPanelRestore.SetCategories(
                 CheckCatalog.Build(includeOldProfile: false, includeLaunchApps: false));
             chkPanelMigration.SetCategories(
-                CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false));
+                CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false,
+                                   includeSystemFeatures: false));
 
             this.Load += (_, _) =>
             {
@@ -306,6 +307,17 @@ namespace SaveRestoreGUI
 
         private void UpdateStatus(string message)
         { if (InvokeRequired) { Invoke(() => UpdateStatus(message)); return; } statusLabel.Text = message; }
+
+        /// <summary>
+        /// Exécute une étape de service (Theme/Taskbar/SystemState…) hors du thread
+        /// UI, avec journalisation homogène et capture d'erreur non fatale.
+        /// </summary>
+        private async Task RunServiceStepAsync(string name, RichTextBox rtb, Action action)
+        {
+            Log(rtb, $"Traitement de {name}...");
+            try { await Task.Run(action); }
+            catch (Exception ex) { LogError(rtb, $"{name} : {ex.Message}"); }
+        }
 
         private void UpdateProgress(int percent)
         {
