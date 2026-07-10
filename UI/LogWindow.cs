@@ -19,6 +19,7 @@ namespace SaveRestoreGUI.UI
         private readonly ModernButton _btnExport;
         private readonly ModernButton _btnClear;
         private readonly string       _defaultExportName;
+        private bool                  _reallyClose;
 
         public LogWindow(string title, string defaultExportName)
         {
@@ -62,10 +63,35 @@ namespace SaveRestoreGUI.UI
             NativeMethods.ApplyWin11WindowStyle(Handle);
         }
 
-        // Ferme proprement sans déclencher DialogResult (appelé par ShowPage)
+        /// <summary>
+        /// La fenêtre se masque au lieu de se fermer : Close() sur une Form non
+        /// modale la dispose, or MainForm continue de logger dans LogBox pendant
+        /// les opérations (→ ObjectDisposedException). Seul ForceClose (appelé à
+        /// la fermeture de l'application) détruit réellement la fenêtre.
+        /// </summary>
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (!_reallyClose && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+            base.OnFormClosing(e);
+        }
+
+        // Masque la fenêtre sans la détruire (appelé par ShowPage)
         public void CloseIfOpen()
         {
-            if (!IsDisposed && Visible) Close();
+            if (!IsDisposed && Visible) Hide();
+        }
+
+        // Fermeture définitive à la sortie de l'application
+        public void ForceClose()
+        {
+            if (IsDisposed) return;
+            _reallyClose = true;
+            Close();
         }
 
         // Positionne la fenêtre à droite / en bas de son parent
