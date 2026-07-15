@@ -94,28 +94,32 @@ namespace SaveRestoreGUI
             // redimensionnable : FixedSingle supprime la poignée de resize,
             // MaximizeBox=false retire le bouton agrandir/restaurer. Les bornes
             // de maximisation sont posées dans OnHandleCreated (zone de travail).
+            // Auto-scaling WinForms désactivé : toute la géométrie est mise à
+            // l'échelle DPI manuellement via Dpi.S (cohérent entre chrome, layout
+            // et dessins personnalisés). Les polices (points) sont agrandies par l'OS.
+            AutoScaleMode   = AutoScaleMode.None;
             Text            = "SaveRestore GUI";
-            Size            = new Size(1100, 780);
+            Size            = new Size(Dpi.S(1100), Dpi.S(780));
             FormBorderStyle = FormBorderStyle.FixedSingle;
             StartPosition   = FormStartPosition.CenterScreen;
             WindowState     = FormWindowState.Maximized;
             MaximizeBox     = false;
             MinimizeBox     = true;
-            Font            = new Font("Segoe UI", 9.5f, FontStyle.Regular, GraphicsUnit.Point);
+            Font            = Dpi.Font("Segoe UI", 9.5f);
 
             // ── Sidebar
-            sidebarPanel   = new Panel { Dock = DockStyle.Left, Width = 220 };
-            lblAppTitle    = new Label { Text = "SaveRestore", AutoSize = true, Font = new Font("Segoe UI", 14f, FontStyle.Bold) };
+            sidebarPanel   = new Panel { Dock = DockStyle.Left, Width = Dpi.S(220) };
+            lblAppTitle    = new Label { Text = "SaveRestore", AutoSize = true, Font = Dpi.Font("Segoe UI", 14f, FontStyle.Bold) };
             lblAppSubtitle = new Label { Text = "Gestionnaire de profil", AutoSize = true, Tag = "secondary" };
-            lblAppTitle.SetBounds(20, 20, 180, 30);
-            lblAppSubtitle.SetBounds(20, 52, 180, 20);
+            lblAppTitle.SetBounds(Dpi.S(20), Dpi.S(20), Dpi.S(180), Dpi.S(30));
+            lblAppSubtitle.SetBounds(Dpi.S(20), Dpi.S(52), Dpi.S(180), Dpi.S(20));
 
             navBackup    = new NavButton { Text = "\U0001f4be Sauvegarde" };
             navRestore   = new NavButton { Text = "\U0001f4c2 Restauration" };
             navMigration = new NavButton { Text = "\U0001f504 Migration USB" };
-            navBackup.SetBounds(20, 100, 180, 44);
-            navRestore.SetBounds(20, 152, 180, 44);
-            navMigration.SetBounds(20, 204, 180, 44);
+            navBackup.SetBounds(Dpi.S(20), Dpi.S(100), Dpi.S(180), Dpi.S(44));
+            navRestore.SetBounds(Dpi.S(20), Dpi.S(152), Dpi.S(180), Dpi.S(44));
+            navMigration.SetBounds(Dpi.S(20), Dpi.S(204), Dpi.S(180), Dpi.S(44));
             navBackup.Click    += (s, e) => ShowPage(0);
             navRestore.Click   += (s, e) => ShowPage(1);
             navMigration.Click += (s, e) => ShowPage(2);
@@ -129,16 +133,16 @@ namespace SaveRestoreGUI
             });
 
             // ── Header
-            headerPanel     = new Panel { Dock = DockStyle.Top, Height = 72 };
-            lblPageTitle    = new Label { Text = "Sauvegarde", AutoSize = true, Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
+            headerPanel     = new Panel { Dock = DockStyle.Top, Height = Dpi.S(72) };
+            lblPageTitle    = new Label { Text = "Sauvegarde", AutoSize = true, Font = Dpi.Font("Segoe UI", 16f, FontStyle.Bold) };
             lblPageSubtitle = new Label { Text = "", AutoSize = true, Tag = "secondary" };
-            lblPageTitle.SetBounds(28, 14, 600, 28);
-            lblPageSubtitle.SetBounds(28, 44, 700, 20);
+            lblPageTitle.SetBounds(Dpi.S(28), Dpi.S(14), Dpi.S(600), Dpi.S(28));
+            lblPageSubtitle.SetBounds(Dpi.S(28), Dpi.S(44), Dpi.S(700), Dpi.S(20));
             headerDivider = new Panel { Dock = DockStyle.Bottom, Height = 1 };
             headerPanel.Controls.AddRange(new Control[] { lblPageTitle, lblPageSubtitle, headerDivider });
 
             // ── Status bar
-            statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 32 };
+            statusPanel = new Panel { Dock = DockStyle.Bottom, Height = Dpi.S(32) };
             statusLabel = new Label
             {
                 Text      = "Prêt",
@@ -146,7 +150,7 @@ namespace SaveRestoreGUI
                 Dock      = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft
             };
-            statusLabel.Padding = new Padding(12, 0, 0, 0);
+            statusLabel.Padding = new Padding(Dpi.S(12), 0, 0, 0);
             statusPanel.Controls.Add(statusLabel);
 
             // ── Content panel + overlays progress

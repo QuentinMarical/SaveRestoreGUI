@@ -9,48 +9,54 @@ namespace SaveRestoreGUI
     /// Mise en page façon app Paramètres de Windows 11 : colonne de contenu
     /// à largeur bornée, cartes-lignes (SettingCard) empilées avec petits
     /// espacements, contrôles alignés à droite dans chaque carte.
+    ///
+    /// Toute la géométrie est en pixels logiques (96 dpi) mise à l'échelle par
+    /// <see cref="Dpi.S"/> : les constantes ci-dessous sont donc des valeurs
+    /// déjà agrandies au facteur DPI courant. Les tailles issues de SettingCard
+    /// (RowH, HeaderH, PadX) sont elles aussi déjà mises à l'échelle.
     /// </summary>
     public partial class MainForm
     {
         // ── Colonne de contenu
-        private new const int Margin      = 28;
-        private const int RowGap          = 8;     // entre cartes-lignes d'un même groupe
-        private const int CardGap         = 14;    // entre groupes
+        private new static readonly int Margin  = Dpi.S(28);
+        private static readonly int RowGap      = Dpi.S(8);     // entre cartes-lignes d'un même groupe
+        private static readonly int CardGap     = Dpi.S(14);    // entre groupes
 
         // ── Cartes options (HeaderMode)
         // Plancher bas volontaire : CategoryCheckPanel est scrollable (AutoScroll),
         // donc la carte peut rétrécir plutôt que de recouvrir la barre d'action.
-        private const int CardOptMinH     = 120;
-        private const int OptInnerPadX    = 12;
-        private const int OptInnerPadBot  = 12;
+        private static readonly int CardOptMinH   = Dpi.S(120);
+        private static readonly int OptInnerPadX   = Dpi.S(12);
+        private static readonly int OptInnerPadBot = Dpi.S(12);
 
         // ── Contrôles dans les cartes-lignes
-        private const int CtlH            = 30;    // hauteur standard d'un contrôle hébergé
-        private const int CtlGap          = 8;
-        private const int BtnBrowseW      = 110;
-        private const int BtnRefreshW     = 120;
-        private const int BtnBitLockerW   = 175;
-        private const int BtnAllW         = 110;
-        private const int BtnNoneW        = 130;
-        private const int TitleZoneMinW   = 260;   // place réservée au bloc icône+titre+description
+        private static readonly int CtlH          = Dpi.S(30);  // hauteur standard d'un contrôle hébergé
+        private static readonly int CtlGap        = Dpi.S(8);
+        private static readonly int BtnBrowseW    = Dpi.S(110);
+        private static readonly int BtnRefreshW   = Dpi.S(120);
+        private static readonly int BtnBitLockerW = Dpi.S(175);
+        private static readonly int BtnAllW       = Dpi.S(110);
+        private static readonly int BtnNoneW      = Dpi.S(130);
+        private static readonly int TitleZoneMinW = Dpi.S(260); // place réservée au bloc icône+titre+description
 
         // ── Carte profil (Migration, HeaderMode)
-        private const int ProfCardH       = 128;
-        private const int ProfSelH        = 36;
-        private const int ProfInfoH       = 36;   // 2 lignes de texte secondaire
+        private static readonly int ProfCardH = Dpi.S(128);
+        private static readonly int ProfSelH  = Dpi.S(36);
+        private static readonly int ProfInfoH = Dpi.S(36);      // 2 lignes de texte secondaire
 
         // ── Barre d'actions
-        private const int ActionH    = 44;
-        private const int BtnStartW  = 230;
-        private const int BtnCancelW = 120;
-        private const int BtnExportW = 150;
-        private const int BtnLogsW   = 140;
+        private static readonly int ActionH    = Dpi.S(44);
+        private static readonly int BtnStartW  = Dpi.S(230);
+        private static readonly int BtnCancelW = Dpi.S(120);
+        private static readonly int BtnExportW = Dpi.S(150);
+        private static readonly int BtnLogsW   = Dpi.S(140);
+        private static readonly int ActionSecBtnH = Dpi.S(34);  // hauteur boutons secondaires de la barre
 
         // ── Barre de progression (overlay dans contentPanel)
-        private const int LogProgressH   = 20;
-        private const int ProgressGapY   = 12;
-        private const int ProgressAreaH  = LogProgressH + ProgressGapY * 2;
-        private const int ProgressPctW   = 80;
+        private static readonly int LogProgressH  = Dpi.S(20);
+        private static readonly int ProgressGapY  = Dpi.S(12);
+        private static readonly int ProgressAreaH = LogProgressH + ProgressGapY * 2;
+        private static readonly int ProgressPctW  = Dpi.S(80);
 
         public void ApplyResponsiveLayout()
         {
@@ -124,28 +130,28 @@ namespace SaveRestoreGUI
             // ── Ligne 1 : lecteur source (combo + actualiser à droite)
             cardMigrationSource.SetBounds(Margin, y, cw, SettingCard.RowH);
             int refreshX = cw - SettingCard.PadX - BtnRefreshW;
-            int cmbW     = Math.Max(160, Math.Min(320,
+            int cmbW     = Math.Max(Dpi.S(160), Math.Min(Dpi.S(320),
                 cw - SettingCard.PadX * 2 - TitleZoneMinW - BtnRefreshW - CtlGap));
             int cmbX     = refreshX - CtlGap - cmbW;
             int ctlY     = (SettingCard.RowH - CtlH) / 2;
             cmbUSBDrives.SetBounds(cmbX, ctlY, cmbW, CtlH);
-            btnRefreshUSB.SetBounds(refreshX, ctlY, BtnRefreshW, CtlH + 2);
+            btnRefreshUSB.SetBounds(refreshX, ctlY, BtnRefreshW, CtlH + Dpi.S(2));
             y += SettingCard.RowH + RowGap;
 
             // ── Ligne 2 : BitLocker (statut + bouton à droite)
             cardMigrationBitLocker.SetBounds(Margin, y, cw, SettingCard.RowH);
             int bitBtnX   = cw - SettingCard.PadX - BtnBitLockerW;
-            int statusW   = Math.Max(120, Math.Min(360,
+            int statusW   = Math.Max(Dpi.S(120), Math.Min(Dpi.S(360),
                 cw - SettingCard.PadX * 2 - TitleZoneMinW - BtnBitLockerW - CtlGap));
             lblBitLockerStatus.SetBounds(bitBtnX - CtlGap - statusW, ctlY, statusW, CtlH);
-            btnUnlockBitLocker.SetBounds(bitBtnX, ctlY, BtnBitLockerW, CtlH + 2);
+            btnUnlockBitLocker.SetBounds(bitBtnX, ctlY, BtnBitLockerW, CtlH + Dpi.S(2));
             y += SettingCard.RowH + RowGap;
 
             // ── Ligne 3 : profil détecté (contenu sous l'en-tête)
             cardMigrationProfile.SetBounds(Margin, y, cw, ProfCardH);
             int innerW = cw - SettingCard.PadX * 2;
             lblSelectedProfile.SetBounds(SettingCard.PadX, SettingCard.HeaderH, innerW, ProfSelH);
-            lblMigrationInfo.SetBounds(SettingCard.PadX, SettingCard.HeaderH + ProfSelH + 4, innerW, ProfInfoH);
+            lblMigrationInfo.SetBounds(SettingCard.PadX, SettingCard.HeaderH + ProfSelH + Dpi.S(4), innerW, ProfInfoH);
             y += ProfCardH + CardGap;
 
             // ── Carte options + barre d'action
@@ -170,7 +176,7 @@ namespace SaveRestoreGUI
             // Alignée sur la colonne de contenu, toujours au-dessus du bord bas
             // (la fenêtre maximisée est bornée à la zone de travail via MaximizedBounds).
             int cw   = pw - Margin * 2;
-            int barW = Math.Max(80, cw - ProgressPctW);
+            int barW = Math.Max(Dpi.S(80), cw - ProgressPctW);
             int y    = ph - LogProgressH - ProgressGapY;
             progressBar.SetBounds(Margin, y, barW, LogProgressH);
             lblProgressPercent.SetBounds(Margin + barW, y, ProgressPctW, LogProgressH);
@@ -186,11 +192,11 @@ namespace SaveRestoreGUI
         private static void LayoutPathRow(int cardWidth, TextBox txt, Button browse)
         {
             int browseX = cardWidth - SettingCard.PadX - BtnBrowseW;
-            int txtW    = Math.Max(180, Math.Min(420,
+            int txtW    = Math.Max(Dpi.S(180), Math.Min(Dpi.S(420),
                 cardWidth - SettingCard.PadX * 2 - TitleZoneMinW - BtnBrowseW - CtlGap));
             int y = (SettingCard.RowH - CtlH) / 2;
             txt.SetBounds(browseX - CtlGap - txtW, y, txtW, CtlH);
-            browse.SetBounds(browseX, y - 1, BtnBrowseW, CtlH + 2);
+            browse.SetBounds(browseX, y - Dpi.S(1), BtnBrowseW, CtlH + Dpi.S(2));
         }
 
         /// <summary>
@@ -214,7 +220,7 @@ namespace SaveRestoreGUI
                 OptInnerPadX,
                 SettingCard.HeaderH,
                 cardWidth - OptInnerPadX * 2,
-                Math.Max(60, cardHeight - SettingCard.HeaderH - OptInnerPadBot));
+                Math.Max(Dpi.S(60), cardHeight - SettingCard.HeaderH - OptInnerPadBot));
         }
 
         private static void LayoutActionBar(
@@ -224,9 +230,9 @@ namespace SaveRestoreGUI
             start.SetBounds(left, top, BtnStartW, ActionH);
             cancel.SetBounds(left + BtnStartW + CtlGap, top, BtnCancelW, ActionH);
 
-            int btnY = top + (ActionH - 34) / 2;
-            export.SetBounds(left + availableWidth - BtnExportW, btnY, BtnExportW, 34);
-            logs.SetBounds(left + availableWidth - BtnExportW - BtnLogsW - CtlGap, btnY, BtnLogsW, 34);
+            int btnY = top + (ActionH - ActionSecBtnH) / 2;
+            export.SetBounds(left + availableWidth - BtnExportW, btnY, BtnExportW, ActionSecBtnH);
+            logs.SetBounds(left + availableWidth - BtnExportW - BtnLogsW - CtlGap, btnY, BtnLogsW, ActionSecBtnH);
         }
     }
 }

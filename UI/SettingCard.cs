@@ -12,15 +12,15 @@ namespace SaveRestoreGUI.UI
     public class SettingCard : CardPanel
     {
         /// <summary>Marge horizontale interne commune (icône, texte, contrôles).</summary>
-        public const int PadX = 16;
+        public static readonly int PadX = Dpi.S(16);
 
         /// <summary>Hauteur de la zone icône+titre en mode Header.</summary>
-        public const int HeaderH = 52;
+        public static readonly int HeaderH = Dpi.S(52);
 
         /// <summary>Hauteur standard d'une carte-ligne simple.</summary>
-        public const int RowH = 68;
+        public static readonly int RowH = Dpi.S(68);
 
-        private const int IconZoneW = 40;
+        private static readonly int IconZoneW = Dpi.S(40);
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string IconGlyph { get; set; } = "";
@@ -51,7 +51,7 @@ namespace SaveRestoreGUI.UI
 
             if (!string.IsNullOrEmpty(IconGlyph))
             {
-                using var iconFont = new Font("Segoe UI Emoji", 12f);
+                using var iconFont = Dpi.Font("Segoe UI Emoji", 12f);
                 var sf = new StringFormat
                 {
                     Alignment     = StringAlignment.Center,
@@ -59,7 +59,7 @@ namespace SaveRestoreGUI.UI
                 };
                 using var iconBrush = new SolidBrush(p.Text);
                 g.DrawString(IconGlyph, iconFont, iconBrush,
-                    new RectangleF(PadX, 0, 30, zoneH), sf);
+                    new RectangleF(PadX, 0, Dpi.S(30), zoneH), sf);
                 textX = PadX + IconZoneW;
             }
 
@@ -67,22 +67,22 @@ namespace SaveRestoreGUI.UI
             // (contrôles de droite d'une carte-ligne, boutons d'en-tête en HeaderMode).
             int rightLimit = Width - PadX;
             foreach (Control c in Controls)
-                if (c.Visible && c.Top < zoneH - 4)
-                    rightLimit = Math.Min(rightLimit, c.Left - 12);
-            int availW = Math.Max(40, rightLimit - textX);
+                if (c.Visible && c.Top < zoneH - Dpi.S(4))
+                    rightLimit = Math.Min(rightLimit, c.Left - Dpi.S(12));
+            int availW = Math.Max(Dpi.S(40), rightLimit - textX);
 
-            using var titleFont = new Font("Segoe UI", 10f);
+            using var titleFont = Dpi.Font("Segoe UI", 10f);
             const TextFormatFlags flags =
                 TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis;
 
             if (!string.IsNullOrEmpty(Description))
             {
-                const int titleH = 20, descH = 17;
+                int titleH = Dpi.S(20), descH = Dpi.S(17);
                 int blockY = (zoneH - titleH - descH) / 2;
                 TextRenderer.DrawText(g, Title, titleFont,
                     new Rectangle(textX, blockY, availW, titleH), p.Text, flags);
 
-                using var descFont = new Font("Segoe UI", 8.5f);
+                using var descFont = Dpi.Font("Segoe UI", 8.5f);
                 TextRenderer.DrawText(g, Description, descFont,
                     new Rectangle(textX, blockY + titleH, availW, descH), p.TextSecondary, flags);
             }

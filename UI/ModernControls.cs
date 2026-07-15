@@ -10,7 +10,7 @@ namespace SaveRestoreGUI.UI
     {
         private bool _hovered;
         private bool _pressed;
-        private int _radius = 6;
+        private int _radius = Dpi.S(6);
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int CornerRadius { get => _radius; set { _radius = value; Invalidate(); } }
@@ -25,7 +25,7 @@ namespace SaveRestoreGUI.UI
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            Font = Dpi.Font("Segoe UI", 9.5f, FontStyle.Bold);
             Cursor = Cursors.Hand;
             MouseEnter += (s, e) => { _hovered = true; Invalidate(); };
             MouseLeave += (s, e) => { _hovered = false; _pressed = false; Invalidate(); };
@@ -98,7 +98,7 @@ namespace SaveRestoreGUI.UI
     /// </summary>
     public class CardPanel : Panel
     {
-        private int _radius = 12;
+        private int _radius = Dpi.S(12);
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int CornerRadius { get => _radius; set { _radius = value; Invalidate(); } }
@@ -144,10 +144,10 @@ namespace SaveRestoreGUI.UI
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
-            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+            Font = Dpi.Font("Segoe UI", 10.5f, FontStyle.Bold);
             Cursor = Cursors.Hand;
             TextAlign = ContentAlignment.MiddleLeft;
-            Height = 48;
+            Height = Dpi.S(48);
             MouseEnter += (s, e) => { _hovered = true; Invalidate(); };
             MouseLeave += (s, e) => { _hovered = false; Invalidate(); };
         }
@@ -161,8 +161,8 @@ namespace SaveRestoreGUI.UI
 
             if (Selected || _hovered)
             {
-                var rect = new Rectangle(6, 4, Width - 12, Height - 8);
-                using var path = ModernButton.RoundedRect(rect, 8);
+                var rect = new Rectangle(Dpi.S(6), Dpi.S(4), Width - Dpi.S(12), Height - Dpi.S(8));
+                using var path = ModernButton.RoundedRect(rect, Dpi.S(8));
                 using var brush = new SolidBrush(Selected ? p.Surface : Color.FromArgb(40, p.Accent));
                 g.FillPath(brush, path);
             }
@@ -170,11 +170,11 @@ namespace SaveRestoreGUI.UI
             if (Selected)
             {
                 using var accentBrush = new SolidBrush(p.Accent);
-                g.FillRectangle(accentBrush, new RectangleF(6, Height / 2f - 10, 3.5f, 20));
+                g.FillRectangle(accentBrush, new RectangleF(Dpi.S(6), Height / 2f - Dpi.Sf(10), Dpi.Sf(3.5f), Dpi.Sf(20)));
             }
 
             var textColor = Selected ? p.Text : p.TextSecondary;
-            var textRect = new Rectangle(22, 0, Width - 24, Height);
+            var textRect = new Rectangle(Dpi.S(22), 0, Width - Dpi.S(24), Height);
             TextRenderer.DrawText(g, Text, Font, textRect, textColor,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
         }
@@ -189,10 +189,10 @@ namespace SaveRestoreGUI.UI
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            Font = new Font("Segoe UI", 9.5f);
+            Font = Dpi.Font("Segoe UI", 9.5f);
             Cursor = Cursors.Hand;
             AutoSize = false;
-            Height = 28;
+            Height = Dpi.S(28);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -202,21 +202,21 @@ namespace SaveRestoreGUI.UI
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Parent?.BackColor ?? p.Surface);
 
-            int boxSize = 18;
+            int boxSize = Dpi.S(18);
             int boxY = (Height - boxSize) / 2;
             var boxRect = new Rectangle(0, boxY, boxSize, boxSize);
 
-            using var path = ModernButton.RoundedRect(boxRect, 5);
+            using var path = ModernButton.RoundedRect(boxRect, Dpi.S(5));
             if (Checked)
             {
                 using var brush = new SolidBrush(Enabled ? p.Accent : Color.FromArgb(120, p.Accent));
                 g.FillPath(brush, path);
-                using var pen = new Pen(Color.White, 2f);
+                using var pen = new Pen(Color.White, Dpi.Sf(2f));
                 g.DrawLines(pen, new[]
                 {
-                    new PointF(4, boxY + 9),
-                    new PointF(7.5f, boxY + 13),
-                    new PointF(14, boxY + 5)
+                    new PointF(Dpi.Sf(4),    boxY + Dpi.Sf(9)),
+                    new PointF(Dpi.Sf(7.5f), boxY + Dpi.Sf(13)),
+                    new PointF(Dpi.Sf(14),   boxY + Dpi.Sf(5))
                 });
             }
             else
@@ -228,7 +228,7 @@ namespace SaveRestoreGUI.UI
             }
 
             var textColor = Enabled ? p.Text : p.TextSecondary;
-            var textRect = new Rectangle(boxSize + 8, 0, Width - boxSize - 8, Height);
+            var textRect = new Rectangle(boxSize + Dpi.S(8), 0, Width - boxSize - Dpi.S(8), Height);
             TextRenderer.DrawText(g, Text, Font, textRect, textColor,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
@@ -254,7 +254,7 @@ namespace SaveRestoreGUI.UI
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            Height = 8;
+            Height = Dpi.S(8);
             _animTimer = new System.Windows.Forms.Timer { Interval = 16 };
             _animTimer.Tick += (s, e) =>
             {
@@ -322,45 +322,45 @@ namespace SaveRestoreGUI.UI
 
             var toast = new CardPanel
             {
-                Size = new Size(360, 56),
-                CornerRadius = 10
+                Size = new Size(Dpi.S(360), Dpi.S(56)),
+                CornerRadius = Dpi.S(10)
             };
 
             var iconLabel = new Label
             {
                 Text = icon,
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                Font = Dpi.Font("Segoe UI", 14f, FontStyle.Bold),
                 ForeColor = accent,
                 AutoSize = false,
-                Size = new Size(40, 56),
+                Size = new Size(Dpi.S(40), Dpi.S(56)),
                 TextAlign = ContentAlignment.MiddleCenter,
                 BackColor = Color.Transparent,
-                Location = new Point(4, 0)
+                Location = new Point(Dpi.S(4), 0)
             };
             var msgLabel = new Label
             {
                 Text = message.Length > 90 ? message[..90] + "…" : message,
-                Font = new Font("Segoe UI", 9f),
+                Font = Dpi.Font("Segoe UI", 9f),
                 ForeColor = p.Text,
                 AutoSize = false,
-                Size = new Size(300, 56),
+                Size = new Size(Dpi.S(300), Dpi.S(56)),
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent,
-                Location = new Point(46, 0)
+                Location = new Point(Dpi.S(46), 0)
             };
             toast.Controls.Add(iconLabel);
             toast.Controls.Add(msgLabel);
 
             // Empiler les toasts existants
-            int offset = 16;
+            int offset = Dpi.S(16);
             foreach (Control c in owner.Controls)
             {
                 if (c is CardPanel cp && cp.Tag as string == "toast")
-                    offset += cp.Height + 10;
+                    offset += cp.Height + Dpi.S(10);
             }
 
             toast.Tag = "toast";
-            toast.Location = new Point(owner.ClientSize.Width - toast.Width - 16,
+            toast.Location = new Point(owner.ClientSize.Width - toast.Width - Dpi.S(16),
                                        owner.ClientSize.Height - toast.Height - offset);
             toast.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
 

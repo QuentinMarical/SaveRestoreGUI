@@ -10,6 +10,10 @@ namespace SaveRestoreGUI
         {
             ApplicationConfiguration.Initialize();
 
+            // Facteur d'échelle DPI global (géométrie) : doit être calculé avant
+            // toute création de contrôle (le splash et MainForm s'en servent).
+            Dpi.Initialize();
+
             // ── Splash screen ────────────────────────────────────────────────
             var splash = new SplashForm();
             splash.Show();

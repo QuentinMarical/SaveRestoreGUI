@@ -8,12 +8,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>diskette.ico</ApplicationIcon>
     <!--
-      Correctif immédiat écrasement sur écrans 13-14" haute densité : l'app se
-      déclare DPI-unaware, Windows agrandit toute la fenêtre uniformément (bitmap)
-      au lieu de grossir seulement les polices en points sur une géométrie fixe.
-      Remplacé ensuite par une vraie mise à l'échelle par contrôle (rendu net).
+      DPI SystemAware : Windows agrandit les polices (en points) selon la mise à
+      l'échelle de l'écran ; la géométrie en pixels est agrandie au même facteur
+      par le helper UI/Dpi (Dpi.S / Dpi.Font), ce qui donne un rendu net et sans
+      écrasement sur les écrans haute densité (13-14"), à toute échelle.
     -->
-    <ApplicationHighDpiMode>DpiUnaware</ApplicationHighDpiMode>
+    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
     <!-- Désactive la génération automatique de AssemblyInfo pour éviter CS0579 -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <!-- LibraryImport (source-gen P/Invoke) génère du code unsafe -->

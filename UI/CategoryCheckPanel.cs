@@ -29,15 +29,19 @@ namespace SaveRestoreGUI.UI
     [SupportedOSPlatform("windows")]
     public class CategoryCheckPanel : Panel
     {
-        // ── Layout général ──────────────────────────────────────────────────
-        private const int TileGap    = 8;
-        private const int HorizPad   = 10;
-        private const int CheckBoxW  = 16;
-        private const int TileRadius = 8;
+        // ── Layout général (pixels logiques 96 dpi, mis à l'échelle par Dpi.S) ──
+        private static readonly int TileGap    = Dpi.S(8);
+        private static readonly int HorizPad   = Dpi.S(10);
+        private static readonly int CheckBoxW  = Dpi.S(16);
+        private static readonly int TileRadius = Dpi.S(8);
 
         // ── Zones internes d'une tuile (dérivées de la hauteur de tuile)
-        private const int TileTopZone = 22;   // bandeau case à cocher
-        private const int TileLblZone = 18;   // bandeau libellé bas
+        private static readonly int TileTopZone = Dpi.S(22);   // bandeau case à cocher
+        private static readonly int TileLblZone = Dpi.S(18);   // bandeau libellé bas
+
+        // ── Espacements de grille (draw et hit-test doivent partager la même valeur)
+        private static readonly int TopPad        = Dpi.S(2);
+        private static readonly int GridBottomGap = Dpi.S(8);
 
         // ── Tailles adaptatives (tuiles + en-têtes de catégories) ───────────
         // AutoFit choisit le plus grand preset dont le contenu total tient dans
@@ -46,17 +50,17 @@ namespace SaveRestoreGUI.UI
         // recours sur écrans très bas).
         private static readonly (int W, int H, int Icon, int HeadH, int HeadGap)[] TilePresets =
         [
-            (88, 78, 28, 34, 6),
-            (78, 68, 24, 32, 6),
-            (68, 60, 20, 30, 5),
-            (60, 52, 16, 28, 4),
+            (Dpi.S(88), Dpi.S(78), Dpi.S(28), Dpi.S(34), Dpi.S(6)),
+            (Dpi.S(78), Dpi.S(68), Dpi.S(24), Dpi.S(32), Dpi.S(6)),
+            (Dpi.S(68), Dpi.S(60), Dpi.S(20), Dpi.S(30), Dpi.S(5)),
+            (Dpi.S(60), Dpi.S(52), Dpi.S(16), Dpi.S(28), Dpi.S(4)),
         ];
 
-        private int _tileW    = 88;
-        private int _tileH    = 78;
-        private int _iconSize = 28;
-        private int _headerH  = 34;
-        private int _headGap  = 6;
+        private int _tileW    = Dpi.S(88);
+        private int _tileH    = Dpi.S(78);
+        private int _iconSize = Dpi.S(28);
+        private int _headerH  = Dpi.S(34);
+        private int _headGap  = Dpi.S(6);
 
         // ── Couleurs de fallback fixes par app ──────────────────────────────
         private static readonly Dictionary<string, Color> _appColors = new()
@@ -230,13 +234,13 @@ namespace SaveRestoreGUI.UI
 
         private int CalcTotalHeight()
         {
-            int h = 2;
+            int h = TopPad;
             foreach (var cat in _categories)
             {
                 h += _headerH + _headGap;
-                if (cat.Expanded) h += GridHeightForCat(cat) + 8;
+                if (cat.Expanded) h += GridHeightForCat(cat) + GridBottomGap;
             }
-            return h + 4;
+            return h + Dpi.S(4);
         }
 
         // ── Rendu principal ──────────────────────────────────────────────
@@ -249,7 +253,7 @@ namespace SaveRestoreGUI.UI
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.Clear(p.Surface);
 
-            int y = AutoScrollPosition.Y + 2;
+            int y = AutoScrollPosition.Y + TopPad;
             foreach (var cat in _categories)
             {
                 DrawCategoryHeader(g, p, cat, y);
@@ -257,7 +261,7 @@ namespace SaveRestoreGUI.UI
                 if (cat.Expanded)
                 {
                     DrawGrid(g, p, cat, y);
-                    y += GridHeightForCat(cat) + 8;
+                    y += GridHeightForCat(cat) + GridBottomGap;
                 }
             }
         }
@@ -266,25 +270,25 @@ namespace SaveRestoreGUI.UI
         {
             if (y + _headerH < 0 || y > Height) return;
             var rect = new Rectangle(HorizPad, y, Width - HorizPad * 2, _headerH);
-            using var bgPath  = RoundRect(rect, 7);
+            using var bgPath  = RoundRect(rect, Dpi.S(7));
             using var bgBrush = new SolidBrush(Color.FromArgb(22, p.Accent.R, p.Accent.G, p.Accent.B));
             g.FillPath(bgBrush, bgPath);
             using var accentBrush = new SolidBrush(p.Accent);
-            g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + 8, 3.5f, _headerH - 16));
+            g.FillRectangle(accentBrush, new RectangleF(HorizPad, y + Dpi.Sf(8), Dpi.Sf(3.5f), _headerH - Dpi.Sf(16)));
 
-            using var emojiFont = new Font("Segoe UI Emoji", 11f);
+            using var emojiFont = Dpi.Font("Segoe UI Emoji", 11f);
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using var textBrush = new SolidBrush(p.Text);
-            g.DrawString(cat.Icon, emojiFont, textBrush, new RectangleF(HorizPad + 10, y, 26, _headerH), sf);
+            g.DrawString(cat.Icon, emojiFont, textBrush, new RectangleF(HorizPad + Dpi.Sf(10), y, Dpi.Sf(26), _headerH), sf);
 
-            using var labelFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            using var labelFont = Dpi.Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Label, labelFont,
-                new Rectangle(HorizPad + 40, y, Width - HorizPad * 2 - 60, _headerH),
+                new Rectangle(HorizPad + Dpi.S(40), y, Width - HorizPad * 2 - Dpi.S(60), _headerH),
                 p.Text, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
 
-            using var chevFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            using var chevFont = Dpi.Font("Segoe UI", 9f, FontStyle.Bold);
             TextRenderer.DrawText(g, cat.Expanded ? "\u25be" : "\u25b8", chevFont,
-                new Rectangle(rect.Right - 22, y, 20, _headerH),
+                new Rectangle(rect.Right - Dpi.S(22), y, Dpi.S(20), _headerH),
                 p.TextSecondary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
 
@@ -323,19 +327,19 @@ namespace SaveRestoreGUI.UI
                 : new Pen(Color.FromArgb(40,  p.Border.R, p.Border.G, p.Border.B), 1f);
             g.DrawPath(borderPen, tilePath);
 
-            int cbx = x + 8, cby = y + 6;
+            int cbx = x + Dpi.S(8), cby = y + Dpi.S(6);
             var boxRect = new Rectangle(cbx, cby, CheckBoxW, CheckBoxW);
-            using var boxPath = RoundRect(boxRect, 4);
+            using var boxPath = RoundRect(boxRect, Dpi.S(4));
             if (chk)
             {
                 using var fb = new SolidBrush(p.Accent);
                 g.FillPath(fb, boxPath);
-                using var cp = new Pen(Color.White, 1.8f);
+                using var cp = new Pen(Color.White, Dpi.Sf(1.8f));
                 g.DrawLines(cp, new[]
                 {
-                    new PointF(cbx + 2,  cby + CheckBoxW / 2f),
-                    new PointF(cbx + 6,  cby + CheckBoxW - 3f),
-                    new PointF(cbx + 14, cby + 3f)
+                    new PointF(cbx + Dpi.Sf(2),  cby + CheckBoxW / 2f),
+                    new PointF(cbx + Dpi.Sf(6),  cby + CheckBoxW - Dpi.Sf(3)),
+                    new PointF(cbx + Dpi.Sf(14), cby + Dpi.Sf(3))
                 });
             }
             else
@@ -366,10 +370,10 @@ namespace SaveRestoreGUI.UI
                     GraphicsUnit.Pixel, ia);
             }
 
-            using var textFont  = new Font("Segoe UI", _tileW >= 78 ? 7.5f : 7f);
+            using var textFont  = Dpi.Font("Segoe UI", _tileW >= Dpi.S(78) ? 7.5f : 7f);
             Color     textColor = chk ? p.Text : p.TextSecondary;
             TextRenderer.DrawText(g, item.Text, textFont,
-                new Rectangle(x + 2, y + _tileH - TileLblZone - 2, w - 4, TileLblZone),
+                new Rectangle(x + Dpi.S(2), y + _tileH - TileLblZone - Dpi.S(2), w - Dpi.S(4), TileLblZone),
                 textColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.Bottom | TextFormatFlags.EndEllipsis);
         }
@@ -378,7 +382,7 @@ namespace SaveRestoreGUI.UI
 
         private void OnMouseClick(object? sender, MouseEventArgs e)
         {
-            int y = AutoScrollPosition.Y + 2;
+            int y = AutoScrollPosition.Y + TopPad;
             foreach (var cat in _categories)
             {
                 var headerRect = new Rectangle(HorizPad, y, Width - HorizPad * 2, _headerH);
@@ -408,7 +412,7 @@ namespace SaveRestoreGUI.UI
                     }
                 }
 
-                y += GridHeightForCat(cat) + 8;
+                y += GridHeightForCat(cat) + GridBottomGap;
             }
         }
 
@@ -420,7 +424,7 @@ namespace SaveRestoreGUI.UI
 
         private string? HitTestItem(Point pt)
         {
-            int y = AutoScrollPosition.Y + 2;
+            int y = AutoScrollPosition.Y + TopPad;
             foreach (var cat in _categories)
             {
                 y += _headerH + _headGap;
@@ -436,7 +440,7 @@ namespace SaveRestoreGUI.UI
                         return cat.Items[i].Key;
                 }
 
-                y += GridHeightForCat(cat) + 8;
+                y += GridHeightForCat(cat) + GridBottomGap;
             }
             return null;
         }
