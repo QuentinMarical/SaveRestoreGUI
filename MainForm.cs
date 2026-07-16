@@ -469,13 +469,27 @@ namespace SaveRestoreGUI
             if (toInstall.Count == 0) return;
 
             LogTitle(rtb, "Installation des logiciels (winget)");
-            LogInfo(rtb, "Une fenêtre de contrôle de compte (UAC) peut apparaître pour chaque logiciel.");
+            LogInfo(rtb, $"{toInstall.Count} logiciel(s) à installer. Une invite d'élévation (UAC) va apparaître — acceptez-la.");
 
+            var packages = toInstall
+                .Select(b => (WingetService.BrowserPackages[b.Key], b.DisplayName))
+                .ToList();
+
+            var code = await WingetService.InstallManyElevatedAsync(packages, m => LogInfo(rtb, m), ct);
+            if (code == WingetService.ElevationCancelled)
+            {
+                LogWarning(rtb, "Installation ignorée : élévation (UAC) refusée.");
+                return;
+            }
+
+            // winget peut rapporter un succès sans rien installer (installeur non élevé) :
+            // on revérifie l'état réel par détection (registre + exécutable).
             foreach (var b in toInstall)
             {
-                ct.ThrowIfCancellationRequested();
-                var id = WingetService.BrowserPackages[b.Key];
-                await WingetService.InstallAsync(id, b.DisplayName, m => LogInfo(rtb, m), ct);
+                if (BrowserService.IsInstalled(b))
+                    LogSuccess(rtb, $"{b.DisplayName} : installé et vérifié.");
+                else
+                    LogWarning(rtb, $"{b.DisplayName} : installation NON confirmée — à vérifier / réessayer.");
             }
         }
 
