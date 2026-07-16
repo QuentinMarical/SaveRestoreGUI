@@ -147,6 +147,9 @@ namespace SaveRestoreGUI
                     await action();
                 }
 
+                // Installation des logiciels manquants (winget), avant lancement.
+                await InstallSelectedAppsAsync(chkPanelRestore, RestoreLogBox, ct);
+
                 if (chkPanelRestore.IsChecked("LaunchApps"))
                 {
                     LogTitle(RestoreLogBox, "Lancement des applications");

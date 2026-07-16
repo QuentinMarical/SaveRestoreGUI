@@ -463,7 +463,8 @@ namespace SaveRestoreGUI.UI
         public static CheckCategory[] Build(
             bool includeOldProfile = false,
             bool includeLaunchApps = false,
-            bool includeSystemFeatures = true)
+            bool includeSystemFeatures = true,
+            bool includeInstall = false)
         {
             var userFiles = new List<CheckItem>
             {
@@ -508,13 +509,42 @@ namespace SaveRestoreGUI.UI
                 .Select(b => new CheckItem(b.Key, b.DisplayName, b.Key, defaultChecked: false))
                 .ToArray();
 
-            return
-            [
-                new CheckCategory("Fichiers utilisateur",       "\U0001f4c1", userFiles.ToArray()),
-                new CheckCategory("Bureautique",                "\U0001f4bc", office),
-                new CheckCategory("Navigateurs",                "\U0001f310", browserItems),
-                new CheckCategory("Syst\u00e8me & Personnalisation", "\u2699\ufe0f", systemItems.ToArray()),
-            ];
+            var categories = new List<CheckCategory>
+            {
+                new("Fichiers utilisateur",            "\U0001f4c1", userFiles.ToArray()),
+                new("Bureautique",                     "\U0001f4bc", office),
+                new("Navigateurs",                     "\U0001f310", browserItems),
+                new("Syst\u00e8me & Personnalisation", "\u2699\ufe0f", systemItems.ToArray()),
+            };
+
+            // \u2500\u2500 Cat\u00e9gorie \u00ab Installation \u00bb (Restauration / Migration uniquement) :
+            // logiciels installables par winget mais absents du poste. Construite
+            // dynamiquement d'apr\u00e8s l'\u00e9tat d'installation r\u00e9el du nouveau PC.
+            if (includeInstall)
+            {
+                var installItems = BuildInstallItems();
+                if (installItems.Length > 0)
+                    categories.Add(new CheckCategory("Installation", "\U0001f4e5", installItems));
+            }
+
+            return categories.ToArray();
+        }
+
+        /// <summary>
+        /// Cases \u00e0 cocher pour installer via winget les navigateurs installables
+        /// mais non pr\u00e9sents sur le poste. Vide si winget est indisponible ou si
+        /// tout est d\u00e9j\u00e0 install\u00e9.
+        /// </summary>
+        private static CheckItem[] BuildInstallItems()
+        {
+            if (!WingetService.IsAvailable())
+                return [];
+
+            return BrowserService.All
+                .Where(b => WingetService.BrowserPackages.ContainsKey(b.Key)
+                            && !BrowserService.IsInstalled(b))
+                .Select(b => new CheckItem("Install_" + b.Key, b.DisplayName, b.Key, defaultChecked: false))
+                .ToArray();
         }
     }
 }

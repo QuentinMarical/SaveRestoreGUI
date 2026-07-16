@@ -46,14 +46,17 @@ namespace SaveRestoreGUI
 
             InitializeComponent();
 
-            // Peupler les panneaux de cases à cocher
+            // Peupler les panneaux de cases à cocher.
+            // includeInstall : catégorie « Installation » (winget) en Restauration
+            // et Migration uniquement, jamais en Sauvegarde.
             chkPanelBackup.SetCategories(
                 CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false));
             chkPanelRestore.SetCategories(
-                CheckCatalog.Build(includeOldProfile: false, includeLaunchApps: false));
+                CheckCatalog.Build(includeOldProfile: false, includeLaunchApps: false,
+                                   includeInstall: true));
             chkPanelMigration.SetCategories(
                 CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false,
-                                   includeSystemFeatures: false));
+                                   includeSystemFeatures: false, includeInstall: true));
 
             this.Load += (_, _) =>
             {
@@ -450,6 +453,30 @@ namespace SaveRestoreGUI
             LogTitle(rtb, "Anciens profils domaine détectés");
             foreach (var profile in oldProfiles)
                 LogInfo(rtb, $"  → {Path.GetFileName(profile)}  ({profile})");
+        }
+
+        /// <summary>
+        /// Installe via winget les logiciels cochés dans la catégorie « Installation »
+        /// (clés « Install_… »). Partagé par la restauration et la migration.
+        /// </summary>
+        private async Task InstallSelectedAppsAsync(CategoryCheckPanel panel, RichTextBox rtb, CancellationToken ct)
+        {
+            var toInstall = BrowserService.All
+                .Where(b => WingetService.BrowserPackages.ContainsKey(b.Key)
+                         && panel.IsChecked("Install_" + b.Key))
+                .ToList();
+
+            if (toInstall.Count == 0) return;
+
+            LogTitle(rtb, "Installation des logiciels (winget)");
+            LogInfo(rtb, "Une fenêtre de contrôle de compte (UAC) peut apparaître pour chaque logiciel.");
+
+            foreach (var b in toInstall)
+            {
+                ct.ThrowIfCancellationRequested();
+                var id = WingetService.BrowserPackages[b.Key];
+                await WingetService.InstallAsync(id, b.DisplayName, m => LogInfo(rtb, m), ct);
+            }
         }
 
         private void CancelCurrentOperation(RichTextBox rtb)

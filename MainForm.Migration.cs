@@ -651,6 +651,9 @@ namespace SaveRestoreGUI
                     }
                 }
 
+                // Installation des logiciels manquants (winget) après la copie des profils.
+                await InstallSelectedAppsAsync(chkPanelMigration, MigrationLogBox, ct);
+
                 LogTitle(MigrationLogBox, "Migration terminée");
                 if (doubleMigration)
                     LogSuccess(MigrationLogBox,
