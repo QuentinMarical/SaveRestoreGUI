@@ -469,17 +469,31 @@ namespace SaveRestoreGUI
             if (toInstall.Count == 0) return;
 
             LogTitle(rtb, "Installation des logiciels (winget)");
-            LogInfo(rtb, $"{toInstall.Count} logiciel(s) à installer. Une invite d'élévation (UAC) va apparaître — acceptez-la.");
+            LogInfo(rtb, $"{toInstall.Count} logiciel(s) à installer.");
 
-            var packages = toInstall
-                .Select(b => (WingetService.BrowserPackages[b.Key], b.DisplayName))
-                .ToList();
+            // Les paquets MSIX/Store s'enregistrent par utilisateur et ne doivent PAS
+            // être installés élevés ; les installeurs classiques (machine-scope) le
+            // doivent au contraire, sans quoi ils échouent en silence.
+            var msix    = toInstall.Where(b => b.MsixPackagePrefix != null).ToList();
+            var classic = toInstall.Where(b => b.MsixPackagePrefix == null).ToList();
 
-            var code = await WingetService.InstallManyElevatedAsync(packages, m => LogInfo(rtb, m), ct);
-            if (code == WingetService.ElevationCancelled)
+            if (classic.Count > 0)
             {
-                LogWarning(rtb, "Installation ignorée : élévation (UAC) refusée.");
-                return;
+                LogInfo(rtb, $"{classic.Count} installeur(s) classique(s) : une invite d'élévation (UAC) va apparaître — acceptez-la.");
+                var packages = classic
+                    .Select(b => (WingetService.BrowserPackages[b.Key], b.DisplayName))
+                    .ToList();
+
+                var code = await WingetService.InstallManyElevatedAsync(packages, m => LogInfo(rtb, m), ct);
+                if (code == WingetService.ElevationCancelled)
+                    LogWarning(rtb, "Installeurs classiques ignorés : élévation (UAC) refusée.");
+            }
+
+            foreach (var b in msix)
+            {
+                ct.ThrowIfCancellationRequested();
+                await WingetService.InstallUserScopeAsync(
+                    WingetService.BrowserPackages[b.Key], b.DisplayName, m => LogInfo(rtb, m), ct);
             }
 
             // winget peut rapporter un succès sans rien installer (installeur non élevé) :

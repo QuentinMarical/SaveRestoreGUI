@@ -38,6 +38,13 @@ namespace SaveRestoreGUI.Services
         /// <summary>Chemins d'exécutable candidats pour détecter une installation sans registre.</summary>
         public string[] ExecutableCandidates { get; }
 
+        /// <summary>
+        /// Préfixe du nom de paquet MSIX/Store (ex. « TheBrowserCompany »), pour les
+        /// navigateurs livrés en app packagée : ils n'ont ni clé Uninstall ni
+        /// exécutable à chemin fixe. Null si le navigateur n'est pas packagé.
+        /// </summary>
+        public string? MsixPackagePrefix { get; }
+
         public BrowserDef(
             string key,
             string displayName,
@@ -45,7 +52,8 @@ namespace SaveRestoreGUI.Services
             string backupSubFolder,
             Func<string?> profilePathFactory,
             string[] registryUninstallKeys,
-            string[] executableCandidates)
+            string[] executableCandidates,
+            string? msixPackagePrefix = null)
         {
             Key                   = key;
             DisplayName           = displayName;
@@ -54,6 +62,7 @@ namespace SaveRestoreGUI.Services
             ProfilePathFactory    = profilePathFactory;
             RegistryUninstallKeys = registryUninstallKeys;
             ExecutableCandidates  = executableCandidates;
+            MsixPackagePrefix     = msixPackagePrefix;
         }
     }
 
@@ -105,11 +114,14 @@ namespace SaveRestoreGUI.Services
                 processName:           "brave",
                 backupSubFolder:       @"Browsers\Brave",
                 profilePathFactory:    () => Path.Combine(_local, "BraveSoftware", "Brave-Browser", "User Data", "Default"),
-                registryUninstallKeys: new[] { "BraveSoftware Brave-Browser" },
+                // Le DisplayName réel dans Uninstall est « Brave » (et l'installation
+                // par défaut est par-utilisateur : entrée dans HKCU, exe dans LocalAppData).
+                registryUninstallKeys: new[] { "Brave" },
                 executableCandidates:  new[]
                 {
-                    Path.Combine(_pf86, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
-                    Path.Combine(_pf64, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+                    Path.Combine(_local, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+                    Path.Combine(_pf86,  "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+                    Path.Combine(_pf64,  "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
                 }),
 
             new BrowserDef(
@@ -175,7 +187,8 @@ namespace SaveRestoreGUI.Services
                 {
                     Path.Combine(_local, "Arc", "arc.exe"),
                     Path.Combine(_pf64,  "Arc", "arc.exe"),
-                }),
+                },
+                msixPackagePrefix:     "TheBrowserCompany"),
 
             new BrowserDef(
                 key:                   "BrowserComet",
@@ -202,7 +215,8 @@ namespace SaveRestoreGUI.Services
                 {
                     Path.Combine(_local, "Perplexity", "Comet", "comet.exe"),
                     Path.Combine(_pf64,  "Perplexity", "Comet", "comet.exe"),
-                }),
+                },
+                msixPackagePrefix:     "Perplexity"),
 
             // ── Firefox-based ────────────────────────────────────────────────
 
@@ -265,7 +279,19 @@ namespace SaveRestoreGUI.Services
                     return candidates.FirstOrDefault(Directory.Exists);
                 },
                 registryUninstallKeys: new[] { "Tor Browser" },
-                executableCandidates:  Array.Empty<string>()),  // portable, pas de chemin fixe
+                // Tor est portable (aucune clé Uninstall) : winget l'extrait dans un
+                // dossier « Tor Browser ». Sans ces candidats, il était toujours vu
+                // comme non installé.
+                executableCandidates:  new[]
+                {
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                        "Tor Browser", "Browser", "firefox.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "Downloads", "Tor Browser", "Browser", "firefox.exe"),
+                    Path.Combine(_local, "Tor Browser", "Browser", "firefox.exe"),
+                    Path.Combine(_pf64,  "Tor Browser", "Browser", "firefox.exe"),
+                    Path.Combine(_pf86,  "Tor Browser", "Browser", "firefox.exe"),
+                }),
 
             new BrowserDef(
                 key:                   "BrowserDDG",
@@ -288,22 +314,54 @@ namespace SaveRestoreGUI.Services
                     return Directory.Exists(classic) ? classic : null;
                 },
                 registryUninstallKeys: new[] { "DuckDuckGo" },
-                executableCandidates:  Array.Empty<string>()),
+                executableCandidates:  Array.Empty<string>(),
+                msixPackagePrefix:     "DuckDuckGo"),
         };
 
         // ── Utilitaires publics ─────────────────────────────────────────────
 
         /// <summary>
-        /// Retourne true si le navigateur est installé (clé Uninstall ou exécutable présent).
+        /// Retourne true si le navigateur est installé : clé Uninstall (machine OU
+        /// utilisateur), exécutable présent, ou paquet MSIX enregistré.
+        ///
+        /// HKCU est indispensable : beaucoup de navigateurs (Brave, Chrome…) s'installent
+        /// par défaut pour l'utilisateur courant et n'écrivent alors rien dans HKLM.
         /// </summary>
         public static bool IsInstalled(BrowserDef browser)
         {
             foreach (var keyName in browser.RegistryUninstallKeys)
             {
-                if (IsInUninstall(keyName, RegistryView.Registry64)) return true;
-                if (IsInUninstall(keyName, RegistryView.Registry32)) return true;
+                if (IsInUninstall(keyName, RegistryHive.LocalMachine, RegistryView.Registry64)) return true;
+                if (IsInUninstall(keyName, RegistryHive.LocalMachine, RegistryView.Registry32)) return true;
+                if (IsInUninstall(keyName, RegistryHive.CurrentUser,  RegistryView.Registry64)) return true;
+                if (IsInUninstall(keyName, RegistryHive.CurrentUser,  RegistryView.Registry32)) return true;
             }
-            return browser.ExecutableCandidates.Any(File.Exists);
+
+            if (browser.ExecutableCandidates.Any(File.Exists)) return true;
+
+            return browser.MsixPackagePrefix != null && HasMsixPackage(browser.MsixPackagePrefix);
+        }
+
+        /// <summary>
+        /// Retourne true si un paquet MSIX/Store dont le nom commence par
+        /// <paramref name="packagePrefix"/> est enregistré pour l'utilisateur courant.
+        /// S'appuie sur le dépôt AppModel (source de vérité des paquets enregistrés),
+        /// et non sur le dossier LocalAppData\Packages qui subsiste après désinstallation.
+        /// </summary>
+        private static bool HasMsixPackage(string packagePrefix)
+        {
+            try
+            {
+                using var repo = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages");
+                if (repo == null) return false;
+
+                foreach (var fullName in repo.GetSubKeyNames())
+                    if (fullName.StartsWith(packagePrefix, StringComparison.OrdinalIgnoreCase))
+                        return true;
+            }
+            catch { }
+            return false;
         }
 
         /// <summary>
@@ -329,12 +387,12 @@ namespace SaveRestoreGUI.Services
 
         // ── Helpers privés ──────────────────────────────────────────────────
 
-        private static bool IsInUninstall(string displayNameFragment, RegistryView view)
+        private static bool IsInUninstall(string displayNameFragment, RegistryHive hive, RegistryView view)
         {
             try
             {
-                using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
-                using var uninstall = hklm.OpenSubKey(
+                using var root = RegistryKey.OpenBaseKey(hive, view);
+                using var uninstall = root.OpenSubKey(
                     @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
                 if (uninstall == null) return false;
 

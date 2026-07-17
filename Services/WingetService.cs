@@ -73,10 +73,57 @@ namespace SaveRestoreGUI.Services
         }
 
         /// <summary>
-        /// Installe tout un lot de paquets en une seule opération élevée (une invite
-        /// UAC). Diffuse la sortie winget en direct via <paramref name="log"/>.
-        /// Retourne le code de sortie du process (0 = ok, <see cref="ElevationCancelled"/>
-        /// = UAC refusé). Le succès réel doit être revérifié par détection.
+        /// Installe un paquet SANS élévation, dans le contexte de l'utilisateur courant.
+        /// À réserver aux paquets MSIX/Store : ils s'enregistrent par utilisateur et ne
+        /// requièrent pas d'admin. Les installer élevés les enregistre hors du contexte
+        /// de l'utilisateur interactif — winget rapporte alors un succès sans que l'app
+        /// soit réellement disponible (cas constaté avec Arc et DuckDuckGo).
+        /// </summary>
+        public static async Task<int> InstallUserScopeAsync(
+            string packageId, string displayName, Action<string> log, CancellationToken ct)
+        {
+            log($"=== {displayName} ({packageId}) — installation utilisateur, sans élévation ===");
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "winget",
+                    UseShellExecute        = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    CreateNoWindow         = true,
+                };
+                foreach (var a in new[]
+                         {
+                             "install", "--id", packageId, "--exact", "--source", "winget",
+                             "--silent", "--accept-package-agreements", "--accept-source-agreements"
+                         })
+                    psi.ArgumentList.Add(a);
+
+                using var proc = Process.Start(psi);
+                if (proc == null) { log($"{displayName} : winget introuvable."); return -1; }
+
+                var stdout = proc.StandardOutput.ReadToEndAsync(ct);
+                var stderr = proc.StandardError.ReadToEndAsync(ct);
+                await proc.WaitForExitAsync(ct);
+
+                foreach (var raw in ((await stdout) + "\n" + (await stderr)).Split('\n'))
+                {
+                    var line = raw.Replace("\r", string.Empty).Trim();
+                    if (IsMeaningful(line)) log(line.Length > 200 ? line[..200] : line);
+                }
+                return proc.ExitCode;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { log($"{displayName} : erreur winget — {ex.Message}"); return -1; }
+        }
+
+        /// <summary>
+        /// Installe tout un lot de paquets classiques (machine-scope) en une seule
+        /// opération élevée (une invite UAC). Diffuse la sortie winget en direct via
+        /// <paramref name="log"/>. Retourne le code de sortie (0 = ok,
+        /// <see cref="ElevationCancelled"/> = UAC refusé). Le succès réel doit être
+        /// revérifié par détection.
         /// </summary>
         public static async Task<int> InstallManyElevatedAsync(
             IReadOnlyList<(string Id, string Name)> packages, Action<string> log, CancellationToken ct)
