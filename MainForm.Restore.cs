@@ -144,7 +144,7 @@ namespace SaveRestoreGUI
                     ct.ThrowIfCancellationRequested();
                     currentStep++;
                     UpdateStatus($"Restauration {name} ({currentStep}/{totalSteps})");
-                    await action();
+                    await RunStepSafelyAsync(name, action, RestoreLogBox, errorList, ct);
                 }
 
                 // Installation des logiciels manquants (winget), avant lancement.
