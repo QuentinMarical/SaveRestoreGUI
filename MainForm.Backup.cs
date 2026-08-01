@@ -121,7 +121,7 @@ namespace SaveRestoreGUI
                         ct.ThrowIfCancellationRequested();
                         idx1++;
                         UpdateStatus($"[Passe 1/2] Sauvegarde {name} ({idx1}/{total1})");
-                        await action();
+                        await RunStepSafelyAsync(name, action, BackupLogBox, errorList, ct);
                     }
                     LogSuccess(BackupLogBox, $"Passe 1 terminée — profil « {Path.GetFileName(domainProfilePath)} » sauvegardé.");
                 }
@@ -140,7 +140,7 @@ namespace SaveRestoreGUI
                     UpdateStatus(doubleBackup
                         ? $"[Passe 2/2] Sauvegarde {name} ({currentStep}/{totalSteps})"
                         : $"Sauvegarde {name} ({currentStep}/{totalSteps})");
-                    await action();
+                    await RunStepSafelyAsync(name, action, BackupLogBox, errorList, ct);
                 }
 
                 if (doubleBackup)
