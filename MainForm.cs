@@ -54,6 +54,12 @@ namespace SaveRestoreGUI
             chkPanelRestore.SetCategories(
                 CheckCatalog.Build(includeOldProfile: false, includeLaunchApps: false,
                                    includeInstall: true));
+            // Restauration : rien de coché par défaut — les cases se cochent selon
+            // le contenu réel de la sauvegarde une fois un dossier source choisi
+            // (voir UpdateRestoreCheckboxesFromContent).
+            chkPanelRestore.SetAll(false);
+            txtRestorePath.TextChanged += (_, _) => UpdateRestoreCheckboxesFromContent();
+
             chkPanelMigration.SetCategories(
                 CheckCatalog.Build(includeOldProfile: true, includeLaunchApps: false,
                                    includeSystemFeatures: false, includeInstall: true));
@@ -119,8 +125,24 @@ namespace SaveRestoreGUI
         private void ApplyAutoDetect()
         {
             chkPanelBackup.ApplyAutoDetect(_autoDetect);
-            chkPanelRestore.ApplyAutoDetect(_autoDetect);
             chkPanelMigration.ApplyAutoDetect(_autoDetect);
+            // chkPanelRestore n'utilise PAS l'auto-détection du poste courant : ses
+            // cases reflètent le contenu de la sauvegarde source, voir
+            // UpdateRestoreCheckboxesFromContent.
+        }
+
+        /// <summary>
+        /// Recoche les catégories de la Restauration selon ce qui est réellement
+        /// présent dans le dossier de sauvegarde sélectionné (txtRestorePath).
+        /// Appelé à chaque changement du chemin (saisie manuelle ou parcourir).
+        /// </summary>
+        private void UpdateRestoreCheckboxesFromContent()
+        {
+            var path = txtRestorePath.Text;
+            var present = Directory.Exists(path)
+                ? BackupValidator.DetectPresentCategories(path)
+                : new HashSet<string>();
+            chkPanelRestore.ApplyDetectedPresence(present);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -320,6 +342,26 @@ namespace SaveRestoreGUI
             Log(rtb, $"Traitement de {name}...");
             try { await Task.Run(action); }
             catch (Exception ex) { LogError(rtb, $"{name} : {ex.Message}"); }
+        }
+
+        /// <summary>
+        /// Exécute une étape de sauvegarde/restauration/migration en isolant ses
+        /// erreurs : une exception imprévue dans une catégorie (bug d'un service,
+        /// accès refusé, etc.) est journalisée et ajoutée au résumé d'erreurs sans
+        /// interrompre les catégories suivantes ni faire échouer toute l'opération.
+        /// </summary>
+        private async Task RunStepSafelyAsync(string name, Func<Task> action, RichTextBox rtb, List<string> errorList, CancellationToken ct)
+        {
+            try
+            {
+                await action();
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                LogError(rtb, $"{name} : erreur inattendue — {ex.Message}");
+                errorList.Add($"{name} : erreur inattendue — {ex.Message}");
+            }
         }
 
         private void UpdateProgress(int percent)
