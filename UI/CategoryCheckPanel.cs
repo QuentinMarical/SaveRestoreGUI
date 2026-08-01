@@ -160,6 +160,23 @@ namespace SaveRestoreGUI.UI
             }
         }
 
+        /// <summary>
+        /// Coche uniquement les catégories dont des données ont été détectées dans
+        /// le dossier de sauvegarde source (voir <see cref="Services.BackupValidator.DetectPresentCategories"/>),
+        /// et décoche toutes les autres. Les cases « Install_… » (winget) ne
+        /// dépendent pas de la sauvegarde et sont laissées inchangées.
+        /// </summary>
+        public void ApplyDetectedPresence(IReadOnlySet<string> presentKeys)
+        {
+            foreach (var key in _checked.Keys.ToList())
+            {
+                if (key.StartsWith("Install_", StringComparison.Ordinal)) continue;
+                _checked[key] = presentKeys.Contains(key);
+            }
+            Invalidate();
+            CheckedChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         public void InvalidateIcons()
         {
             _nativeCache.Clear();
