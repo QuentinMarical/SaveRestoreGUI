@@ -94,11 +94,11 @@ namespace SaveRestoreGUI.Services
                     continue;
                 }
 
-                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
-                    Directory.CreateDirectory(destDir);
-
                 try
                 {
+                    if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                        Directory.CreateDirectory(destDir);
+
                     var sourceInfo = new FileInfo(file);
 
                     if (File.Exists(destPath))
