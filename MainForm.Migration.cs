@@ -608,7 +608,7 @@ namespace SaveRestoreGUI
                         ct.ThrowIfCancellationRequested();
                         step1++;
                         UpdateStatus($"[Passe 1/2] Migration {name} ({step1}/{total1})");
-                        await action();
+                        await RunStepSafelyAsync(name, action, MigrationLogBox, errorList, ct);
                     }
 
                     LogSuccess(MigrationLogBox, $"Passe 1 terminée — profil « {domainProfile.Name} » copié.");
@@ -627,7 +627,7 @@ namespace SaveRestoreGUI
                         ct.ThrowIfCancellationRequested();
                         step2++;
                         UpdateStatus($"[Passe 2/2] Migration {name} ({step2}/{total2})");
-                        await action();
+                        await RunStepSafelyAsync(name, action, MigrationLogBox, errorList, ct);
                     }
 
                     LogSuccess(MigrationLogBox, $"Passe 2 terminée — profil « {cleanProfile.Name} » copié.");
@@ -647,7 +647,7 @@ namespace SaveRestoreGUI
                         ct.ThrowIfCancellationRequested();
                         currentStep++;
                         UpdateStatus($"Migration {name} ({currentStep}/{totalSteps})");
-                        await action();
+                        await RunStepSafelyAsync(name, action, MigrationLogBox, errorList, ct);
                     }
                 }
 
